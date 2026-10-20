@@ -14,7 +14,7 @@ and open the URL it printed. It carries a token and nothing but the documentatio
 it, so the page is yours even though the login node is shared. HOPE Labs starts it for you and
 forwards the port itself; the two lines above are for a terminal.
 
-The same module serves both tools, as the design page serves its two, and the shape of the
+The same module serves both tools, as the design page serves its own, and the shape of the
 handshake is the same line in the same words: get that wrong and the page works perfectly while
 the launcher never sees it start.
 

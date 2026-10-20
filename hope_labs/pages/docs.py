@@ -31,8 +31,8 @@ WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 #: the pages themselves: the code in front of each tool, and nothing of the tool. It comes out of
 #: LICENSE at the root of the repository, the one place the line is written down.
 
-#: The sidebar, in order: (slug, title, section). The same for both tools, because the questions
-#: a person arrives with are the same ones in the same order.
+#: The sidebar, in order: (slug, title, section). The same for every tool this module serves,
+#: because the questions a person arrives with are the same ones in the same order.
 NAV = [
     ("index", "Overview", "Start here"),
     ("getting-started", "Getting started", "Start here"),

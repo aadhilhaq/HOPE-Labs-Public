@@ -57,7 +57,9 @@ def credit(sep=" · "):
 #: The fallback for a bundle built without the LICENSE beside it. The copyright is stated in one
 #: place, the licence, and read from there rather than retyped, so the bar along the bottom of a
 #: page cannot say something the licence does not.
-FALLBACK_COPYRIGHT = ("Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. Authored by Aadhil Haq. All rights reserved.")
+FALLBACK_COPYRIGHT = ("Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. "
+                      "Authored by Aadhil Haq, Samavath Mallawarachchi and Lasan Manujitha. "
+                      "All rights reserved.")
 
 
 def copyright_line():

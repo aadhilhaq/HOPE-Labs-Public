@@ -30,10 +30,14 @@ def main(argv=None):
             line = tool.command(runs="~/r", port=8123)
             assert tool.install in line or '"$HOME"' in line, line
             assert '"$HOME"/r' in line, (tool.key, line)
-        # The pages that are ours. Each runs from the HOPE Labs checkout and is told where its
-        # tool is.
-        for key, module in (("rfdiffusion", "pages"), ("boltzgen", "pages"),
-                            ("boltz2", "folding"), ("colabfold", "folding")):
+        from . import folding as labs_folding, pages as labs_pages
+        ours = []
+        for module, serves in (("pages", labs_pages.SERVES), ("folding", labs_folding.SERVES)):
+            ours += [(k, module) for k in serves]
+        assert {k for k, _m in ours} == {t.key for t in pages if tools.LABS_INSTALL in
+                                         t.command(runs="", port=8123)}, \
+            "a page of ours went missing, or one is started from an install: " + str(ours)
+        for key, module in ours:
             line = tools.BY_KEY[key].command(runs="", port=8123)
             assert tools.LABS_INSTALL in line, line
             assert "hope_labs.%s.serve %s" % (module, key) in line, line

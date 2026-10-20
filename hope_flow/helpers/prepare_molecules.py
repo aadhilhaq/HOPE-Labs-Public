@@ -322,12 +322,20 @@ def staged(entry, work):
     Two ways a structure arrives, and the one that is not a file is staged by HOPE-MD's own
     importer: an ADCP pose is a receptor and a partner in two files, which that importer is
     the one that knows how to find.
+
+    The model is chosen here and nowhere else. read_structure takes one model out of a multi-model
+    file and leaves the rest, so by the time anything is split there is only ever one: the card's
+    Model to take has to be read at this call or it is read after the choice has been made for it,
+    silently, as the first.
     """
     kind = str(entry.get("kind") or "complex")
     notes = []
+    model = int((PLAN.get("prep") or {}).get("model") or 1)
     if kind == "complex":
         from hopemd.structure import read_structure
-        text = read_structure(entry["path"])
+        text = read_structure(entry["path"], model=model)
+        if model != 1:
+            notes.append("model %d of the file is the one prepared" % model)
         rec = [c for c in (entry.get("receptor_chains") or []) if c]
         par = [c for c in (entry.get("partner_chains") or []) if c]
         if not rec and not par:

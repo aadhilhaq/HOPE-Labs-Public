@@ -504,7 +504,7 @@ class Hub:
         # with no folder there is no activate.sh or environment either, and that is not the news.
         if "no-install" in low or ("no such file or directory" in low and "cd" in low):
             return "there is no %s on the cluster: %s" % (tool.name, where)
-        # The two design tools are fronted by a page that belongs to HOPE Labs rather than to the
+        # The design tools are fronted by a page that belongs to HOPE Labs rather than to the
         # install, so a missing checkout is a different folder from a missing tool and sending
         # somebody to the tool's would waste their afternoon.
         if "no-labs" in low:
@@ -980,7 +980,7 @@ def flow_command(install, args, root=""):
     The runner needs Python 3.8 or newer. Rather than name one and fail on a cluster that keeps it
     somewhere else, the line tries each candidate and takes the first that is new enough, so the
     failure a person sees is about their flow rather than about an interpreter. The search is
-    tools.python_search, shared with the two design pages, which run from this same checkout and
+    tools.python_search, shared with the design pages, which run from this same checkout and
     would otherwise need their own copy of it.
     """
     where = catalogue.rebase(install or FLOW_INSTALL, root)

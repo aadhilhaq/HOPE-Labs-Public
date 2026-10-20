@@ -1247,7 +1247,7 @@
      "kind": "number",
      "default": 10,
      "choices": [],
-     "why": "",
+     "why": "ranked, best first; the simulation takes its best from these, and the rescoring cannot take more poses than are kept",
      "optional": true,
      "needed": false,
      "advanced": false,
@@ -1270,6 +1270,105 @@
      "step": 10
     },
     {
+     "key": "cyclic",
+     "label": "Dock each peptide as",
+     "kind": "choice",
+     "default": "none",
+     "choices": [
+      "none",
+      "backbone",
+      "disulfide"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "none": "a linear chain, which is how every design arrives",
+      "backbone": "a ring closed head to tail (ADCP's -cyc)",
+      "disulfide": "a ring through a disulfide between two of its cysteines (-cys); a peptide with fewer than two is left behind"
+     }
+    },
+    {
+     "key": "site_mode",
+     "label": "Build the box around",
+     "kind": "choice",
+     "default": "residues",
+     "choices": [
+      "residues",
+      "ligand",
+      "pocket"
+     ],
+     "why": "the hotspots are still asked for on the target card, and the other two modes do not read them",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "residues": "the hotspots named on the target card",
+      "ligand": "a ligand or peptide in the receptor, named below, which is kept out of the receptor it sets the box for",
+      "pocket": "the pocket AutoSite finds"
+     }
+    },
+    {
+     "key": "site_ligand",
+     "label": "The ligand or peptide the box is built around",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "read only while the box is built around a ligand",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "not read: the box comes from the hotspots",
+     "varies": [
+      {
+       "on": "site_mode",
+       "cases": {
+        "ligand": {
+         "optional": false,
+         "placeholder": "",
+         "why": "a peptide's chain, as B, or a hetero group as CHAIN:NAME:NUMBER, as A:NUT:201"
+        },
+        "pocket": {
+         "placeholder": "not read: the box comes from AutoSite's pocket",
+         "why": "the box comes from a pocket, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "site_pocket",
+     "label": "Which pocket",
+     "kind": "choice",
+     "default": "best",
+     "choices": [
+      "best",
+      "all"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "best": "AutoSite's best scoring pocket",
+      "all": "every pocket it finds, in one box"
+     },
+     "varies": [
+      {
+       "on": "site_mode",
+       "cases": {
+        "residues": {
+         "why": "read only while the box is built around a pocket"
+        },
+        "ligand": {
+         "why": "read only while the box is built around a pocket"
+        }
+       }
+      }
+     ]
+    },
+    {
      "key": "mmgbsa",
      "label": "Score the best poses with MM-GBSA",
      "kind": "yesno",
@@ -1281,19 +1380,180 @@
      "advanced": false
     },
     {
+     "key": "mmgbsa_poses",
+     "label": "Poses to rescore per peptide",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "of the poses kept above; the docking refuses more than it keeps",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "mmgbsa_model",
+     "label": "Solvation model",
+     "kind": "choice",
+     "default": "obc2",
+     "choices": [
+      "obc2",
+      "gbn2"
+     ],
+     "why": "both run in AmberTools; compare peptides only within one model",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "obc2": "GB-OBC(II), ADCP's own default and what every earlier run used",
+      "gbn2": "GBn2, with its own radii"
+     }
+    },
+    {
+     "key": "mmgbsa_engine",
+     "label": "MM-GBSA engine",
+     "kind": "choice",
+     "default": "amber",
+     "choices": [
+      "amber",
+      "openmm",
+      "schrodinger"
+     ],
+     "why": "each writes its own column, and none is comparable with another by value",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "amber": "AmberTools, the reference every earlier number came from",
+      "openmm": "the same force field and geometry solved again",
+      "schrodinger": "Prime, with OPLS and VSGB 2.0, on its own scale"
+     }
+    },
+    {
+     "key": "top_n",
+     "label": "Report the mean of the best",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "poses per peptide, which is the number the results table ranks on",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 50,
+     "step": 1
+    },
+    {
+     "key": "helical",
+     "label": "Replicas that start helical, %",
+     "kind": "number",
+     "default": 25,
+     "choices": [],
+     "why": "the rest start as coil; 0 starts every one as coil",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100,
+     "step": 5
+    },
+    {
      "key": "steps",
      "label": "Steps per replica",
      "kind": "number",
      "default": null,
      "choices": [],
-     "why": "",
+     "why": "the length of each search; longer costs time in proportion",
      "optional": true,
      "needed": false,
      "advanced": true,
      "least": 100000,
      "most": 50000000,
      "step": 500000,
-     "placeholder": "the docking's own"
+     "placeholder": "the docking's own: 2,500,000"
+    },
+    {
+     "key": "omm_minimize",
+     "label": "Poses to minimise with OpenMM",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "ADCP's own minimisation of its top poses, after the docking; 0 does none",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "omm_env",
+     "label": "Minimise in",
+     "kind": "choice",
+     "default": "implicit",
+     "choices": [
+      "implicit",
+      "vacuum"
+     ],
+     "why": "the solvent the minimisation above is run in",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "implicit": "implicit solvent, which is ADCP's own default",
+      "vacuum": "no solvent at all"
+     },
+     "varies": [
+      {
+       "on": "omm_minimize",
+       "cases": {
+        "0": {
+         "why": "read only while poses are being minimised"
+        },
+        "": {
+         "why": "read only while poses are being minimised"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "autosite",
+     "label": "AutoSite",
+     "kind": "choice",
+     "default": "1.1",
+     "choices": [
+      "1.1",
+      "1.0"
+     ],
+     "why": "which AutoSite places the translation points and finds the pockets",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "receptor_gradient",
+     "label": "Add the receptor gradient",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "AGFR's -g: a slope towards the surface inside the receptor. Off because it costs time and ADCP's authors found it did not help",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "keep_trajectories",
+     "label": "Keep every replica's trajectory",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "one archive per peptide; tens of thousands of files otherwise thrown away",
+     "optional": true,
+     "needed": false,
+     "advanced": true
     },
     {
      "key": "cpus",
@@ -1315,7 +1575,7 @@
      "kind": "duration",
      "default": "08:00:00",
      "choices": [],
-     "why": "",
+     "why": "per peptide: each is one task of the array, not the run as a whole",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -1324,16 +1584,30 @@
      "step": 1800
     },
     {
+     "key": "throttle",
+     "label": "Most tasks at once",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "of the peptide array; 0 lets the queue run as many as it will",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 200,
+     "step": 1
+    },
+    {
      "key": "partition",
      "label": "Partition",
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the docking names none of its own; empty lets the scheduler choose",
      "optional": true,
      "needed": false,
      "advanced": true,
-     "placeholder": "the docking's own"
+     "placeholder": "the cluster's own default"
     },
     {
      "key": "account",
@@ -1341,7 +1615,7 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "where the cluster requires one",
      "optional": true,
      "needed": false,
      "advanced": true
@@ -1431,11 +1705,179 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "as A,B; empty docks the whole of what was folded",
+     "why": "as A,B; empty docks the whole of what was folded, and a partner with no box of its own takes this one",
      "optional": true,
      "needed": false,
      "advanced": false,
      "placeholder": "every protein, DNA and RNA chain folded"
+    },
+    {
+     "key": "partner_chains_2",
+     "label": "Second partner's chains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as A,B, for the second partner to arrive",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the box above"
+    },
+    {
+     "key": "partner_chains_3",
+     "label": "Third partner's chains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as A,B, for the third partner to arrive",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the box above"
+    },
+    {
+     "key": "partner_active",
+     "label": "Partners' active residues",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues of the partner believed to be at the interface, as A:45,A:48-52; a partner with no box of its own takes this one",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "nothing known: the whole surface is passive"
+    },
+    {
+     "key": "partner_active_2",
+     "label": "Second partner's active residues",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "for the second partner to arrive",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the box above"
+    },
+    {
+     "key": "partner_active_3",
+     "label": "Third partner's active residues",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "for the third partner to arrive",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the box above"
+    },
+    {
+     "key": "partner_passive",
+     "label": "Partners' passive residues",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "around",
+      "surface",
+      "list",
+      "none"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "auto": "the surface around its own active residues where it has any, its whole surface where it has none",
+      "around": "the surface within 6.5 A of its active residues, as HADDOCK's web server chooses them",
+      "surface": "the whole surface, for a partner nothing is known about",
+      "list": "the residues named below",
+      "none": "none"
+     }
+    },
+    {
+     "key": "partner_passive_list",
+     "label": "Partners' passive residues, named",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "as A:30,A:31",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "read only while the passive residues are a list",
+     "varies": [
+      {
+       "on": "partner_passive",
+       "cases": {
+        "list": {
+         "optional": false,
+         "placeholder": "",
+         "why": "the partner's own passive residues, as A:30,A:31"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "receptor_passive",
+     "label": "Receptor's passive residues",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "around",
+      "surface",
+      "list",
+      "none"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "auto": "the surface around the hotspots while they drive the docking, its whole surface where a partner's residues drive it instead",
+      "around": "the surface within 6.5 A of the hotspots",
+      "surface": "the whole surface",
+      "list": "the residues named below",
+      "none": "none"
+     }
+    },
+    {
+     "key": "receptor_passive_list",
+     "label": "Receptor's passive residues, named",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues of the prepared receptor, as A:30,A:31",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "read only while the passive residues are a list",
+     "varies": [
+      {
+       "on": "receptor_passive",
+       "cases": {
+        "list": {
+         "optional": false,
+         "placeholder": "",
+         "why": "residues of the prepared receptor, as A:30,A:31"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "partner_dotbracket",
+     "label": "Partners' secondary structure",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "dot-bracket, one character a nucleotide in the order docked and \"&\" between strands; its base pairs are then held through every refinement. One box for every partner, so a protein partner beside an RNA one is refused by name",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "none: HADDOCK keeps the fold the structure has"
     },
     {
      "key": "preset",
@@ -1458,6 +1900,302 @@
      }
     },
     {
+     "key": "sampling",
+     "label": "Rigid-body models made",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "past the three presets: HADDOCK's own sampling",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10,
+     "most": 50000,
+     "step": 100,
+     "placeholder": "the sampling above"
+    },
+    {
+     "key": "select",
+     "label": "Of those, how many are refined",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "no more than were sampled, which the docking refuses before it queues",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 50000,
+     "step": 50,
+     "placeholder": "the sampling above"
+    },
+    {
+     "key": "clustering",
+     "label": "How models are grouped into clusters",
+     "kind": "choice",
+     "default": "fcc",
+     "choices": [
+      "fcc",
+      "rmsd"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "fcc": "by shared contacts, HADDOCK's own default",
+      "rmsd": "by RMSD"
+     }
+    },
+    {
+     "key": "clust_cutoff",
+     "label": "How alike two models must be to share a cluster",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a fraction of shared contacts for fcc, angstroms for rmsd",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 100.0,
+     "step": 0.1,
+     "placeholder": "HADDOCK's own: 0.6 shared contacts",
+     "varies": [
+      {
+       "on": "clustering",
+       "cases": {
+        "rmsd": {
+         "placeholder": "HADDOCK's own: 7.5 A",
+         "why": "in angstroms, since the clustering is by RMSD"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "min_population",
+     "label": "Fewest models a cluster may have",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 9999,
+     "step": 1,
+     "placeholder": "the sampling above: 4, or 2 for a quick check"
+    },
+    {
+     "key": "water",
+     "label": "Refine the final models in water",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "slower; HADDOCK's page ticks it for a DNA or RNA partner, and this card is the only place a flow can ask for it",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "mode",
+       "cases": {
+        "protein-DNA": {
+         "why": "slower; the page ticks it for a DNA partner, as HADDOCK's web server ends its protocol"
+        },
+        "protein-RNA": {
+         "why": "slower; the page ticks it for an RNA partner, as HADDOCK's web server ends its protocol"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa",
+     "label": "Rescore the top poses with MM-GBSA",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "the only way to compare one partner with another: HADDOCK's own score was not made to. It needs AmberTools, and says so before anything is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "mmgbsa_engines",
+     "label": "MM-GBSA engines",
+     "kind": "ticks",
+     "default": "amber",
+     "choices": [
+      "amber",
+      "openmm",
+      "prime"
+     ],
+     "why": "each writes its own column, and none is comparable with another by value",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "AmberTools alone",
+     "notes": {
+      "amber": "AmberTools, always run: its minimised pose is what the others score",
+      "openmm": "the same topology and geometry, OpenMM's own GBn2",
+      "prime": "Schrodinger's MM-GBSA, OPLS with VSGB"
+     },
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "switch the rescoring on above to choose which engines score the poses"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_poses",
+     "label": "Poses rescored",
+     "kind": "choice",
+     "default": "12",
+     "choices": [
+      "3",
+      "12",
+      "20"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "3": "the best of each of the top 3 clusters, the quickest",
+      "12": "the best 4 of each of the top 3 clusters",
+      "20": "the best 4 of each of the top 5 clusters"
+     },
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "read only while the rescoring is on"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "cofold",
+     "label": "Co-fold each pair with Boltz-2 and compare it",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a second, independent answer to where the partner sits, beside the docking",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "replicates",
+     "label": "Dock each partner this many times",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "each with a random seed of its own, which is how a pose is told from a lucky one; each replicate is a Slurm task of its own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 3,
+     "step": 1
+    },
+    {
+     "key": "seed",
+     "label": "Random seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the first seed; replicates take it and 1000 more each",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000000000,
+     "step": 1,
+     "placeholder": "HADDOCK's own, 917"
+    },
+    {
+     "key": "restraints_file",
+     "label": "Your own restraints file",
+     "kind": "path",
+     "default": "",
+     "choices": [],
+     "why": "a .tbl of assign lines on the cluster, added as unambiguous restraints",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: the restraints come from the residues above"
+    },
+    {
+     "key": "partner_cyclic",
+     "label": "Dock each partner as a ring, head to tail",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "HADDOCK3's cyclicpept, for a peptide of one chain and 40 residues at most; anything else is refused by name before it is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "receptor_flexible",
+     "label": "Receptor's fully flexible residues",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues HADDOCK may move freely during refinement, as A:10-20",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: HADDOCK loosens the interface by itself"
+    },
+    {
+     "key": "partner_flexible",
+     "label": "Partners' fully flexible residues",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues HADDOCK may move freely during refinement, as A:10-20",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: HADDOCK loosens the interface by itself"
+    },
+    {
+     "key": "reference",
+     "label": "A known complex to compare the models with",
+     "kind": "path",
+     "default": "",
+     "choices": [],
+     "why": "its chains carry the receptor's and the partner's own letters and residue numbers; on a run of several partners it is checked against each of them",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: the models are scored only"
+    },
+    {
+     "key": "keep_het",
+     "label": "Ions and cofactors to keep",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "by residue name, as ZN,ATP. The preparation keeps the ions this docking has parameters for, and HADDOCK drops them again unless they are named here",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: HADDOCK leaves every hetero group out"
+    },
+    {
      "key": "top",
      "label": "Complexes to hand on",
      "kind": "number",
@@ -1477,13 +2215,25 @@
      "kind": "number",
      "default": 24,
      "choices": [],
-     "why": "",
+     "why": "one HADDOCK3 run per partner, spread over them",
      "optional": true,
      "needed": false,
      "advanced": true,
      "least": 1,
      "most": 96,
      "step": 4
+    },
+    {
+     "key": "mem",
+     "label": "Memory",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "per partner, as 48G",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "twice the cores, in GB"
     },
     {
      "key": "walltime",
@@ -1501,15 +2251,30 @@
      "placeholder": "from the estimate"
     },
     {
+     "key": "throttle",
+     "label": "Most partners at once",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "of the array, one task a partner; 0 lets the queue run them all",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 50,
+     "step": 1
+    },
+    {
      "key": "partition",
      "label": "Partition",
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "empty lets the docking pick one the walltime fits in",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "chosen to fit the time asked"
     },
     {
      "key": "account",
@@ -1520,7 +2285,20 @@
      "why": "",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "if your site needs one"
+    },
+    {
+     "key": "extra",
+     "label": "Other Slurm options",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "written with = so they are not read as options of the docking itself",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "--qos=normal"
     }
    ]
   },
@@ -1609,6 +2387,45 @@
      "step": 1
     },
     {
+     "key": "trim_plddt",
+     "label": "Trim predicted tails below pLDDT",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "for a predicted model: terminal residues under this confidence are trimmed; 0 keeps every one, and a structure with no pLDDT in it is untouched",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 100.0,
+     "step": 5
+    },
+    {
+     "key": "altloc",
+     "label": "Alternate location to keep",
+     "kind": "text",
+     "default": "A",
+     "choices": [],
+     "why": "a crystal structure that models two positions for a side chain keeps this one; the atoms of the others are dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "model",
+     "label": "Model to take",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "for an NMR ensemble or any multi-model file: which model is prepared. The first unless you say otherwise",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
      "key": "drop_waters",
      "label": "Crystal waters",
      "kind": "choice",
@@ -1640,6 +2457,40 @@
      "advanced": true
     },
     {
+     "key": "drop_buffers",
+     "label": "Drop the crystallisation buffers",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "glycerol, sulfate, PEG, acetate, DMSO and the rest of what the crystallographer added; off, each one has to be covered by a force field or the run is refused by name",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "keep_other_hetero",
+     "label": "Keep the hetero groups that are neither",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a group that is not a buffer, a metal or a known cofactor: kept only if a force field here covers it, and named in the refusal if not",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "drop_hetero",
+     "label": "Also drop, by residue name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "residue names dropped whatever their class, separated by commas: NAD, HEM. This is what a refusal naming a group it cannot cover asks for",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "nothing beyond the classes above"
+    },
+    {
      "key": "cap_breaks",
      "label": "Cap the breaks",
      "kind": "yesno",
@@ -1667,13 +2518,68 @@
      "kind": "number",
      "default": 500,
      "choices": [],
-     "why": "",
+     "why": "L-BFGS steps on each molecule; 0 skips the minimisation as surely as the switch above",
      "optional": true,
      "needed": false,
      "advanced": true,
      "least": 0,
      "most": 100000,
-     "step": 100
+     "step": 100,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Minimisation restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "held on the heavy atoms the file already had, so only the modelled residues move; 0 lets everything move",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "implicit_solvent",
+     "label": "Minimise in implicit solvent",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "GBn2 instead of vacuum: a better answer for a modelled loop, and about ten times slower",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "walltime",
@@ -1695,10 +2601,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the queue the one preparation job goes to; empty takes the short one, which is where it belongs",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "the cluster's short queue"
     },
     {
      "key": "account",
@@ -1706,10 +2613,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the Slurm account this job is charged to, for a flow being run against one allocation",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
     }
    ]
   },
@@ -1796,6 +2704,45 @@
      "step": 1
     },
     {
+     "key": "trim_plddt",
+     "label": "Trim predicted tails below pLDDT",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "for a predicted model: terminal residues under this confidence are trimmed; 0 keeps every one, and a structure with no pLDDT in it is untouched",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 100.0,
+     "step": 5
+    },
+    {
+     "key": "altloc",
+     "label": "Alternate location to keep",
+     "kind": "text",
+     "default": "A",
+     "choices": [],
+     "why": "a crystal structure that models two positions for a side chain keeps this one; the atoms of the others are dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "model",
+     "label": "Model to take",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "for an NMR ensemble or any multi-model file: which model is prepared. The first unless you say otherwise",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
      "key": "cap_breaks",
      "label": "Cap the breaks",
      "kind": "yesno",
@@ -1823,13 +2770,68 @@
      "kind": "number",
      "default": 500,
      "choices": [],
-     "why": "",
+     "why": "L-BFGS steps on each molecule; 0 skips the minimisation as surely as the switch above",
      "optional": true,
      "needed": false,
      "advanced": true,
      "least": 0,
      "most": 100000,
-     "step": 100
+     "step": 100,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Minimisation restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "held on the heavy atoms the file already had, so only the modelled residues move; 0 lets everything move",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "implicit_solvent",
+     "label": "Minimise in implicit solvent",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "GBn2 instead of vacuum: a better answer for a modelled loop, and about ten times slower",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimisation is off"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "walltime",
@@ -1851,10 +2853,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the queue the one preparation job goes to; empty takes the short one, which is where it belongs",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "the cluster's short queue"
     },
     {
      "key": "account",
@@ -1862,10 +2865,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the Slurm account this job is charged to, for a flow being run against one allocation",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
     }
    ]
   },
@@ -1975,7 +2979,7 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "a group per structure, as name: key=value, key=value, with a semicolon between groups. The keys are this card's own, so \"3cc1_cluster2: length_ns=200, engine=openmm\" runs that one structure for longer on another engine and leaves the rest alone",
+     "why": "a group per structure, as name: key=value, key=value, with a semicolon between groups. The keys are this card's own, so \"3cc1_cluster2: length_ns=200, engine=openmm\" runs that one structure for longer on another engine and leaves the rest alone. A value that is itself a list, as the restrained residues are, is separated by spaces here, because the commas separate the settings",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2007,10 +3011,35 @@
       "namd",
       "desmond"
      ],
-     "why": "",
+     "why": "the same system on any of the five; Amber is the fastest here and what the lab's benchmarks are in",
      "optional": false,
      "needed": true,
-     "advanced": false
+     "advanced": false,
+     "notes": {
+      "amber": "pmemd.cuda: the fastest on these cards, and the engine the lab's timings are measured on",
+      "openmm": "a Python engine on the same Amber topology",
+      "gromacs": "the Amber topology converted by ParmEd",
+      "namd": "NAMD 3, reading the prmtop itself; no four-site water",
+      "desmond": "Schrödinger's, with its own OPLS force field and box"
+     }
+    },
+    {
+     "key": "environment",
+     "label": "What it is simulated in",
+     "kind": "choice",
+     "default": "water",
+     "choices": [
+      "water",
+      "membrane"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "water": "a periodic water box around the complex",
+      "membrane": "a lipid bilayer, with water above and below it. The force field, the water, the box shape and the salt follow the bilayer build and are written for you"
+     }
     },
     {
      "key": "length_ns",
@@ -2018,27 +3047,49 @@
      "kind": "number",
      "default": 100,
      "choices": [],
-     "why": "production, per replicate",
+     "why": "production, per replicate; past the queue's limit it is chained as segments",
      "optional": false,
      "needed": true,
      "advanced": false,
      "least": 1,
      "most": 5000,
-     "step": 10
+     "step": 10,
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "most": 10.0,
+         "why": "a CPU check is at most 10 ns: it answers whether the pose holds at the start, not how it behaves"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "frames",
      "label": "Frames to keep",
      "kind": "number",
-     "default": 500,
+     "default": 5000,
      "choices": [],
-     "why": "over the whole production; the interval between them follows from this, and it has to be a whole number of steps and no longer than the 200 ps MM-GBSA takes its frames at",
+     "why": "over the whole production, so the interval is the length divided by this: 5000 of 100 ns is one every 20 ps, which is HOPE-MD's own. It has to be a whole number of steps and no longer than the 200 ps MM-GBSA takes its frames at, and the canvas says which number to type instead",
      "optional": true,
      "needed": false,
      "advanced": false,
      "least": 10,
      "most": 100000,
-     "step": 50
+     "step": 50,
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "most": 500,
+         "why": "a CPU check keeps at most 500 frames"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "replicates",
@@ -2060,10 +3111,364 @@
      "kind": "yesno",
      "default": true,
      "choices": [],
-     "why": "",
+     "why": "GB-Neck2 over the frames below, per replicate: the number a flow is usually drawn to get. Off for a run of one molecule, which has no interface",
      "optional": true,
      "needed": false,
      "advanced": false
+    },
+    {
+     "key": "lipid",
+     "label": "Lipid",
+     "kind": "choice",
+     "default": "POPC",
+     "choices": [
+      "POPC",
+      "POPE",
+      "DLPC",
+      "DLPE",
+      "DMPC",
+      "DOPC",
+      "DPPC"
+     ],
+     "why": "the bilayer is tiled from a pre-equilibrated patch of this lipid",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      },
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "why": "Desmond's System Builder ships POPC, POPE, DPPC, DMPC bilayers"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "membrane_padding_A",
+     "label": "Water above and below the bilayer, Å",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "under 5 Å the head groups see their own image, over 40 Å is water for nothing",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 5.0,
+     "most": 40.0,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "center_z_A",
+     "label": "Bilayer centre along z, Å",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "where the middle of the bilayer sits; 0 is the OPM convention and what an oriented structure expects",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": -100,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "orientation",
+     "label": "How the structure is oriented",
+     "kind": "choice",
+     "default": "as_imported",
+     "choices": [
+      "as_imported",
+      "opm",
+      "annotation"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "as_imported": "the structure's membrane normal is already z, as an OPM file's is. A folded or docked model is not: say its segments below, or orient it before the flow",
+      "opm": "fetch the OPM orientation, which needs the internet and so a login node",
+      "annotation": "orient on the transmembrane segments, from the ones typed below or the ones UniProt annotates"
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "segments",
+     "label": "Transmembrane segments",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as chain:start-end, separated by commas: A:30-56, A:71-96. Typed ones are used in place of whatever was found",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "found from the sequence",
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "box_shape",
+     "label": "Box shape",
+     "kind": "choice",
+     "default": "compact",
+     "choices": [
+      "compact",
+      "cubic",
+      "rectangular"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "compact": "a truncated octahedron: the fewest waters for the same minimum image distance, and the default",
+      "cubic": "a cube, for comparison with work that used one",
+      "rectangular": "an orthorhombic box, which is what a bilayer takes"
+     },
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "value": "rectangular",
+         "why": "Desmond's System Builder builds an orthorhombic box whatever is asked"
+        }
+       }
+      },
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "value": "rectangular",
+         "why": "a bilayer is periodic in x and y, so the box is rectangular"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "padding_A",
+     "label": "Padding, Å",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "water between the solute and the box edge; under the 10 Å cutoff the complex sees its own periodic image",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10.0,
+     "most": 40.0,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "not read: a bilayer's water is the padding above and below it"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "salt",
+     "label": "Salt",
+     "kind": "choice",
+     "default": "NaCl",
+     "choices": [
+      "NaCl",
+      "KCl",
+      "MgCl2"
+     ],
+     "why": "the box is neutralised first, then brought to the concentration below",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "NaCl": "physiological, and the default",
+      "KCl": "for work done in potassium buffer",
+      "MgCl2": "for a nucleic acid, which binds Mg2+; not for a bilayer, which takes a monovalent pair"
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build places a monovalent pair: NaCl or KCl"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "salt_mM",
+     "label": "Salt concentration, mM",
+     "kind": "number",
+     "default": 150,
+     "choices": [],
+     "why": "150 mM is physiological. It is also the salt MM-GBSA is computed at, so it changes the binding energy as well as the box",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 1000.0,
+     "step": 10
+    },
+    {
+     "key": "restrain",
+     "label": "Residues held still in production",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "as 54,56,66-70 or A54,B12-16, in the numbering the preparation kept. For a run meant to answer what the rest does while these stay put",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "nothing is held: the whole complex is free"
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Production restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "how hard those residues are held, and the first rung of the equilibration ladder either way",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 1,
+     "varies": [
+      {
+       "on": "restrain",
+       "cases": {
+        "": {
+         "why": "the first rung of the equilibration ladder; no residue is held in production"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_from_ns",
+     "label": "Score from, ns",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "skip the start, where the complex is still settling; 0 scores from the first frame",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 5000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_to_ns",
+     "label": "Score to, ns",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "empty scores to the end",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 5000,
+     "step": 10,
+     "placeholder": "the end of the run",
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_stride_ps",
+     "label": "Score every, ps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "how often a frame of that window is scored; it can be no finer than the interval the frames above are kept at",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "report",
@@ -2071,7 +3476,7 @@
      "kind": "yesno",
      "default": true,
      "choices": [],
-     "why": "",
+     "why": "the run's own report, as the Runs screen would write it: one job per run, behind the simulation",
      "optional": true,
      "needed": false,
      "advanced": true
@@ -2088,12 +3493,37 @@
      "advanced": true
     },
     {
+     "key": "tidy",
+     "label": "Tidy each run when it finishes",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a last job packs away the small files a finished run no longer needs; the results still load. Off, a batch of runs is a great many files",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "viewer_stride",
+     "label": "Frames the viewer shows, one in",
+     "kind": "number",
+     "default": 20,
+     "choices": [],
+     "why": "the trajectory the Results viewer loads is thinned by this, so 20 of the 5000 frames kept is 250 to scrub through",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 1000,
+     "step": 5
+    },
+    {
      "key": "temperature_K",
      "label": "Temperature, K",
      "kind": "number",
      "default": 300,
      "choices": [],
-     "why": "",
+     "why": "the thermostat's target through heating, equilibration and production",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2107,7 +3537,7 @@
      "kind": "number",
      "default": 1.0,
      "choices": [],
-     "why": "",
+     "why": "the barostat's target once the box is equilibrated at constant pressure",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2160,7 +3590,7 @@
      "kind": "number",
      "default": 200,
      "choices": [],
-     "why": "",
+     "why": "from 0 K to the temperature above, restrained, before the ladder",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2174,7 +3604,7 @@
      "kind": "number",
      "default": 5000,
      "choices": [],
-     "why": "",
+     "why": "on the built box, before any heating: it takes the clashes out of the solvation",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2220,7 +3650,17 @@
       "TIP4P-Ew": "not for NAMD, which cannot run a four-site water from the Amber topology",
       "TIP4P": "Desmond's OPLS4 only",
       "SPC": "Desmond"
-     }
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build has one water and it is written for you: TIP3P, or SPC on Desmond, whose lipid patches come hydrated with it"
+        }
+       }
+      }
+     ]
     },
     {
      "key": "protein",
@@ -2253,6 +3693,14 @@
          "why": "Desmond types the whole system with its own OPLS: OPLS_2005 or OPLS4"
         }
        }
+      },
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build has one force field and it is written for you: ff14SB, which is the only one OpenMM ships lipid17 alongside, or Desmond's own OPLS"
+        }
+       }
       }
      ]
     },
@@ -2279,12 +3727,154 @@
      }
     },
     {
+     "key": "device",
+     "label": "Run on",
+     "kind": "choice",
+     "default": "gpu",
+     "choices": [
+      "gpu",
+      "cpu"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "gpu": "one card per replicate, which is how these engines are meant to be run",
+      "cpu": "one whole node, for a short check while the GPU queue is full: Amber or GROMACS, at most 10 ns and 500 frames"
+     }
+    },
+    {
+     "key": "gpu",
+     "label": "GPU type",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4"
+     ],
+     "why": "empty takes the cluster's usual card",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the cluster's default, which on Grace is a100",
+      "auto": "the fastest type with a free card at submit, which is what keeps a run out of the a100 queue when a40s are idle",
+      "a100": "40 GB, the fastest here and the default",
+      "a40": "48 GB, on its own partition and often free",
+      "rtx": "24 GB",
+      "t4": "16 GB, for a small system"
+     },
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "why": "not read: the run is on CPU"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "gpus_per_replicate",
+     "label": "GPUs per replicate",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "one is what Amber, OpenMM and Desmond each run a replicate on, however many are asked for; NAMD uses them all",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 4,
+     "step": 1,
+     "varies": [
+      {
+       "on": "gpu",
+       "cases": {
+        "a100": {
+         "most": 2,
+         "why": "a Grace a100 node has 2 cards"
+        },
+        "a40": {
+         "most": 3,
+         "why": "a Grace a40 node has 3 cards"
+        },
+        "rtx": {
+         "most": 2,
+         "why": "a Grace rtx node has 2 cards"
+        },
+        "t4": {
+         "most": 4,
+         "why": "a Grace t4 node has 4 cards"
+        }
+       }
+      },
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "why": "not read: the run is on CPU"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "cpus",
+     "label": "CPU cores per replicate",
+     "kind": "number",
+     "default": 4,
+     "choices": [],
+     "why": "beside the card, for the parts that are not on it; a CPU check takes a whole node whatever this says",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 48,
+     "step": 2
+    },
+    {
+     "key": "mem_gb",
+     "label": "Memory per replicate, GB",
+     "kind": "number",
+     "default": 16,
+     "choices": [],
+     "why": "Grace refuses a job that asks for none; raise it for a system of many hundreds of thousands of atoms",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 180,
+     "step": 4
+    },
+    {
+     "key": "max_concurrent",
+     "label": "Replicates running at once",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a throttle for a batch of runs against one allocation: empty queues them all and lets the cluster decide",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1,
+     "placeholder": "every one at once"
+    },
+    {
      "key": "walltime",
      "label": "Walltime",
      "kind": "duration",
      "default": "",
      "choices": [],
-     "why": "left empty, the simulation works one out from the length, the replicates and the size of the system, which is the number to beat",
+     "why": "left empty, the simulation works one out from the length, the replicates and the size of the system, which is the number to beat. A typed one is each production job's limit, so a shorter one cuts a long run into more segments",
      "optional": true,
      "needed": false,
      "advanced": true,
@@ -2299,10 +3889,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "empty takes the partition the GPU type lives on, which is what you want unless you are aiming at a reservation",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "the one that carries the card"
     },
     {
      "key": "account",
@@ -2310,10 +3901,11 @@
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "",
+     "why": "the Slurm account every job of every run is charged to, the preparation included",
      "optional": true,
      "needed": false,
-     "advanced": true
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
     }
    ]
   }

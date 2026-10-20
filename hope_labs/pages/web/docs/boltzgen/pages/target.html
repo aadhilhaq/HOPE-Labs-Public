@@ -35,6 +35,11 @@ kept</td></tr>
 <tr><td><code>A54,B12-16</code></td><td>residue 54 of chain A and residues 12 to 16 of chain B</td></tr>
 <tr><td><code>A54,56,57</code></td><td>54, 56 and 57 of chain A: a residue with no letter takes
 the chain from the token before it</td></tr>
+<tr><td><code>H60A</code></td><td>refused, and named. The conversion reads a chain, a number and
+at most a range, so an insertion code has nowhere to go: <code>60A</code> would reach BoltzGen as
+the position of residue 60, which is a different residue, and one a structure numbered this way
+has as well. RFdiffusion3 keeps the code on its residue, so use that page when 60A is the
+site</td></tr>
 </table>
 <p>A residue you name that the chain has not got turns the box red and names it. A run is not
 queued without hotspots.</p>

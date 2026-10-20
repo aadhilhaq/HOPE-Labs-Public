@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import shlex
 
-# HOPE-MD, BindCraft2, the docking console and the two design pages:
+# HOPE-MD, BindCraft2, the docking console and the design pages:
 # "open  http://127.0.0.1:<port>/?t=<token>"
 URL_LINE = re.compile(r"http://127\.0\.0\.1:(\d+)/\?t=([A-Za-z0-9_\-]+)")
 
@@ -291,7 +291,7 @@ def _haddock(where, runs, port):
 def python_search(override, what):
     """A shell fragment leaving a Python of 3.8 or newer in $PY, or stopping to say there is none.
 
-    Shared by the flow runner's line and the design pages', so the two cannot drift apart: a
+    Shared by the flow runner's line and the design pages', so they cannot drift apart: a
     cluster that keeps its Pythons somewhere unusual is told once. `what` ends the sentence a
     person reads when none is found, so the failure is about their tool rather than about an
     interpreter they have never heard of.
@@ -306,7 +306,7 @@ def python_search(override, what):
 
 
 def _design_page(tool):
-    """The line that starts one of the two design pages.
+    """The line that starts one of the design pages.
 
     The page is in this repository, so the line runs from the HOPE Labs checkout and the tool's
     own install is handed to it as a setting: a copy of RFdiffusion in somebody's own scratch is
@@ -397,10 +397,10 @@ TOOLS = (
          gives="designed binders",
          next_steps=(("hopemd", "Simulate a design in HOPE-MD"),)),
 
-    # The two machine-learning design tools. Neither install has a page inside it, so each is
-    # driven by one of ours (hope_labs/pages), which queues the run through the same code a flow
-    # queues it through. Their runs folders are the flow's own, so a run started either way is
-    # found either way.
+    # The machine-learning design tools, which hope_labs.pages.SERVES lists. No install has a
+    # page inside it, so each is driven by one of ours (hope_labs/pages), which queues the run
+    # through the same code a flow queues it through. Their runs folders are the flow's own, so a
+    # run started either way is found either way.
     Tool("rfdiffusion", "RFdiffusion", "Design a binder backbone, then its sequence",
          "Design", "/path/to/hope-labs/ML_programs/RFdiffusion",
          _design_page("rfdiffusion"), _url_ready,

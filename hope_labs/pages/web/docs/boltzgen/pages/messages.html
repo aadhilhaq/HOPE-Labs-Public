@@ -52,6 +52,12 @@ the run folder on: this should not happen and the specification in it is the evi
 named a residue the structure has not got: one in a gap in the chain, one off the end of it, or
 one on a chain that is not among those kept. Each is named, with where it falls, and the run stops
 before anything expensive. RFdiffusion and RFdiffusion3 refuse the same thing in the same words.</td></tr>
+<tr><td>these hotspots have an insertion code, which this tool cannot be aimed at, so nothing
+was run</td><td>A hotspot was written <code>60A</code> or <code>H60A</code>. The conversion to
+positions reads a chain, a number and at most a range, so the code is lost and the run would aim
+at residue 60, which a structure numbered this way has as well. RFdiffusion refuses it in these same words; RFdiffusion3 is
+the one of the three that keeps a code on its residue, so use that page when 60A is the
+site.</td></tr>
 <tr><td>none of the hotspots given are in the target</td><td>Every residue named is absent, so
 there is nothing to aim at and the run stops.</td></tr>
 <tr><td>BoltzGen left no metrics CSV</td><td>The run finished the generation but the analysis step

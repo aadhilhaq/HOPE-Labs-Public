@@ -315,7 +315,7 @@ class Flow:
                                  node=n.id))
             bad.extend(_unanswered(n))
             bad.extend(_folding_problems(n))
-            bad.extend(_simulation_problems(n))
+            bad.extend(_simulation_problems(n, self))
 
         bad.extend(_prepare_problems(self))
 
@@ -430,7 +430,7 @@ def _receptor_card_of(flow, src, src_port, sock):
     return ""
 
 
-def _simulation_problems(node):
+def _simulation_problems(node, flow=None):
     """What the simulation card's picker can be wrong about, before anything is queued.
 
     One run per structure and the person picks which, so the two ways of picking are the two
@@ -438,11 +438,16 @@ def _simulation_problems(node):
     answers to nothing can only be found once the structures are there, and the run says so then;
     a setting this card does not have, or a number outside what it allows, is wrong while
     somebody is still looking at the box.
+
+    `flow` is given for the one rule that is not about this card alone: a bilayer places its own
+    water around the solute, so a preparation above it that keeps crystal waters is a run HOPE-MD
+    refuses. The two answers are on two cards and neither is wrong by itself.
     """
     if node.card != "hopemd":
         return []
     s = node.settings
     bad = []
+    bad.extend(_md_waters_refuses(node, flow))
     if str(s.get("pick") or "rank").strip().lower() == "name" \
             and not cards.names_asked(s.get("names")):
         bad.append(Issue("%s: name the structures to simulate, or pick them by rank instead"
@@ -531,6 +536,95 @@ def _md_refuses(node, s):
                              "or more, or switch MM-GBSA off"
                              % (name, frames, ns, save, cards.MD_MMGBSA_STRIDE_PS,
                                 int(ns * 1000.0 / cards.MD_MMGBSA_STRIDE_PS)), **at("frames")))
+    bad.extend(_md_window_refuses(s, ns, save, name, at))
+    bad.extend(_md_environment_refuses(s, engine, name, at))
+    # The CPU check, which is one whole node for a short look rather than a second way to run a
+    # simulation. Its length and its frames are bounded on the card itself (the device rule under
+    # each), and this is the one of its three limits a bound cannot say.
+    if str(s.get("device") or "gpu").strip() == "cpu" and engine not in cards.MD_CPU_ENGINES:
+        bad.append(Issue("%s: the CPU check runs %s; %s on CPU is too slow to be worth a node"
+                         % (name, " or ".join(cards.MD_CPU_ENGINES), engine), **at("device")))
+    return bad
+
+
+def _md_waters_refuses(node, flow):
+    """A bilayer below a preparation that keeps the crystal waters.
+
+    The bilayer build places its own water around the solute, so a crystal water carried into it
+    is a water the build has nowhere to put: HOPE-MD refuses the spec and names Prepare's waters
+    box. Said here because the two answers are on two cards, each reasonable on its own, and
+    neither card can see the other.
+    """
+    if flow is None or str(node.settings.get("environment") or "water").strip() != "membrane":
+        return []
+    bad = []
+    for edge in flow.into(node.id):
+        above = flow.node(edge.src)
+        if above is None or above.card != cards.PREPARE_KEY:
+            continue
+        kept = str(above.settings.get("drop_waters") or "all").strip()
+        if kept in ("far", "none"):
+            bad.append(Issue("%s is in a bilayer, and the preparation above it keeps crystal "
+                             "waters: the bilayer build places its own water around the solute, "
+                             "so there is nowhere to put them. Set Crystal waters to drop every "
+                             "one, or simulate in a water box"
+                             % (node.kind.name if node.kind else "HOPE-MD"),
+                             node=above.id, key="drop_waters"))
+    return bad
+
+
+def _md_window_refuses(s, ns, save, name, at):
+    """The MM-GBSA window, against the run it is a slice of.
+
+    Three numbers that mean nothing on their own: a start inside the run, an end after the start
+    and inside it, and a stride no finer than the frames actually kept. Each of them is a spec
+    HOPE-MD refuses, and each was a box somebody could fill in on the card and find out from the
+    scoring job at the end of a day of simulation.
+    """
+    bad = []
+    if not s.get("mmgbsa", True) or not ns:
+        return bad
+    start = _number_or(s.get("mmgbsa_from_ns"), 0.0) or 0.0
+    end = _number_or(s.get("mmgbsa_to_ns"), 0.0) or 0.0
+    stride = _number_or(s.get("mmgbsa_stride_ps"), cards.MD_MMGBSA_STRIDE_PS)
+    if start < 0 or start >= ns:
+        bad.append(Issue("%s: MM-GBSA starts inside the run, so between 0 and %g ns, not %g"
+                         % (name, ns, start), **at("mmgbsa_from_ns")))
+    if end and (end <= start or end > ns):
+        bad.append(Issue("%s: MM-GBSA ends after it starts and within the %g ns of the run, or "
+                         "empty for the end; %g is neither" % (name, ns, end),
+                         **at("mmgbsa_to_ns")))
+    if stride is not None and save is not None and stride < save:
+        bad.append(Issue("%s: MM-GBSA can score at most every frame kept, which is one every "
+                         "%g ps, so it cannot score every %g ps. Keep more frames, or score "
+                         "every %g ps" % (name, save, stride, save), **at("mmgbsa_stride_ps")))
+    elif stride is not None and stride > 0 and ((end or ns) - start) * 1000.0 / stride < 1:
+        bad.append(Issue("%s: the MM-GBSA window is %g ns long and holds no frame at every %g ps"
+                         % (name, (end or ns) - start, stride), **at("mmgbsa_stride_ps")))
+    return bad
+
+
+def _md_environment_refuses(s, engine, name, at):
+    """What a bilayer insists on that the card cannot simply show fixed.
+
+    The force field, the water and the box shape a bilayer build fixes are written into the spec
+    for you (drivers._spec), as Desmond's are. The salt cannot be: OpenMM's addMembrane places a
+    monovalent pair and Desmond's bilayer takes one too, and quietly swapping somebody's MgCl2
+    for NaCl would be changing the chemistry of the run without saying so.
+    """
+    if str(s.get("environment") or "water").strip() != "membrane":
+        return []
+    bad = []
+    salt = str(s.get("salt") or "NaCl").strip()
+    if salt not in cards.MD_MEMBRANE_SALTS:
+        bad.append(Issue("%s: %s cannot be placed in a bilayer build, which takes a monovalent "
+                         "pair; choose %s, or a water box"
+                         % (name, salt, " or ".join(cards.MD_MEMBRANE_SALTS)), **at("salt")))
+    lipids = cards.MD_DESMOND_LIPIDS if engine == "desmond" else cards.MD_LIPIDS
+    lipid = str(s.get("lipid") or "POPC").strip()
+    if lipid not in lipids:
+        bad.append(Issue("%s: %s ships %s bilayers, and %s is not among them"
+                         % (name, engine, ", ".join(lipids), lipid), **at("lipid")))
     return bad
 
 

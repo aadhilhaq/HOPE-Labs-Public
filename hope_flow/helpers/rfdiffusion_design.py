@@ -162,10 +162,16 @@ def coded_why(text):
 
     Said here rather than in the two places that need it, so the job and the page refuse the same
     box in the same words.
+
+    The words name no tool, and that is deliberate: BoltzGen's helper carries this same pair of
+    sentences, because the Target card's hotspot box is read by three tools and a person should
+    not have to learn which of them is strict about it. tests/test_design_hotspots.py holds the
+    two refusals to the same string, as it does the refusal of a hotspot in a gap. The one tool
+    that does keep a code is named in the sentence, so the box has somewhere to go.
     """
-    return ["%s: the code is lost on the way to RFdiffusion, which keys a hotspot by its chain "
-            "and number alone, so it would aim at residue %s instead. RFdiffusion3 keeps the code "
-            "on its residue, if that is the site" % (bit, CODED.match(bit).group(2))
+    return ["%s: the code is lost on the way in and the run would aim at residue %s instead. "
+            "RFdiffusion3 is the one tool that keeps a code on its residue, if that is the site"
+            % (bit, CODED.match(bit).group(2))
             for bit in coded(text)]
 
 
@@ -173,8 +179,8 @@ def refuse_coded(text):
     """Refuse a hotspot written with an insertion code, naming it."""
     told = coded_why(text)
     if told:
-        raise SystemExit("these hotspots have an insertion code, which RFdiffusion cannot be "
-                         "asked for, so nothing was run:\n  " + "\n  ".join(told))
+        raise SystemExit("these hotspots have an insertion code, which this tool cannot be "
+                         "aimed at, so nothing was run:\n  " + "\n  ".join(told))
 
 
 def absent(pairs, keep):

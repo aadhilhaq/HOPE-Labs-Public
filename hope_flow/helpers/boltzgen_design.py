@@ -11,7 +11,9 @@ than left to whoever fills the card in:
     Every other tool in the lab takes the file's own numbering, so the card does too and this
     converts. Getting it wrong does not fail: it designs against a different patch of the surface
     for twelve hours. A hotspot the target has no residue for is refused rather than converted
-    and dropped, in the same words the two RFdiffusion helpers refuse one in.
+    and dropped, in the same words the two RFdiffusion helpers refuse one in, and so is one
+    written with an insertion code, which this reading of the box cannot carry and which
+    RFdiffusion refuses in those same words - RFdiffusion3 is the one of the three that keeps it.
   - `total_len` is the length of the WHOLE complex, target included, and it is a resample-until-it
     -fits loop. The binder's own length belongs in its sequence as "70..100", which is what this
     writes; total_len is left out.
@@ -137,6 +139,49 @@ def positions(author_numbers, asked):
         else:
             missing.append(n)
     return sorted(set(found)), missing
+
+
+#: A hotspot written with an insertion code: H60A, 60A, or H:60A as the docking tools write one.
+CODED = re.compile(r"^([A-Za-z]?):?(\d+)([A-Za-z])$")
+
+
+def coded(text):
+    """The hotspots written with an insertion code, as they were typed.
+
+    BoltzGen's spec marks a binding residue by its POSITION in the chain, and the card's box is
+    read here as a chain, a number and at most a range: wanted()'s pattern matches neither 60A
+    nor H60A, so one was dropped without a word, and positions() then put a bare 60 on the first
+    residue numbered 60 - which is 60, not 60A. A structure numbered with codes has both, so the
+    campaign was aimed at a residue nobody typed in and ran its twelve hours there.
+
+    This is the third reading of the one box. RFdiffusion has nowhere to put a code either and
+    refuses one by name; RFdiffusion3 keeps it on its residue. So the box meant three things to
+    three tools, and this was the one that said nothing about it.
+    """
+    return [bit for bit in (b.strip() for b in re.split(r"[,;\s]+", text or ""))
+            if bit and CODED.match(bit)]
+
+
+def coded_why(text):
+    """One sentence per insertion-coded hotspot, saying why it cannot be asked for.
+
+    Word for word rfdiffusion_design.coded_why's, and tool-neutral for that reason: the two
+    helpers cannot share a module, because each is run by its own tool's Python, so the words are
+    carried twice and tests/test_design_hotspots.py holds them to the same string. The one tool
+    that does keep a code is named in the sentence, so the box has somewhere to go.
+    """
+    return ["%s: the code is lost on the way in and the run would aim at residue %s instead. "
+            "RFdiffusion3 is the one tool that keeps a code on its residue, if that is the site"
+            % (bit, CODED.match(bit).group(2))
+            for bit in coded(text)]
+
+
+def refuse_coded(text):
+    """Refuse a hotspot written with an insertion code, naming it."""
+    told = coded_why(text)
+    if told:
+        raise SystemExit("these hotspots have an insertion code, which this tool cannot be "
+                         "aimed at, so nothing was run:\n  " + "\n  ".join(told))
 
 
 def refuse_missing(asked, keep):
@@ -283,7 +328,10 @@ def main():
 
     # The hotspots, converted from the file's numbering to BoltzGen's positions. Refused first,
     # by name, where the target has no such residue: one in a gap was named in this log and then
-    # dropped, and the run went on aimed at whatever was left of the site.
+    # dropped, and the run went on aimed at whatever was left of the site. And where it carries an
+    # insertion code, which this conversion cannot carry and which said nothing at all: the box
+    # read 60A and the run aimed at 60.
+    refuse_coded(plan.get("hotspots"))
     asked = wanted(plan.get("hotspots"), keep[0])
     refuse_missing(asked, {c: present[c] for c in keep})
     binding = {}

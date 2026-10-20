@@ -325,7 +325,7 @@ def serve(tool, host="127.0.0.1", port=0, runs=None, token="", dry_run=False, in
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="python -m hope_labs.pages.serve",
-        description="Serve the page for one of the lab's two machine-learning design tools.")
+        description="Serve the page for one of the lab's machine-learning design tools.")
     parser.add_argument("tool", choices=list(SERVES), help="which tool this page is for")
     parser.add_argument("--port", type=int, default=0,
                         help="port on this login node; 0 picks a free one")

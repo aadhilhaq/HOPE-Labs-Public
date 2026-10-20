@@ -117,6 +117,60 @@ MD_SEED_MAX = 2000000000
 #: How often MM-GBSA takes a frame. It cannot use more than every saved frame, so the save
 #: interval a frame count works out to has to be this or shorter.
 MD_MMGBSA_STRIDE_PS = 200
+#: The box, the salt and the environment, from the same file (BOX_SHAPES, CUTOFF_A, SALTS,
+#: ENVIRONMENTS). The padding floor is the cutoff: under it the complex sees its own periodic
+#: image, which is the one thing validate() refuses a padding for.
+MD_BOX_SHAPES = ("compact", "cubic", "rectangular")
+MD_CUTOFF_A = 10.0
+MD_SALTS = ("NaCl", "KCl", "MgCl2")
+MD_SALT_MM = (0.0, 1000.0)
+MD_ENVIRONMENTS = ("water", "membrane")
+#: The bilayer, from the same file (LIPIDS, DESMOND_LIPIDS, ORIENTATIONS, MEMBRANE_PADDING_A,
+#: MEMBRANE_SALTS, MEMBRANE_PROTEIN_FF, MEMBRANE_WATER, DESMOND_MEMBRANE_WATER). A bilayer build
+#: has one force field, one water, one box shape and two salts, and the card writes all four for
+#: you rather than offering a run HOPE-MD would refuse for every one of them.
+MD_LIPIDS = ("POPC", "POPE", "DLPC", "DLPE", "DMPC", "DOPC", "DPPC")
+MD_DESMOND_LIPIDS = ("POPC", "POPE", "DPPC", "DMPC")
+MD_ORIENTATIONS = ("as_imported", "opm", "annotation")
+MD_MEMBRANE_PADDING_A = (5.0, 40.0)
+MD_MEMBRANE_SALTS = ("NaCl", "KCl")
+MD_MEMBRANE_PROTEIN_FF = "ff14SB"
+MD_MEMBRANE_WATER = "TIP3P"
+MD_DESMOND_MEMBRANE_WATER = ("SPC", "TIP3P")
+#: How a small molecule is parameterised, per engine (LIGAND_PARAMS). One choice on the four
+#: Amber-topology engines and none on Desmond, so it is not a box: the driver names the engine's
+#: own, because a run whose partner is a small molecule is otherwise refused for want of a
+#: parameter set that has exactly one member.
+MD_LIGAND_PARAMS = {"amber": ("gaff2-am1bcc",), "openmm": ("gaff2-am1bcc",),
+                    "gromacs": ("gaff2-am1bcc",), "namd": ("gaff2-am1bcc",), "desmond": ()}
+#: The CPU check (CPU_MAX_NS, CPU_MAX_FRAMES, CPU_ENGINES): one whole node, for when the GPU queue
+#: is full and the question is only whether the pose holds for the first few ns.
+MD_CPU_MAX_NS = 10.0
+MD_CPU_MAX_FRAMES = 500
+MD_CPU_ENGINES = ("amber", "gromacs")
+#: The GPU types Grace has, fastest first, and what "auto" is spelt (site.py's GRACE.gpu_types and
+#: spec.py's GPU_AUTO). Copied like the rest: the canvas has to be able to offer them on a laptop.
+#: Empty is the site's default, which on Grace is a100.
+MD_GPU_TYPES = ("a100", "a40", "rtx", "t4")
+MD_GPU_AUTO = "auto"
+#: One node's cores and the memory a whole-node job asks for on Grace (site.py: cpu_cores_per_node,
+#: cpu_mem_gb). The memory floor is validate()'s: Grace refuses a job without --mem.
+MD_CPUS = (1, 48)
+MD_MEM_GB = (1, 180)
+#: How many cards of each type one Grace node has, from site.py's own note of what gpuavail shows
+#: (100 x gpu:a100:2, 15 x gpu:a40:3, 9 x gpu:rtx:2, 8 x gpu:t4:4). HOPE-MD asks only for at least
+#: one GPU per replicate; a request for more cards than the node has is a gres Slurm cannot
+#: satisfy and nothing in the tool refuses it, so the card holds each type to its own node.
+MD_GPUS_PER_NODE = {"a100": 2, "a40": 3, "rtx": 2, "t4": 4}
+#: Prepare's waters, on the two routes HOPE-MD reads them on (DROP_WATERS, KEEP_WATERS, and
+#: water_choice, which reads prep.drop_waters on a complex and keep_waters on everything else).
+#: One question, two field names, so the preparation card asks it once and the simulation's spec
+#: carries the answer to both: see drivers._spec.
+MD_DROP_WATERS = ("all", "far", "none")
+MD_KEEP_WATERS = ("none", "near_ligand", "all")
+MD_WATERS_BOTH_WAYS = {"all": "none", "far": "near_ligand", "none": "all"}
+#: pLDDT is a percentage (Prep.trim_plddt, and validate()'s "pLDDT is 0 to 100").
+MD_PLDDT = (0.0, 100.0)
 
 
 def save_interval_ps(length_ns, frames):
@@ -549,8 +603,8 @@ BINDCRAFT = Card(
     ],
     note="Designs come out already placed on the target, so docking them again is optional.")
 
-# The two machine-learning design tools. Both are the same shape as BindCraft2 - a target in, a
-# binder placed on it out - and both differ from it in the same way: they have no page of their
+# The machine-learning design tools. Each is the same shape as BindCraft2 - a target in, a
+# binder placed on it out - and each differs from it in the same way: they have no page of their
 # own on the Tools screen, so a flow is the only way the lab runs them.
 RFDIFFUSION = Card(
     "rfdiffusion", "RFdiffusion", "design a binder backbone, then its sequence",
@@ -688,23 +742,121 @@ ADCP = Card(
     outputs=[Port("poses", "docked poses", ["poses"])],
     settings=[
         Setting("poses", "Poses to keep per peptide", "number", 10, optional=True,
-                least=1, most=100, step=1),
+                least=1, most=100, step=1,
+                why="ranked, best first; the simulation takes its best from these, and the "
+                    "rescoring cannot take more poses than are kept"),
         Setting("replicas", "Replicas", "number", 50, optional=True,
                 least=1, most=1000, step=10,
                 why="how many independent searches per peptide"),
+        # A ring is the one thing about a peptide that no design card upstream can say: the
+        # sequences arrive linear and ADCP closes them, head to tail or through a disulfide. The
+        # lab's macrocycle work could not be docked as a ring from a flow at all. A peptide that
+        # cannot close the ring asked for is left behind by name, with the reason, rather than
+        # refusing the whole run as the docking's own command line does.
+        Setting("cyclic", "Dock each peptide as", "choice", "none", optional=True,
+                choices=["none", "backbone", "disulfide"],
+                notes={"none": "a linear chain, which is how every design arrives",
+                       "backbone": "a ring closed head to tail (ADCP's -cyc)",
+                       "disulfide": "a ring through a disulfide between two of its cysteines "
+                                    "(-cys); a peptide with fewer than two is left behind"}),
+        # Where the grid box goes. The card had only the hotspots, which is the residues mode;
+        # the other two are ADCP's own, and the ligand one is how a peptide already in the
+        # structure sets the box - the macrocycle in 5O45's chain B - which is a site no list of
+        # residues describes as well as the thing sitting in it.
+        Setting("site_mode", "Build the box around", "choice", "residues", optional=True,
+                choices=["residues", "ligand", "pocket"],
+                notes={"residues": "the hotspots named on the target card",
+                       "ligand": "a ligand or peptide in the receptor, named below, which is "
+                                 "kept out of the receptor it sets the box for",
+                       "pocket": "the pocket AutoSite finds"},
+                why="the hotspots are still asked for on the target card, and the other two modes "
+                    "do not read them"),
+        Setting("site_ligand", "The ligand or peptide the box is built around", "text", "",
+                optional=True, placeholder="not read: the box comes from the hotspots",
+                why="read only while the box is built around a ligand",
+                varies=[("site_mode", {
+                    "ligand": {"optional": False, "placeholder": "",
+                               "why": "a peptide's chain, as B, or a hetero group as "
+                                      "CHAIN:NAME:NUMBER, as A:NUT:201"},
+                    "pocket": {"placeholder": "not read: the box comes from AutoSite's pocket",
+                               "why": "the box comes from a pocket, so this is left alone"}})]),
+        Setting("site_pocket", "Which pocket", "choice", "best", optional=True, advanced=True,
+                choices=["best", "all"],
+                notes={"best": "AutoSite's best scoring pocket",
+                       "all": "every pocket it finds, in one box"},
+                varies=[("site_mode", {
+                    "residues": {"why": "read only while the box is built around a pocket"},
+                    "ligand": {"why": "read only while the box is built around a pocket"}})]),
         Setting("mmgbsa", "Score the best poses with MM-GBSA", "yesno", True, optional=True,
                 why="slower, and the more considered estimate of binding"),
+        # The three the rescoring is actually set by, and the number it reports. Each is ADCP's
+        # own flag with ADCP's own default: without them a flow could only have the rescoring on
+        # or off, and never on GBn2 or through OpenMM, so a flow's numbers could not be put beside
+        # a run made from the page with anything but the one model.
+        Setting("mmgbsa_poses", "Poses to rescore per peptide", "number", 5, optional=True,
+                advanced=True, least=1, most=10, step=1,
+                why="of the poses kept above; the docking refuses more than it keeps"),
+        Setting("mmgbsa_model", "Solvation model", "choice", "obc2", optional=True, advanced=True,
+                choices=["obc2", "gbn2"],
+                notes={"obc2": "GB-OBC(II), ADCP's own default and what every earlier run used",
+                       "gbn2": "GBn2, with its own radii"},
+                why="both run in AmberTools; compare peptides only within one model"),
+        Setting("mmgbsa_engine", "MM-GBSA engine", "choice", "amber", optional=True,
+                advanced=True, choices=["amber", "openmm", "schrodinger"],
+                notes={"amber": "AmberTools, the reference every earlier number came from",
+                       "openmm": "the same force field and geometry solved again",
+                       "schrodinger": "Prime, with OPLS and VSGB 2.0, on its own scale"},
+                why="each writes its own column, and none is comparable with another by value"),
+        Setting("top_n", "Report the mean of the best", "number", 5, optional=True,
+                advanced=True, least=1, most=50, step=1,
+                why="poses per peptide, which is the number the results table ranks on"),
+        Setting("helical", "Replicas that start helical, %", "number", 25, optional=True,
+                advanced=True, least=0, most=100, step=5,
+                why="the rest start as coil; 0 starts every one as coil"),
         Setting("steps", "Steps per replica", "number", None, optional=True, advanced=True,
                 least=100000, most=50000000, step=500000,
-                placeholder="the docking's own"),
+                placeholder="the docking's own: 2,500,000",
+                why="the length of each search; longer costs time in proportion"),
+        Setting("omm_minimize", "Poses to minimise with OpenMM", "number", 0, optional=True,
+                advanced=True, least=0, most=10, step=1,
+                why="ADCP's own minimisation of its top poses, after the docking; 0 does none"),
+        Setting("omm_env", "Minimise in", "choice", "implicit", optional=True, advanced=True,
+                choices=["implicit", "vacuum"],
+                notes={"implicit": "implicit solvent, which is ADCP's own default",
+                       "vacuum": "no solvent at all"},
+                why="the solvent the minimisation above is run in",
+                varies=[("omm_minimize", {0: {"why": "read only while poses are being minimised"},
+                                          "": {"why": "read only while poses are being "
+                                                      "minimised"}})]),
+        # The two maps settings a flow could not reach. Both are ADCP's own flags, and the
+        # gradient is off by its authors' own finding rather than by an oversight.
+        Setting("autosite", "AutoSite", "choice", "1.1", optional=True, advanced=True,
+                choices=["1.1", "1.0"],
+                why="which AutoSite places the translation points and finds the pockets"),
+        Setting("receptor_gradient", "Add the receptor gradient", "yesno", False, optional=True,
+                advanced=True,
+                why="AGFR's -g: a slope towards the surface inside the receptor. Off because it "
+                    "costs time and ADCP's authors found it did not help"),
+        Setting("keep_trajectories", "Keep every replica's trajectory", "yesno", False,
+                optional=True, advanced=True,
+                why="one archive per peptide; tens of thousands of files otherwise thrown away"),
         Setting("cpus", "Cores", "number", 48, optional=True, advanced=True,
                 least=1, most=96, step=1,
                 why="ADCP searches in parallel, one replica per core"),
         Setting("walltime", "Walltime", "duration", "08:00:00", optional=True, advanced=True,
-                least=1800, most=2 * 24 * 3600, step=1800),
+                least=1800, most=2 * 24 * 3600, step=1800,
+                why="per peptide: each is one task of the array, not the run as a whole"),
+        Setting("throttle", "Most tasks at once", "number", 0, optional=True, advanced=True,
+                least=0, most=200, step=1,
+                why="of the peptide array; 0 lets the queue run as many as it will"),
+        # The placeholder here used to say "the docking's own", and the docking has none: it is
+        # left blank on purpose, so that a cluster naming its partitions differently is not sent
+        # one that does not exist (adcp_dock/job.py). Empty means the scheduler's own default.
         Setting("partition", "Partition", "text", "", optional=True, advanced=True,
-                placeholder="the docking's own"),
-        Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
+                placeholder="the cluster's own default",
+                why="the docking names none of its own; empty lets the scheduler choose"),
+        Setting("account", "Account to charge", "text", "", optional=True, advanced=True,
+                why="where the cluster requires one"),
     ],
     note="Takes peptides of %d residues or fewer." % DOCKABLE_MAX_LENGTH)
 
@@ -726,27 +878,197 @@ HADDOCK = Card(
                 optional=True,
                 why="the hotspots named on the target card become the receptor's active residues, "
                     "and each partner's whole surface is passive; untick to dock ab initio"),
+        # One box served every partner, so a protein partner and a two-chain DNA duplex could not
+        # be docked in one card: whatever was typed went to both. The first partner's box carries
+        # no suffix, which is what every flow drawn before this holds, and a partner with no box
+        # of its own takes it - so a card filled in as it always was docks as it always did.
+        # Three, as the folding cards offer three entities: a run of more partners than that is
+        # several cards, or the HADDOCK page, which draws the list properly.
         Setting("partner_chains", "Partners' chains", "text", "", optional=True,
                 placeholder="every protein, DNA and RNA chain folded",
-                why="as A,B; empty docks the whole of what was folded"),
+                why="as A,B; empty docks the whole of what was folded, and a partner with no box "
+                    "of its own takes this one"),
+        Setting("partner_chains_2", "Second partner's chains", "text", "", optional=True,
+                advanced=True, placeholder="the box above",
+                why="as A,B, for the second partner to arrive"),
+        Setting("partner_chains_3", "Third partner's chains", "text", "", optional=True,
+                advanced=True, placeholder="the box above",
+                why="as A,B, for the third partner to arrive"),
+        # The interface, per molecule. The driver forced every partner to a passive surface and
+        # the receptor to the surface around its hotspots, so a known epitope on a partner could
+        # not be named at all: the one thing HADDOCK is driven by, and the one thing a flow could
+        # not say. Written as the page writes them, "A:45, A:48-52".
+        Setting("partner_active", "Partners' active residues", "residues", "", optional=True,
+                placeholder="nothing known: the whole surface is passive",
+                why="residues of the partner believed to be at the interface, as A:45,A:48-52; a "
+                    "partner with no box of its own takes this one"),
+        Setting("partner_active_2", "Second partner's active residues", "residues", "",
+                optional=True, advanced=True, placeholder="the box above",
+                why="for the second partner to arrive"),
+        Setting("partner_active_3", "Third partner's active residues", "residues", "",
+                optional=True, advanced=True, placeholder="the box above",
+                why="for the third partner to arrive"),
+        Setting("partner_passive", "Partners' passive residues", "choice", "auto", optional=True,
+                advanced=True, choices=["auto", "around", "surface", "list", "none"],
+                notes={"auto": "the surface around its own active residues where it has any, "
+                               "its whole surface where it has none",
+                       "around": "the surface within 6.5 A of its active residues, as HADDOCK's "
+                                 "web server chooses them",
+                       "surface": "the whole surface, for a partner nothing is known about",
+                       "list": "the residues named below",
+                       "none": "none"}),
+        Setting("partner_passive_list", "Partners' passive residues, named", "residues", "",
+                optional=True, advanced=True,
+                placeholder="read only while the passive residues are a list",
+                why="as A:30,A:31",
+                varies=[("partner_passive", {"list": {
+                    "optional": False, "placeholder": "",
+                    "why": "the partner's own passive residues, as A:30,A:31"}})]),
+        Setting("receptor_passive", "Receptor's passive residues", "choice", "auto",
+                optional=True, advanced=True,
+                choices=["auto", "around", "surface", "list", "none"],
+                notes={"auto": "the surface around the hotspots while they drive the docking, "
+                               "its whole surface where a partner's residues drive it instead",
+                       "around": "the surface within 6.5 A of the hotspots",
+                       "surface": "the whole surface",
+                       "list": "the residues named below",
+                       "none": "none"}),
+        Setting("receptor_passive_list", "Receptor's passive residues, named", "residues", "",
+                optional=True, advanced=True,
+                placeholder="read only while the passive residues are a list",
+                why="residues of the prepared receptor, as A:30,A:31",
+                varies=[("receptor_passive", {"list": {
+                    "optional": False, "placeholder": "",
+                    "why": "residues of the prepared receptor, as A:30,A:31"}})]),
+        Setting("partner_dotbracket", "Partners' secondary structure", "text", "", optional=True,
+                placeholder="none: HADDOCK keeps the fold the structure has",
+                why="dot-bracket, one character a nucleotide in the order docked and \"&\" "
+                    "between strands; its base pairs are then held through every refinement. One "
+                    "box for every partner, so a protein partner beside an RNA one is refused "
+                    "by name"),
         Setting("preset", "Sampling", "choice", "standard", optional=True,
                 choices=["quick", "standard", "thorough"],
                 notes={"quick": "200 rigid-body models, 40 refined: for checking a flow",
                        "standard": "1000 rigid-body models, 200 refined: HADDOCK's own default",
                        "thorough": "2000 rigid-body models, 400 refined: for ab initio docking"}),
+        # Past the three presets. Each empty takes the preset's own number, which is what the
+        # placeholders say; filled in, they are HADDOCK's sampling and select, and more cannot be
+        # refined than were sampled, which the docking says before anything is queued.
+        Setting("sampling", "Rigid-body models made", "number", None, optional=True,
+                advanced=True, least=10, most=50000, step=100,
+                placeholder="the sampling above",
+                why="past the three presets: HADDOCK's own sampling"),
+        Setting("select", "Of those, how many are refined", "number", None, optional=True,
+                advanced=True, least=1, most=50000, step=50,
+                placeholder="the sampling above",
+                why="no more than were sampled, which the docking refuses before it queues"),
+        Setting("clustering", "How models are grouped into clusters", "choice", "fcc",
+                optional=True, advanced=True, choices=["fcc", "rmsd"],
+                notes={"fcc": "by shared contacts, HADDOCK's own default",
+                       "rmsd": "by RMSD"}),
+        Setting("clust_cutoff", "How alike two models must be to share a cluster", "number",
+                None, optional=True, advanced=True, least=0.0, most=100.0, step=0.1,
+                placeholder="HADDOCK's own: 0.6 shared contacts",
+                why="a fraction of shared contacts for fcc, angstroms for rmsd",
+                varies=[("clustering", {"rmsd": {
+                    "placeholder": "HADDOCK's own: 7.5 A",
+                    "why": "in angstroms, since the clustering is by RMSD"}})]),
+        Setting("min_population", "Fewest models a cluster may have", "number", None,
+                optional=True, advanced=True, least=1, most=9999, step=1,
+                placeholder="the sampling above: 4, or 2 for a quick check"),
+        # Browser-side only on the page, which ticks it for any mode but protein-protein
+        # (static/app.js). A flow sent no options at all, so a docking of protein with DNA or RNA
+        # quietly lost the water refinement the page would have given it.
+        Setting("water", "Refine the final models in water", "yesno", False, optional=True,
+                why="slower; HADDOCK's page ticks it for a DNA or RNA partner, and this card is "
+                    "the only place a flow can ask for it",
+                varies=[("mode", {
+                    "protein-DNA": {"why": "slower; the page ticks it for a DNA partner, as "
+                                           "HADDOCK's web server ends its protocol"},
+                    "protein-RNA": {"why": "slower; the page ticks it for an RNA partner, as "
+                                           "HADDOCK's web server ends its protocol"}})]),
+        # HADDOCK's score ranks the models of one run well and was not made to compare one
+        # complex with another, which is exactly what this card hands on: the complexes of every
+        # partner, ranked together. Off is the tool's own answer and the lab's is usually on.
+        Setting("mmgbsa", "Rescore the top poses with MM-GBSA", "yesno", False, optional=True,
+                why="the only way to compare one partner with another: HADDOCK's own score was "
+                    "not made to. It needs AmberTools, and says so before anything is queued"),
+        Setting("mmgbsa_engines", "MM-GBSA engines", "ticks", "amber", optional=True,
+                advanced=True, choices=["amber", "openmm", "prime"],
+                notes={"amber": "AmberTools, always run: its minimised pose is what the others "
+                                "score",
+                       "openmm": "the same topology and geometry, OpenMM's own GBn2",
+                       "prime": "Schrodinger's MM-GBSA, OPLS with VSGB"},
+                placeholder="AmberTools alone",
+                why="each writes its own column, and none is comparable with another by value",
+                varies=[("mmgbsa", {False: {"why": "switch the rescoring on above to choose "
+                                                   "which engines score the poses"}})]),
+        Setting("mmgbsa_poses", "Poses rescored", "choice", "12", optional=True, advanced=True,
+                choices=["3", "12", "20"],
+                notes={"3": "the best of each of the top 3 clusters, the quickest",
+                       "12": "the best 4 of each of the top 3 clusters",
+                       "20": "the best 4 of each of the top 5 clusters"},
+                varies=[("mmgbsa", {False: {"why": "read only while the rescoring is on"}})]),
+        Setting("cofold", "Co-fold each pair with Boltz-2 and compare it", "yesno", False,
+                optional=True, advanced=True,
+                why="a second, independent answer to where the partner sits, beside the docking"),
+        # Three is HADDOCK's own MAX_REPLICATES, and a test holds this against it.
+        Setting("replicates", "Dock each partner this many times", "number", 1, optional=True,
+                advanced=True, least=1, most=3, step=1,
+                why="each with a random seed of its own, which is how a pose is told from a "
+                    "lucky one; each replicate is a Slurm task of its own"),
+        Setting("seed", "Random seed", "number", None, optional=True, advanced=True,
+                least=0, most=10 ** 9, step=1, placeholder="HADDOCK's own, 917",
+                why="the first seed; replicates take it and 1000 more each"),
+        Setting("restraints_file", "Your own restraints file", "path", "", optional=True,
+                advanced=True, placeholder="none: the restraints come from the residues above",
+                why="a .tbl of assign lines on the cluster, added as unambiguous restraints"),
+        Setting("partner_cyclic", "Dock each partner as a ring, head to tail", "yesno", False,
+                optional=True, advanced=True,
+                why="HADDOCK3's cyclicpept, for a peptide of one chain and 40 residues at most; "
+                    "anything else is refused by name before it is queued"),
+        Setting("receptor_flexible", "Receptor's fully flexible residues", "residues", "",
+                optional=True, advanced=True,
+                placeholder="none: HADDOCK loosens the interface by itself",
+                why="residues HADDOCK may move freely during refinement, as A:10-20"),
+        Setting("partner_flexible", "Partners' fully flexible residues", "residues", "",
+                optional=True, advanced=True,
+                placeholder="none: HADDOCK loosens the interface by itself",
+                why="residues HADDOCK may move freely during refinement, as A:10-20"),
+        Setting("reference", "A known complex to compare the models with", "path", "",
+                optional=True, advanced=True, placeholder="none: the models are scored only",
+                why="its chains carry the receptor's and the partner's own letters and residue "
+                    "numbers; on a run of several partners it is checked against each of them"),
+        Setting("keep_het", "Ions and cofactors to keep", "text", "", optional=True,
+                advanced=True, placeholder="none: HADDOCK leaves every hetero group out",
+                why="by residue name, as ZN,ATP. The preparation keeps the ions this docking has "
+                    "parameters for, and HADDOCK drops them again unless they are named here"),
         Setting("top", "Complexes to hand on", "number", 5, optional=True,
                 least=1, most=50, step=1,
                 why="per partner: the best model of each of its best clusters. What leaves this "
                     "card is then ranked across all of its partners together, best score first"),
         Setting("cpus", "Cores per partner", "number", 24, optional=True, advanced=True,
-                least=1, most=96, step=4),
+                least=1, most=96, step=4,
+                why="one HADDOCK3 run per partner, spread over them"),
+        Setting("mem", "Memory", "text", "", optional=True, advanced=True,
+                placeholder="twice the cores, in GB",
+                why="per partner, as 48G"),
         Setting("walltime", "Walltime", "duration", "", optional=True, advanced=True,
                 least=1800, most=7 * 24 * 3600, step=1800,
                 placeholder="from the estimate",
                 why="left empty, the docking works one out from the size of the molecules and "
                     "the sampling"),
-        Setting("partition", "Partition", "text", "", optional=True, advanced=True),
-        Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
+        Setting("throttle", "Most partners at once", "number", 0, optional=True, advanced=True,
+                least=0, most=50, step=1,
+                why="of the array, one task a partner; 0 lets the queue run them all"),
+        Setting("partition", "Partition", "text", "", optional=True, advanced=True,
+                placeholder="chosen to fit the time asked",
+                why="empty lets the docking pick one the walltime fits in"),
+        Setting("account", "Account to charge", "text", "", optional=True, advanced=True,
+                placeholder="if your site needs one"),
+        Setting("extra", "Other Slurm options", "text", "", optional=True, advanced=True,
+                placeholder="--qos=normal",
+                why="written with = so they are not read as options of the docking itself"),
     ],
     note="Takes the target as the receptor and each folded structure as a partner.")
 
@@ -763,9 +1085,16 @@ def _prep_settings(receptor=False):
     One list for both, because both are HOPE-MD's own Prepare stage asked the same questions: a
     receptor prepared for the docking and a complex prepared for the simulation are protonated,
     built and minimised by the same answers, and two cards offering two wordings of one setting
-    would be two settings. The receptor card leaves out the two about crystal waters and metals:
+    would be two settings. The receptor card leaves out the ones about waters and hetero groups:
     a receptor goes to a docking, and into a docking every water and every hetero group is dropped
-    except the ions that docking can use, whatever those two boxes would say.
+    except the ions that docking can use, whatever those boxes would say.
+
+    Which is also where the hetero questions are answered rather than where they are asked. Each
+    molecule is split out as polymer residues alone (helpers/prepare_molecules.one_molecule), so a
+    water or a cofactor is not in front of the per-molecule Prepare at all: these answers travel
+    with the structures into HOPE-MD's spec (drivers._spec) and are read by HOPE-MD's own Prepare
+    of the assembled complex, which is the stage that decides what the build keeps and which side
+    of the interface each group belongs to.
     """
     out = [
         # One pH for the flow. Every molecule of every structure is protonated at it, and two
@@ -788,11 +1117,28 @@ def _prep_settings(receptor=False):
                     "is built, relaxed and its joins checked, as ADCP builds one; a longer one is left "
                     "open and its two ends capped (Cap the breaks). 12 at most, 0 builds none, and a "
                     "chain's missing ends are never built"),
+        # The one preparation setting a predicted model has, and every predicted model a flow
+        # folds or designs goes through one of these cards. A terminus with no confidence behind
+        # it is a tail flailing through the box: it is the first thing to come off a model, and
+        # the preparation trims it rather than simulating a guess.
+        Setting("trim_plddt", "Trim predicted tails below pLDDT", "number", 50,
+                optional=True, advanced=True,
+                least=MD_PLDDT[0], most=MD_PLDDT[1], step=5,
+                why="for a predicted model: terminal residues under this confidence are trimmed; "
+                    "0 keeps every one, and a structure with no pLDDT in it is untouched"),
+        Setting("altloc", "Alternate location to keep", "text", "A", optional=True,
+                advanced=True,
+                why="a crystal structure that models two positions for a side chain keeps this "
+                    "one; the atoms of the others are dropped"),
+        Setting("model", "Model to take", "number", 1, optional=True, advanced=True,
+                least=1, most=100, step=1,
+                why="for an NMR ensemble or any multi-model file: which model is prepared. The "
+                    "first unless you say otherwise"),
     ]
     if not receptor:
         out += [
             Setting("drop_waters", "Crystal waters", "choice", "all",
-                    choices=["all", "far", "none"], optional=True, advanced=True,
+                    choices=list(MD_DROP_WATERS), optional=True, advanced=True,
                     why="for the simulation; into a docking card every water is dropped",
                     notes={"all": "drop every one",
                            "far": "keep those within 5 Å of the partner",
@@ -803,6 +1149,22 @@ def _prep_settings(receptor=False):
                         "decides which side of the interface each belongs to; into a docking "
                         "card only the ions that docking can use are kept, and the rest are "
                         "listed as dropped"),
+            # The other three hetero questions, which go with the two above and are read in the
+            # same place: HOPE-MD's own Prepare of the assembled complex. Left out of the
+            # receptor card for the same reason those two are.
+            Setting("drop_buffers", "Drop the crystallisation buffers", "yesno", True,
+                    optional=True, advanced=True,
+                    why="glycerol, sulfate, PEG, acetate, DMSO and the rest of what the "
+                        "crystallographer added; off, each one has to be covered by a force "
+                        "field or the run is refused by name"),
+            Setting("keep_other_hetero", "Keep the hetero groups that are neither", "yesno",
+                    False, optional=True, advanced=True,
+                    why="a group that is not a buffer, a metal or a known cofactor: kept only if "
+                        "a force field here covers it, and named in the refusal if not"),
+            Setting("drop_hetero", "Also drop, by residue name", "text", "", optional=True,
+                    advanced=True, placeholder="nothing beyond the classes above",
+                    why="residue names dropped whatever their class, separated by commas: NAD, "
+                        "HEM. This is what a refusal naming a group it cannot cover asks for"),
         ]
     out += [
         Setting("cap_breaks", "Cap the breaks", "yesno", True, optional=True,
@@ -814,13 +1176,32 @@ def _prep_settings(receptor=False):
         Setting("minimise", "Minimise each molecule", "yesno", True, optional=True, advanced=True,
                 why="restrained, in vacuum: it takes the clashes out and moves nothing else"),
         Setting("minimise_steps", "Minimisation steps", "number", 500, optional=True,
-                advanced=True, least=0, most=100000, step=100),
+                advanced=True, least=0, most=100000, step=100,
+                why="L-BFGS steps on each molecule; 0 skips the minimisation as surely as the "
+                    "switch above",
+                varies=[("minimise", {False: {"why": "not read: the minimisation is off"}})]),
+        Setting("restraint_kcal", "Minimisation restraint, kcal/mol/Å²", "number", 50,
+                optional=True, advanced=True, least=0, most=1000, step=10,
+                why="held on the heavy atoms the file already had, so only the modelled residues "
+                    "move; 0 lets everything move",
+                varies=[("minimise", {False: {"why": "not read: the minimisation is off"}})]),
+        Setting("implicit_solvent", "Minimise in implicit solvent", "yesno", False,
+                optional=True, advanced=True,
+                why="GBn2 instead of vacuum: a better answer for a modelled loop, and about ten "
+                    "times slower",
+                varies=[("minimise", {False: {"why": "not read: the minimisation is off"}})]),
         Setting("walltime", "Walltime", "duration", "02:00:00", optional=True, advanced=True,
                 least=600, most=24 * 3600, step=600,
                 why=("one job prepares the receptor once, for every docking below it" if receptor
                      else "one job prepares everything that arrives, a few minutes a molecule")),
-        Setting("partition", "Partition", "text", "", optional=True, advanced=True),
-        Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
+        Setting("partition", "Partition", "text", "", optional=True, advanced=True,
+                placeholder="the cluster's short queue",
+                why="the queue the one preparation job goes to; empty takes the short one, which "
+                   "is where it belongs"),
+        Setting("account", "Account to charge", "text", "", optional=True, advanced=True,
+                placeholder="whatever you are charged by default",
+                why="the Slurm account this job is charged to, for a flow being run against one "
+                    "allocation"),
     ]
     return out
 
@@ -897,25 +1278,63 @@ HOPEMD = Card(
                 why="a group per structure, as name: key=value, key=value, with a semicolon "
                     "between groups. The keys are this card's own, so "
                     "\"3cc1_cluster2: length_ns=200, engine=openmm\" runs that one structure "
-                    "for longer on another engine and leaves the rest alone"),
+                    "for longer on another engine and leaves the rest alone. A value that is "
+                    "itself a list, as the restrained residues are, is separated by spaces here, "
+                    "because the commas separate the settings"),
         Setting("poses_each", "Poses per peptide", "number", 1, optional=True,
                 least=1, most=10, step=1,
                 why="from a docking: the best few poses of each peptide, not only its first; "
                     "the best of what arrives still caps the whole"),
         Setting("engine", "Engine", "choice", "amber",
-                choices=["amber", "openmm", "gromacs", "namd", "desmond"], needed=True),
+                choices=["amber", "openmm", "gromacs", "namd", "desmond"], needed=True,
+                why="the same system on any of the five; Amber is the fastest here and what the "
+                    "lab's benchmarks are in",
+                notes={"amber": "pmemd.cuda: the fastest on these cards, and the engine the "
+                                "lab's timings are measured on",
+                       "openmm": "a Python engine on the same Amber topology",
+                       "gromacs": "the Amber topology converted by ParmEd",
+                       "namd": "NAMD 3, reading the prmtop itself; no four-site water",
+                       "desmond": "Schrödinger's, with its own OPLS force field and box"}),
+        # The bilayer. Above the fold because it changes what the run is rather than how it is
+        # done: a membrane protein simulated in a water box is not a slower answer, it is the
+        # wrong one, and until this box existed a flow could only ask for water.
+        Setting("environment", "What it is simulated in", "choice", "water",
+                choices=list(MD_ENVIRONMENTS),
+                notes={"water": "a periodic water box around the complex",
+                       "membrane": "a lipid bilayer, with water above and below it. The force "
+                                   "field, the water, the box shape and the salt follow the "
+                                   "bilayer build and are written for you"}),
         Setting("length_ns", "Length, ns", "number", 100, needed=True,
                 least=1, most=5000, step=10,
-                why="production, per replicate"),
+                why="production, per replicate; past the queue's limit it is chained as segments",
+                varies=[("device", {"cpu": {
+                    "most": MD_CPU_MAX_NS,
+                    "why": "a CPU check is at most %g ns: it answers whether the pose holds at "
+                           "the start, not how it behaves" % MD_CPU_MAX_NS}})]),
         # Two rules, both HOPE-MD's, and both about the interval this works out to rather than
         # about the number itself: it has to be a whole number of steps, and it cannot be longer
         # than the stride MM-GBSA takes its frames at. A hundred frames of a hundred nanoseconds
         # is a frame every nanosecond, and MM-GBSA would have nothing to score.
-        Setting("frames", "Frames to keep", "number", 500, optional=True,
+        #
+        # 5000 is HOPE-MD's own answer, not a number of ours. Its default and all three of its
+        # presets save every 20 ps, and 5000 frames of the 100 ns above is every 20 ps. The 500
+        # this used to be was every 200 ps - a tenth of the trajectory the tool would have kept,
+        # and exactly the MM-GBSA stride, which is the floor MM-GBSA's own stride may not go
+        # under: at 200 ps saved nobody can ever rescore the run more finely than 200 ps. It also
+        # put a wall at 100 ns, because 500 frames of anything longer is an interval over the
+        # stride and the canvas refuses it - so a person who changed only the length, the most
+        # obvious knob on the card, was refused for a box they had not touched. 5000 moves that
+        # wall to 1000 ns. The cost is disk: 5.5 GB a run of three replicates for a 30 000-atom
+        # system where 500 frames was 0.6 GB (hopemd.spec.derive), which is what Tidy is for.
+        Setting("frames", "Frames to keep", "number", 5000, optional=True,
                 least=10, most=100000, step=50,
-                why="over the whole production; the interval between them follows from this, and "
-                    "it has to be a whole number of steps and no longer than the %g ps MM-GBSA "
-                    "takes its frames at" % MD_MMGBSA_STRIDE_PS),
+                why="over the whole production, so the interval is the length divided by this: "
+                    "5000 of 100 ns is one every 20 ps, which is HOPE-MD's own. It has to be a "
+                    "whole number of steps and no longer than the %g ps MM-GBSA takes its frames "
+                    "at, and the canvas says which number to type instead" % MD_MMGBSA_STRIDE_PS,
+                varies=[("device", {"cpu": {
+                    "most": MD_CPU_MAX_FRAMES,
+                    "why": "a CPU check keeps at most %d frames" % MD_CPU_MAX_FRAMES}})]),
         # Three is the lab's own finding rather than a convention: rescoring the same three
         # peptides on docked poses and on dynamics showed the spread between replicates larger
         # than the differences being ranked, so replicates are what buys confidence here.
@@ -923,18 +1342,142 @@ HOPEMD = Card(
                 least=MD_REPLICATES[0], most=MD_REPLICATES[1], step=1,
                 why="independent repeats, each with its own seed; %d is the most HOPE-MD runs"
                     % MD_REPLICATES[1]),
-        Setting("mmgbsa", "Binding energy by MM-GBSA", "yesno", True, optional=True),
+        Setting("mmgbsa", "Binding energy by MM-GBSA", "yesno", True, optional=True,
+                why="GB-Neck2 over the frames below, per replicate: the number a flow is usually "
+                    "drawn to get. Off for a run of one molecule, which has no interface"),
+        # The bilayer's own five, from HOPE-MD's Membrane. Under More settings because they mean
+        # nothing in water, and each says so there rather than sitting in the card looking unset.
+        Setting("lipid", "Lipid", "choice", "POPC", choices=list(MD_LIPIDS),
+                optional=True, advanced=True,
+                why="the bilayer is tiled from a pre-equilibrated patch of this lipid",
+                varies=[("environment", {"water": {
+                             "why": "not read: the run is in a water box"}}),
+                        ("engine", {"desmond": {
+                             "why": "Desmond's System Builder ships %s bilayers"
+                                    % ", ".join(MD_DESMOND_LIPIDS)}})]),
+        Setting("membrane_padding_A", "Water above and below the bilayer, Å", "number", 10,
+                optional=True, advanced=True,
+                least=MD_MEMBRANE_PADDING_A[0], most=MD_MEMBRANE_PADDING_A[1], step=1,
+                why="under %g Å the head groups see their own image, over %g Å is water for "
+                    "nothing" % MD_MEMBRANE_PADDING_A,
+                varies=[("environment", {"water": {
+                    "why": "not read: the run is in a water box"}})]),
+        # A coordinate, so HOPE-MD bounds it nowhere. The pair here is the card's own, in the
+        # style of the pressure and heating boxes: a bilayer offset by more than the height of
+        # any box this build makes is a bilayer with the protein nowhere near it.
+        Setting("center_z_A", "Bilayer centre along z, Å", "number", 0,
+                optional=True, advanced=True, least=-100, most=100, step=1,
+                why="where the middle of the bilayer sits; 0 is the OPM convention and what an "
+                    "oriented structure expects",
+                varies=[("environment", {"water": {
+                    "why": "not read: the run is in a water box"}})]),
+        Setting("orientation", "How the structure is oriented", "choice", "as_imported",
+                choices=list(MD_ORIENTATIONS), optional=True, advanced=True,
+                notes={"as_imported": "the structure's membrane normal is already z, as an OPM "
+                                      "file's is. A folded or docked model is not: say its "
+                                      "segments below, or orient it before the flow",
+                       "opm": "fetch the OPM orientation, which needs the internet and so a "
+                              "login node",
+                       "annotation": "orient on the transmembrane segments, from the ones typed "
+                                     "below or the ones UniProt annotates"},
+                varies=[("environment", {"water": {
+                    "why": "not read: the run is in a water box"}})]),
+        Setting("segments", "Transmembrane segments", "text", "", optional=True, advanced=True,
+                placeholder="found from the sequence",
+                why="as chain:start-end, separated by commas: A:30-56, A:71-96. Typed ones are "
+                    "used in place of whatever was found",
+                varies=[("environment", {"water": {
+                    "why": "not read: the run is in a water box"}})]),
+        Setting("box_shape", "Box shape", "choice", "compact", choices=list(MD_BOX_SHAPES),
+                optional=True, advanced=True,
+                notes={"compact": "a truncated octahedron: the fewest waters for the same "
+                                  "minimum image distance, and the default",
+                       "cubic": "a cube, for comparison with work that used one",
+                       "rectangular": "an orthorhombic box, which is what a bilayer takes"},
+                varies=[("engine", {engine: {"value": shape,
+                                             "why": "%s's System Builder builds an orthorhombic "
+                                                    "box whatever is asked" % engine.title()}
+                                    for engine, shape in MD_FIXED_BOX.items()}),
+                        ("environment", {"membrane": {
+                             "value": "rectangular",
+                             "why": "a bilayer is periodic in x and y, so the box is "
+                                    "rectangular"}})]),
+        # The floor is HOPE-MD's, the only thing it refuses a padding for. The ceiling is the
+        # largest water layer it builds anywhere, which is the bilayer's: past that the box is
+        # mostly water and the run is mostly solvent, and HOPE-MD sets no limit of its own.
+        Setting("padding_A", "Padding, Å", "number", 12, optional=True, advanced=True,
+                least=MD_CUTOFF_A, most=MD_MEMBRANE_PADDING_A[1], step=1,
+                why="water between the solute and the box edge; under the %g Å cutoff the "
+                    "complex sees its own periodic image" % MD_CUTOFF_A,
+                varies=[("environment", {"membrane": {
+                    "why": "not read: a bilayer's water is the padding above and below it"}})]),
+        Setting("salt", "Salt", "choice", "NaCl", choices=list(MD_SALTS),
+                optional=True, advanced=True,
+                why="the box is neutralised first, then brought to the concentration below",
+                notes={"NaCl": "physiological, and the default",
+                       "KCl": "for work done in potassium buffer",
+                       "MgCl2": "for a nucleic acid, which binds Mg2+; not for a bilayer, which "
+                                "takes a monovalent pair"},
+                varies=[("environment", {"membrane": {
+                    "why": "a bilayer build places a monovalent pair: %s"
+                           % " or ".join(MD_MEMBRANE_SALTS)}})]),
+        Setting("salt_mM", "Salt concentration, mM", "number", 150, optional=True, advanced=True,
+                least=MD_SALT_MM[0], most=MD_SALT_MM[1], step=10,
+                why="150 mM is physiological. It is also the salt MM-GBSA is computed at, so it "
+                    "changes the binding energy as well as the box"),
+        # Residues held still through production. Not a site: a site is on the target card and is
+        # where a binder goes, and these are the residues of this complex that are not to move.
+        Setting("restrain", "Residues held still in production", "residues", "",
+                optional=True, advanced=True,
+                placeholder="nothing is held: the whole complex is free",
+                why="as 54,56,66-70 or A54,B12-16, in the numbering the preparation kept. For a "
+                    "run meant to answer what the rest does while these stay put"),
+        Setting("restraint_kcal", "Production restraint, kcal/mol/Å²", "number", 5,
+                optional=True, advanced=True, least=0, most=1000, step=1,
+                why="how hard those residues are held, and the first rung of the equilibration "
+                    "ladder either way",
+                varies=[("restrain", {"": {"why": "the first rung of the equilibration ladder; "
+                                                 "no residue is held in production"}})]),
+        # The MM-GBSA window. The run is one trajectory and the score is an average over a slice
+        # of it, and which slice is a real question: the first nanoseconds are the complex still
+        # settling into its box, and averaging them in is averaging in the equilibration.
+        Setting("mmgbsa_from_ns", "Score from, ns", "number", 0, optional=True, advanced=True,
+                least=0, most=5000, step=10,
+                why="skip the start, where the complex is still settling; 0 scores from the "
+                    "first frame",
+                varies=[("mmgbsa", {False: {"why": "not read: MM-GBSA is off"}})]),
+        Setting("mmgbsa_to_ns", "Score to, ns", "number", None, optional=True, advanced=True,
+                least=0, most=5000, step=10, placeholder="the end of the run",
+                why="empty scores to the end",
+                varies=[("mmgbsa", {False: {"why": "not read: MM-GBSA is off"}})]),
+        Setting("mmgbsa_stride_ps", "Score every, ps", "number", MD_MMGBSA_STRIDE_PS,
+                optional=True, advanced=True, least=1, most=100000, step=10,
+                why="how often a frame of that window is scored; it can be no finer than the "
+                    "interval the frames above are kept at",
+                varies=[("mmgbsa", {False: {"why": "not read: MM-GBSA is off"}})]),
         # A flow that runs overnight should leave something to read in the morning. Neither of
         # these is made by a run on its own: they are asked for afterwards, from the Runs screen,
         # which is a person pressing buttons on twenty runs. Asked for here, the flow does it.
         Setting("report", "Write each run's report when it finishes", "yesno", True,
-                optional=True, advanced=True),
+                optional=True, advanced=True,
+                why="the run's own report, as the Runs screen would write it: one job per run, "
+                    "behind the simulation"),
         Setting("videos", "Make each run's videos when it finishes", "yesno", False,
                 optional=True, advanced=True, why="a job of its own per run, cut from the trajectory"),
+        Setting("tidy", "Tidy each run when it finishes", "yesno", True, optional=True,
+                advanced=True,
+                why="a last job packs away the small files a finished run no longer needs; the "
+                    "results still load. Off, a batch of runs is a great many files"),
+        Setting("viewer_stride", "Frames the viewer shows, one in", "number", 20, optional=True,
+                advanced=True, least=1, most=1000, step=5,
+                why="the trajectory the Results viewer loads is thinned by this, so 20 of the "
+                    "5000 frames kept is 250 to scrub through"),
         Setting("temperature_K", "Temperature, K", "number", 300, optional=True, advanced=True,
-                least=MD_TEMPERATURE_K[0], most=MD_TEMPERATURE_K[1], step=5),
+                least=MD_TEMPERATURE_K[0], most=MD_TEMPERATURE_K[1], step=5,
+                why="the thermostat's target through heating, equilibration and production"),
         Setting("pressure_bar", "Pressure, bar", "number", 1.0, optional=True, advanced=True,
-                least=0, most=1000, step=1),
+                least=0, most=1000, step=1,
+                why="the barostat's target once the box is equilibrated at constant pressure"),
         # Two numbers, not a range: 2 fs, or 4 with hydrogen mass repartitioning. The arrows
         # step between them and nothing else is accepted, because nothing else is.
         Setting("timestep_fs", "Timestep, fs", "number", 4.0, optional=True, advanced=True,
@@ -951,9 +1494,12 @@ HOPEMD = Card(
                 least=0, most=100000, step=100,
                 why="over the restraint ladder"),
         Setting("heat_ps", "Heating, ps", "number", 200, optional=True, advanced=True,
-                least=0, most=10000, step=50),
+                least=0, most=10000, step=50,
+                why="from 0 K to the temperature above, restrained, before the ladder"),
         Setting("minimise_steps", "Minimisation steps", "number", 5000, optional=True,
-                advanced=True, least=0, most=1000000, step=500),
+                advanced=True, least=0, most=1000000, step=500,
+                why="on the built box, before any heating: it takes the clashes out of the "
+                    "solvation"),
         Setting("seed", "Random seed", "number", -1, optional=True, advanced=True,
                 least=-1, most=MD_SEED_MAX, step=1,
                 why="-1 lets each replicate pick its own"),
@@ -971,7 +1517,11 @@ HOPEMD = Card(
                        "TIP4P-Ew": "not for NAMD, which cannot run a four-site water from the "
                                    "Amber topology",
                        "TIP4P": "Desmond's OPLS4 only",
-                       "SPC": "Desmond"}),
+                       "SPC": "Desmond"},
+                varies=[("environment", {"membrane": {
+                    "why": "a bilayer build has one water and it is written for you: %s, or SPC "
+                           "on Desmond, whose lipid patches come hydrated with it"
+                           % MD_MEMBRANE_WATER}})]),
         Setting("protein", "Protein force field", "choice", "",
                 choices=["", "ff19SB", "ff14SB", "OPLS_2005", "OPLS4"],
                 optional=True, advanced=True,
@@ -986,7 +1536,12 @@ HOPEMD = Card(
                                                     "OPLS: %s" % (engine.title(),
                                                                   " or ".join(fields))}
                                     for engine, fields in MD_PROTEIN_FF.items()
-                                    if engine == "desmond"})]),
+                                    if engine == "desmond"}),
+                        ("environment", {"membrane": {
+                             "why": "a bilayer build has one force field and it is written for "
+                                    "you: %s, which is the only one OpenMM ships lipid17 "
+                                    "alongside, or Desmond's own OPLS"
+                                    % MD_MEMBRANE_PROTEIN_FF}})]),
         Setting("nucleic", "DNA and RNA force field", "choice", "",
                 choices=["", "OL21+OL3", "OL15+OL3", "bsc1+OL3"], optional=True, advanced=True,
                 why="for a strand in the run; empty takes the engine's usual",
@@ -995,13 +1550,62 @@ HOPEMD = Card(
                        "OL15+OL3": "OpenMM",
                        "bsc1+OL3": "any engine but Desmond, which types DNA and RNA with its "
                                    "own OPLS and takes no choice"}),
+        # Where it runs. The GPU type matters here more than anywhere: on Grace the a40 nodes can
+        # sit idle while a100 jobs queue, and auto is what takes whichever has a free card at
+        # submit. The CPU check is for when every card is busy and the question is only whether
+        # the pose holds at all.
+        Setting("device", "Run on", "choice", "gpu", choices=["gpu", "cpu"],
+                optional=True, advanced=True,
+                notes={"gpu": "one card per replicate, which is how these engines are meant to "
+                              "be run",
+                       "cpu": "one whole node, for a short check while the GPU queue is full: "
+                              "Amber or GROMACS, at most %g ns and %d frames"
+                              % (MD_CPU_MAX_NS, MD_CPU_MAX_FRAMES)}),
+        Setting("gpu", "GPU type", "choice", "",
+                choices=[""] + [MD_GPU_AUTO] + list(MD_GPU_TYPES), optional=True, advanced=True,
+                why="empty takes the cluster's usual card",
+                notes={"": "the cluster's default, which on Grace is a100",
+                       MD_GPU_AUTO: "the fastest type with a free card at submit, which is what "
+                                    "keeps a run out of the a100 queue when a40s are idle",
+                       "a100": "40 GB, the fastest here and the default",
+                       "a40": "48 GB, on its own partition and often free",
+                       "rtx": "24 GB", "t4": "16 GB, for a small system"},
+                varies=[("device", {"cpu": {"why": "not read: the run is on CPU"}})]),
+        Setting("gpus_per_replicate", "GPUs per replicate", "number", 1, optional=True,
+                advanced=True, least=1, most=max(MD_GPUS_PER_NODE.values()), step=1,
+                why="one is what Amber, OpenMM and Desmond each run a replicate on, however many "
+                    "are asked for; NAMD uses them all",
+                varies=[("gpu", {gpu: {"most": cards,
+                                       "why": "a Grace %s node has %d cards" % (gpu, cards)}
+                                 for gpu, cards in MD_GPUS_PER_NODE.items()}),
+                        ("device", {"cpu": {"why": "not read: the run is on CPU"}})]),
+        Setting("cpus", "CPU cores per replicate", "number", 4, optional=True, advanced=True,
+                least=MD_CPUS[0], most=MD_CPUS[1], step=2,
+                why="beside the card, for the parts that are not on it; a CPU check takes a "
+                    "whole node whatever this says"),
+        Setting("mem_gb", "Memory per replicate, GB", "number", 16, optional=True,
+                advanced=True, least=MD_MEM_GB[0], most=MD_MEM_GB[1], step=4,
+                why="Grace refuses a job that asks for none; raise it for a system of many "
+                    "hundreds of thousands of atoms"),
+        Setting("max_concurrent", "Replicates running at once", "number", None, optional=True,
+                advanced=True, least=1, most=100, step=1,
+                placeholder="every one at once",
+                why="a throttle for a batch of runs against one allocation: empty queues them "
+                    "all and lets the cluster decide"),
         Setting("walltime", "Walltime", "duration", "", optional=True, advanced=True,
                 least=3600, most=7 * 24 * 3600, step=3600,
                 placeholder="from the estimate",
                 why="left empty, the simulation works one out from the length, the replicates and "
-                    "the size of the system, which is the number to beat"),
-        Setting("partition", "Partition", "text", "", optional=True, advanced=True),
-        Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
+                    "the size of the system, which is the number to beat. A typed one is each "
+                    "production job's limit, so a shorter one cuts a long run into more segments"),
+        Setting("partition", "Partition", "text", "", optional=True, advanced=True,
+                placeholder="the one that carries the card",
+                why="empty takes the partition the GPU type lives on, which is what you want "
+                    "unless you are aiming at a reservation"),
+        Setting("account", "Account to charge", "text", "", optional=True, advanced=True,
+                placeholder="whatever you are charged by default",
+                why="the Slurm account every job of every run is charged to, the preparation "
+                    "included"),
     ])
 
 # The two folding cards come before the target, because that is where they stand in a flow: they
@@ -1219,8 +1823,13 @@ def _varies_from(rules):
 #: (hopemd/spec.py, Prep). The card asks for them in its own words and hands them over unchanged:
 #: the preparation is HOPE-MD's Prepare stage, called once per molecule, so every answer it takes
 #: is already a field of that stage rather than something of ours that has to be translated.
-PREP_FIELDS = ("protonation", "model_loops_max", "drop_waters",
-               "keep_cofactors", "cap_breaks", "minimise", "minimise_steps")
+PREP_FIELDS = ("protonation", "model_loops_max", "trim_plddt", "altloc", "model", "drop_waters",
+               "keep_cofactors", "drop_buffers", "keep_other_hetero", "cap_breaks", "minimise",
+               "minimise_steps", "restraint_kcal", "implicit_solvent")
+
+#: The one prep field that is a list of residue names rather than a value, so the box is read into
+#: the list HOPE-MD's Clean takes (Prep.drop_hetero).
+PREP_LIST_FIELDS = ("drop_hetero",)
 
 
 def prep_from(settings):
@@ -1234,6 +1843,10 @@ def prep_from(settings):
         value = (settings or {}).get(key)
         if value not in (None, ""):
             out[key] = value
+    for key in PREP_LIST_FIELDS:
+        named = names_asked((settings or {}).get(key))
+        if named:
+            out[key] = [n.upper() for n in named]
     return out
 
 

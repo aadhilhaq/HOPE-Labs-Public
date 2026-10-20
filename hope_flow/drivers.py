@@ -38,10 +38,10 @@ INSTALLS = {
     "haddock": LAB_ROOT + "/HADDOCK_GUI",
 }
 
-#: The two design tools the lab runs that have no launcher of their own: no page, no submitting
+#: The design tools the lab runs that have no launcher of their own: no page, no submitting
 #: script, nothing that already knows how to queue them. Every other driver here goes through a
-#: tool's own door, as the docstring says; for these two there is no door, so the flow writes
-#: their job itself. That is the exception, and it is written down rather than left to be noticed.
+#: tool's own door, as the docstring says; for these there is no door, so the flow writes their
+#: job itself. That is the exception, and it is written down rather than left to be noticed.
 SE3NV = LAB_ROOT + "/envs/SE3nv"                      # RFdiffusion's environment, and ProteinMPNN runs in it too
 DL_BINDER_DESIGN = LAB_ROOT + "/ML_programs/dl_binder_design"
 BOLTZGEN_CACHE = LAB_ROOT + "/envs/boltzgen_cache"    # the weights, fetched on a login node
@@ -499,9 +499,9 @@ def _folding_refused(got):
     return "; ".join(said) or "it did not say why"
 
 
-# --- the two design tools with no launcher of their own -------------------------------------
+# --- the design tools with no launcher of their own -----------------------------------------
 # Everything else here hands a tool its own command line and lets that tool queue itself. These
-# two have nothing to hand to, so this writes the job. Both end by writing designs.json, which is
+# have nothing to hand to, so this writes the job. Each ends by writing designs.json, which is
 # the one thing the next card reads; the shape of it is documented in adapters.py.
 
 #: What a design job asks Slurm for beyond what the card says: cores, and memory in GB. Not in the
@@ -937,11 +937,42 @@ def _adcp_new(where, target, peptides_file, s, say=print):
         args += ["-s", _site(target, codes=False, tool="ADCP", say=say)]
     for flag, key in (("--poses", "poses"), ("--replicas", "replicas"), ("--steps", "steps"),
                       ("--partition", "partition"), ("--account", "account"),
-                      ("--cpus", "cpus"), ("--time", "walltime")):
+                      ("--cpus", "cpus"), ("--time", "walltime"),
+                      # The box, past the residues the hotspots give it. The docking reads the
+                      # hotspots only in the residues mode (adcp_dock/pipeline.py, _site_keys),
+                      # so the other two leave the -s above recorded and unread.
+                      ("--site-mode", "site_mode"), ("--site-ligand", "site_ligand"),
+                      ("--site-pocket", "site_pocket"), ("--autosite", "autosite"),
+                      # The ring, and the rescoring past its on-or-off.
+                      ("--cyclic", "cyclic"), ("--omm-env", "omm_env"),
+                      ("--mmgbsa-model", "mmgbsa_model"),
+                      ("--mmgbsa-engine", "mmgbsa_engine")):
         value = s.get(key)
         if value in (None, "") or (key == "steps" and str(value) in ("0", "0.0")):
             continue
         args += [flag, str(value)]
+    # The numbers where 0 is an answer and not "whatever the docking would do": no replica
+    # starting as a helix, no pose minimised, no limit on the array. Kept out of the loop above,
+    # which drops a 0 on every field whose own default is empty.
+    for flag, key in (("--helical", "helical"), ("--omm-minimize", "omm_minimize"),
+                      ("--throttle", "throttle"), ("--top-n", "top_n"),
+                      ("--mmgbsa-poses", "mmgbsa_poses")):
+        value = s.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            args += [flag, str(int(float(value)))]
+        except (TypeError, ValueError):
+            # Not a number, so not an answer. The canvas keeps these inside their bounds and the
+            # flow's own check says "should be a number" before anything is queued; a flow that
+            # arrived as a file with a word in the box is left to the docking's own default
+            # rather than crashing the card with a conversion error.
+            say("   %s is %r, which is not a number: the docking's own is used"
+                % (key.replace("_", " "), value))
+    for flag, key in (("--receptor-gradient", "receptor_gradient"),
+                      ("--keep-trajectories", "keep_trajectories")):
+        if s.get(key) not in (None, "", False, "false", "no", 0, "0"):
+            args.append(flag)
     if s.get("mmgbsa", True):
         args.append("--mmgbsa")
     return args
@@ -957,19 +988,40 @@ def _chains(text):
 
 
 def _one_peptides_file(flow_dir, nid, carried_sequences):
-    """Several tracks of peptides, as the one file the docking takes."""
+    """Several tracks of peptides, as the one file the docking takes.
+
+    Each track writes its own file in one of the two forms the adapters use: "name: SEQUENCE" a
+    line, or the three columns ADCP reads with a header, which is what a card asking for a ring
+    writes. The header is written once, from the first track that has one, and the sequence is
+    read out of its own column; read as "whatever follows a colon", a tabular row deduplicated on
+    the whole line, so the same peptide arriving on two tracks was docked twice.
+    """
     if len(carried_sequences) == 1:
         return carried_sequences[0]["path"]
     where = os.path.join(flow_dir, "inputs", "%s_peptides_all.txt" % nid)
-    seen = set()
-    with open(where, "w", encoding="utf-8") as out:
-        for got in carried_sequences:
-            with open(got["path"], encoding="utf-8") as fh:
-                for line in fh:
+    seen, header, at = set(), "", 1
+    rows = []
+    for got in carried_sequences:
+        with open(got["path"], encoding="utf-8") as fh:
+            for line in fh:
+                if not line.strip():
+                    continue
+                if "\t" in line:
+                    cells = [c.strip() for c in line.rstrip("\n").split("\t")]
+                    if "sequence" in [c.lower() for c in cells]:
+                        header = header or line
+                        at = [c.lower() for c in cells].index("sequence")
+                        continue
+                    seq = (cells[at] if at < len(cells) else cells[0]).upper()
+                else:
                     seq = line.split(":", 1)[-1].strip().upper()
-                    if seq and seq not in seen:
-                        seen.add(seq)
-                        out.write(line if line.endswith("\n") else line + "\n")
+                if seq and seq not in seen:
+                    seen.add(seq)
+                    rows.append(line if line.endswith("\n") else line + "\n")
+    with open(where, "w", encoding="utf-8") as out:
+        if header:
+            out.write(header if header.endswith("\n") else header + "\n")
+        out.writelines(rows)
     return where
 
 
@@ -1492,6 +1544,30 @@ def _spec(s, source, receptor_chains=None, partner_chains=None, prepared=False, 
         settled["prepared_per_molecule"] = True
     if settled:
         system["prep"] = settled
+    waters = settled.get("drop_waters")
+    if waters in cards.MD_WATERS_BOTH_WAYS:
+        system["keep_waters"] = cards.MD_WATERS_BOTH_WAYS[waters]
+    if "keep_cofactors" in settled:
+        system["keep_cofactors"] = bool(settled["keep_cofactors"])
+        system["keep_metals"] = bool(settled["keep_cofactors"])
+    # The bilayer, when the card asks for one. Its five fields are HOPE-MD's own Membrane, and
+    # what a bilayer fixes - the force field, the water, the box shape - is written below rather
+    # than offered, as Desmond's is.
+    membrane = str(s.get("environment") or "water").strip() == "membrane"
+    if membrane:
+        system["environment"] = "membrane"
+        mem = {}
+        if s.get("lipid"):
+            mem["lipid"] = str(s["lipid"]).strip()
+        for key, into in (("membrane_padding_A", "padding_A"), ("center_z_A", "center_z_A")):
+            if s.get(key) not in (None, ""):
+                mem[into] = _number(s[key], 0)
+        if s.get("orientation"):
+            mem["orientation"] = str(s["orientation"]).strip()
+        if str(s.get("segments") or "").strip():
+            mem["segments"] = str(s["segments"]).strip()
+        if mem:
+            system["membrane"] = mem
 
     ns = _number(s.get("length_ns"), 100.0)
     protocol = {"length_ns": ns, "replicates": int(_number(s.get("replicates"), 3))}
@@ -1503,11 +1579,16 @@ def _spec(s, source, receptor_chains=None, partner_chains=None, prepared=False, 
         protocol["save_ps"] = cards.save_interval_ps(ns, frames)
 
     for key in ("temperature_K", "pressure_bar", "timestep_fs", "equil_ps", "heat_ps",
-                "minimise_steps", "seed"):
+                "minimise_steps", "restraint_kcal", "seed"):
         if s.get(key) not in (None, ""):
             protocol[key] = _number(s[key], 0)
     if s.get("seed") in (None, ""):
         protocol.pop("seed", None)
+    # The residues held still in production, as the engines take them: a list of keys, each a
+    # chain and a residue number, read with the same parser the hotspots are.
+    held = _residue_keys(s.get("restrain"))
+    if held:
+        protocol["restrain"] = held
     engine = str(s.get("engine") or "amber").strip()
     # The force field, the water and the box are named rather than left out, whatever the card
     # says. Left out, the spec's own defaults apply - ff19SB, OPC, a truncated octahedron - and
@@ -1516,12 +1597,43 @@ def _spec(s, source, receptor_chains=None, partner_chains=None, prepared=False, 
     # before it had built anything.
     forcefield = {"engine": engine, "protein": cards.md_protein_ff(s),
                   "water": cards.md_water(s)}
+    # A small molecule cannot be parameterised without being told how, and on the four
+    # Amber-topology engines there is exactly one way (GAFF2 with AM1-BCC charges). So it is
+    # named rather than asked for: a run whose partner turns out to be a small molecule was
+    # otherwise refused for want of a choice that has one member. Its net charge is a separate
+    # matter and is not confirmed here - a charge nobody has looked at is the one thing that
+    # refusal exists to stop.
+    if cards.MD_LIGAND_PARAMS.get(engine):
+        forcefield["ligand"] = cards.MD_LIGAND_PARAMS[engine][0]
+    spec_box = {}
+    if s.get("box_shape"):
+        spec_box["shape"] = str(s["box_shape"]).strip()
+    if s.get("padding_A") not in (None, ""):
+        spec_box["padding_A"] = _number(s["padding_A"], 12.0)
+    if s.get("salt"):
+        spec_box["salt"] = str(s["salt"]).strip()
+    if s.get("salt_mM") not in (None, ""):
+        spec_box["salt_mM"] = _number(s["salt_mM"], 150.0)
     if engine in cards.MD_FIXED_BOX:
         # Its System Builder builds one shape whatever the spec asks for, and the spec is refused
         # for asking for another.
-        spec_box = {"shape": cards.MD_FIXED_BOX[engine]}
-    else:
-        spec_box = {}
+        spec_box["shape"] = cards.MD_FIXED_BOX[engine]
+    if membrane:
+        # What a bilayer build fixes, written rather than offered: the box is rectangular because
+        # a membrane is periodic in x and y, and on the Amber-topology engines the build is
+        # OpenMM's Modeller with amber14's lipid17, whose data ships one protein force field and
+        # one water. A card that left these to the engine's usual had every membrane run refused
+        # for all three, which is how the Desmond ones used to go.
+        spec_box["shape"] = "rectangular"
+        if engine == "desmond":
+            if forcefield["water"] not in cards.MD_DESMOND_MEMBRANE_WATER:
+                forcefield["water"] = cards.MD_DESMOND_MEMBRANE_WATER[0]
+        else:
+            forcefield["protein"] = cards.MD_MEMBRANE_PROTEIN_FF
+            forcefield["water"] = cards.MD_MEMBRANE_WATER
+        # A bilayer's water is the padding above and below it, not the box's, and a padding under
+        # the cutoff is refused on a water box alone - so the box's is left to the spec.
+        spec_box.pop("padding_A", None)
     # An engine that fixes its timestep is given that one: its RESPA scheme is not a setting.
     if engine in cards.MD_FIXED_TIMESTEP:
         protocol["timestep_fs"] = cards.MD_FIXED_TIMESTEP[engine]
@@ -1529,17 +1641,64 @@ def _spec(s, source, receptor_chains=None, partner_chains=None, prepared=False, 
     if nucleic and engine in NUCLEIC_USUAL:
         forcefield["nucleic"] = nucleic
     compute = {}
-    for key in ("walltime", "partition", "account"):
+    for key in ("walltime", "partition", "account", "gpu"):
         if s.get(key):
             compute[key] = s[key]
+    if s.get("device"):
+        compute["device"] = str(s["device"]).strip()
+    for key in ("cpus", "mem_gb", "max_concurrent", "gpus_per_replicate"):
+        if s.get(key) not in (None, ""):
+            compute[key] = int(_number(s[key], 0))
+    if s.get("tidy") is not None:
+        compute["tidy"] = bool(s["tidy"])
+
+    # MM-GBSA over a slice of the production rather than all of it: the first nanoseconds are the
+    # complex settling into its box, and averaging them in is averaging in the equilibration. The
+    # end empty is the end of the run, which is what 0 means to the tool.
+    analysis = {"mmgbsa": bool(s.get("mmgbsa", True))}
+    for key in ("mmgbsa_from_ns", "mmgbsa_to_ns", "mmgbsa_stride_ps"):
+        if s.get(key) not in (None, ""):
+            analysis[key] = _number(s[key], 0)
+    if s.get("viewer_stride") not in (None, ""):
+        analysis["viewer_stride"] = int(_number(s["viewer_stride"], 20))
 
     spec = {"system": system, "forcefield": forcefield, "protocol": protocol,
-            "analysis": {"mmgbsa": bool(s.get("mmgbsa", True))}}
+            "analysis": analysis}
     if spec_box:
         spec["box"] = spec_box
     if compute:
         spec["compute"] = compute
     return spec
+
+
+#: A residue as the card is filled in - 54, A54, H60A, 66-70 - which is how the hotspots are
+#: written on the target card. Read with the same shapes so that one habit serves both boxes.
+RESIDUE = re.compile(r"^([A-Za-z]?):?(\d+)(?:([A-Za-z])|-(\d+))?$")
+
+
+def _residue_keys(text, chain="A"):
+    """["A:41", "H:60A"] from a box of residues, as HOPE-MD keys them (protocol.restrain).
+
+    The same spellings the hotspots box takes, and a residue with no chain letter gets the first
+    one, which for a recombined structure out of the preparation is A. A part nothing can be made
+    of is left out rather than guessed at: the card's own residues field is what refuses it.
+    """
+    out = []
+    for part in re.split(r"[,\s]+", str(text or "")):
+        found = RESIDUE.match(part.strip())
+        if not found:
+            continue
+        where, first, code, last = (found.group(1) or chain, int(found.group(2)),
+                                    (found.group(3) or "").upper(), found.group(4))
+        if code:
+            key = "%s:%d%s" % (where, first, code)
+            if key not in out:
+                out.append(key)
+            continue
+        for n in range(first, int(last) + 1 if last else first + 1):
+            if "%s:%d" % (where, n) not in out:
+                out.append("%s:%d" % (where, n))
+    return out
 
 
 def _number(value, fallback):
@@ -1558,6 +1717,24 @@ def spec_name(nid, spec):
     """
     digest = hashlib.sha1(json.dumps(spec, sort_keys=True).encode("utf-8")).hexdigest()[:10]
     return "%s_spec_%s.json" % (nid, digest)
+
+
+#: How long one call of the simulation's command line is given, in minutes. It has to be under
+#: the step job's own walltime, or the timeout can never fire: the job is killed by Slurm first
+#: and the card is left with no answer and no reason. So it is read off queue.STEP_TIME rather
+#: than written here, with five minutes kept back for the card to write down what happened. It
+#: used to be a flat 60 inside a 30 minute job.
+def _submit_minutes(keep_back=5):
+    from . import queue as q
+    whole = (walltime_minutes(q.STEP_TIME) or 30) - keep_back
+    return max(1, whole)
+
+
+def walltime_minutes(text):
+    """A Slurm walltime in whole minutes, rounded down, or None where it is not one."""
+    from .flow import walltime_seconds
+    seconds = walltime_seconds(text)
+    return None if seconds is None else seconds // 60
 
 
 def _hopemd_one(flow_dir, nid, spec, picks, name, root, say):
@@ -1579,7 +1756,7 @@ def _hopemd_one(flow_dir, nid, spec, picks, name, root, say):
             'PYTHONPATH=%s "$PY" -m hopemd.submit %s %s'
             % (shlex.quote(INSTALLS["hopemd"]), shlex.quote(spec_file),
                " ".join(shlex.quote(a) for a in args)))
-    out = _shell(line, INSTALLS["hopemd"], say, minutes=60)
+    out = _shell(line, INSTALLS["hopemd"], say, minutes=_submit_minutes())
     got = _last_json(out)
     runs = got.get("runs") or {}
     ids = [str(j) for one in runs.values() for j in one.values() if str(j).isdigit()]
@@ -1590,36 +1767,121 @@ def _hopemd_one(flow_dir, nid, spec, picks, name, root, say):
 
 # --- docking by the interface, with HADDOCK3 ------------------------------------------------------
 
-def _haddock(node, flow, carried, flow_dir, record, say=print):
-    """HADDOCK docking, through its own command line: the run is written as the JSON its page
-    would send and handed to `haddock-gui submit`, which makes the run folder and queues one Slurm
-    task per partner exactly as the page does, and prints the run's folder and job back.
+#: The passive modes one molecule may be given, from HADDOCK_GUI's haddock_gui/job.py (PASSIVE).
+#: The cards offer an "auto" in front of them, which is not one of the tool's: it is the answer
+#: the driver worked out by itself before any of this was askable, and it stays the default so
+#: that a card nobody has touched docks exactly as it docked.
+HADDOCK_PASSIVE = ("around", "surface", "list", "none")
+
+
+def _per_partner(s, key, i):
+    """What this partner's own box says, or the first partner's where it has none.
+
+    The first partner's box carries no suffix and each further one is numbered, as the folding
+    cards number their entities. A card filled in before the numbered boxes existed has only the
+    first, and every partner takes it, which is what the one box used to mean.
+    """
+    mine = str(s.get("%s_%d" % (key, i + 1)) or "").strip() if i else ""
+    return mine or str(s.get(key) or "").strip()
+
+
+def _passive_mode(said, has_active, fallback):
+    """The passive residues one molecule is given: the card's own answer, or, given "auto", the
+    surface around its own active residues where it has any and `fallback` where it has none."""
+    said = str(said or "auto").strip().lower()
+    if said in HADDOCK_PASSIVE:
+        return said
+    return "around" if has_active else fallback
+
+
+def _haddock_options(s):
+    """The `options` block of the spec: everything past the preset.
+
+    Every one of these was at job.default's own value, because the driver sent no options block
+    at all - so a flow could not rescore, could not refine in water, could not cluster by RMSD,
+    could not seed, could not replicate and could not add a restraints file. Empty is left out
+    rather than sent as empty, so a key nobody filled in is still HADDOCK's own answer.
+    """
+    out = {}
+    for key in ("clust_cutoff", "min_population", "sampling", "select", "seed", "replicates"):
+        value = s.get(key)
+        # 0 is how a flow saved before these fields were empty-by-default says "the tool's own",
+        # and none of these takes a 0 anyway except the seed, which is set below.
+        if value in (None, "") or (key != "seed" and str(value) in ("0", "0.0")):
+            continue
+        out[key] = value
+    if str(s.get("seed") or "").strip() in ("0", "0.0"):
+        out["seed"] = 0
+    if str(s.get("clustering") or "") == "rmsd":
+        out["clustering"] = "rmsd"
+    for key in ("water", "mmgbsa", "cofold"):
+        if s.get(key) not in (None, "", False, "false", "no", 0, "0"):
+            out[key] = True
+    if out.get("mmgbsa"):
+        # AmberTools whatever is ticked: the tool adds it back (mmgbsa.engines_of), and saying so
+        # here keeps the spec and the run's record reading the same.
+        asked = [e for e in re.split(r"[,\s]+", str(s.get("mmgbsa_engines") or "")) if e]
+        out["mmgbsa_engines"] = ["amber"] + [e for e in asked if e != "amber"]
+        if str(s.get("mmgbsa_poses") or "").strip():
+            out["mmgbsa_poses"] = str(s["mmgbsa_poses"]).strip()
+    if str(s.get("restraints_file") or "").strip():
+        out["restraints_file"] = str(s["restraints_file"]).strip()
+    return out
+
+
+def _haddock_spec(label, s, target, partners):
+    """The run as the JSON HADDOCK's page would send: its receptor, its partners, the settings
+    past the preset, and what to ask Slurm for.
+
+    Its own function so that a test can render it and read it back through the page's own reader
+    (haddock_gui.server.App._job_from) without a cluster, a queue or an install of HADDOCK3: the
+    one thing worth proving about a card's settings is that the tool receives them, and every one
+    of these was at the tool's default because the driver sent no options block at all.
 
     The target is the receptor, and its hotspots its active residues; each folded structure is a
     partner, its whole surface passive, which is the usual screen when the site on the receptor
     is known and nothing is known of the partners. Without the hotspots the docking is ab initio.
+
+    Where the card names a partner's own active residues, those drive the docking too, and the
+    passive residues of both sides follow them unless the card says otherwise. Which is the one
+    thing a flow could not say before: every partner was forced to a passive surface, so a known
+    epitope on the partner had nowhere to be written down.
     """
-    target = _target(carried)
-    partners = [g for g in carried.get("partner", []) if g.get("path")]
-    if not partners:
-        raise NotWired("HADDOCK docking needs a partner to dock onto the target")
-    s = node.settings
-    root = _run_root(node, "haddock")
     use_site = s.get("use_site", True) not in (False, "false", "no", 0)
     site = _site(target) if (use_site and target.get("hotspots")) else ""
     chains = lambda text: [c for c in re.split(r"[,\s]+", str(text or "")) if c]  # noqa: E731
+    het = [c.upper() for c in re.split(r"[,\s]+", str(s.get("keep_het") or "")) if c]
+    actives = [_per_partner(s, "partner_active", i) for i in range(len(partners))]
+    # The restraints come from residues where anything names one, which is now either side: the
+    # hotspots on the receptor, or a partner's own epitope with the receptor's surface passive.
+    driven = bool(site) or any(actives)
+    rpassive = _passive_mode(s.get("receptor_passive"), bool(site),
+                             "surface" if any(actives) else "around")
     spec = {
-        "label": "%s_%s" % (flow.name, node.id),
+        "label": label,
         "mode": s.get("mode") or "auto",
         "preset": s.get("preset") or "standard",
-        "restraints": "residues" if site else "ab initio",
+        "restraints": "residues" if driven else "ab initio",
         "receptor": {"name": "target", "path": target["path"],
                      "chains": chains(target.get("chains")), "active": site,
-                     "passive": "around"},
+                     "passive": rpassive,
+                     "passive_list": str(s.get("receptor_passive_list") or ""),
+                     "flexible": str(s.get("receptor_flexible") or ""),
+                     "keep_het": list(het)},
         "partners": [{"name": "%s_%d" % (os.path.splitext(os.path.basename(p["path"]))[0][:30],
                                          i + 1),
-                      "path": p["path"], "chains": chains(s.get("partner_chains")),
-                      "passive": "surface"} for i, p in enumerate(partners)],
+                      "path": p["path"], "chains": chains(_per_partner(s, "partner_chains", i)),
+                      "active": actives[i],
+                      "passive": _passive_mode(s.get("partner_passive"), bool(actives[i]),
+                                               "surface"),
+                      "passive_list": str(s.get("partner_passive_list") or ""),
+                      "flexible": str(s.get("partner_flexible") or ""),
+                      "dotbracket": str(s.get("partner_dotbracket") or ""),
+                      "cyclic": s.get("partner_cyclic") not in (None, "", False, "false", "no",
+                                                                0, "0"),
+                      "reference": str(s.get("reference") or ""),
+                      "keep_het": list(het)} for i, p in enumerate(partners)],
+        "options": _haddock_options(s),
         "slurm": {},
     }
     if target.get("prepared"):
@@ -1629,10 +1891,29 @@ def _haddock(node, flow, carried, flow_dir, record, say=print):
         spec["receptor_prepared"] = True
         spec["receptor"]["receptor_prepared"] = True
     for key, to in (("cpus", "cpus"), ("walltime", "time"), ("partition", "partition"),
-                    ("account", "account")):
+                    ("account", "account"), ("mem", "mem"), ("extra", "extra")):
         value = s.get(key)
         if value not in (None, "") and str(value) not in ("0", "0.0"):
             spec["slurm"][to] = value
+    # A throttle of 0 is the answer the tool's own default is, so it is sent as it stands rather
+    # than being dropped with the other zeros: nothing is lost either way, and the spec then
+    # reads as what was asked for.
+    if s.get("throttle") not in (None, ""):
+        spec["slurm"]["throttle"] = int(float(s["throttle"]))
+    return spec
+
+
+def _haddock(node, flow, carried, flow_dir, record, say=print):
+    """HADDOCK docking, through its own command line: the run is written as the JSON its page
+    would send (_haddock_spec) and handed to `haddock-gui submit`, which makes the run folder and
+    queues one Slurm task per partner exactly as the page does, and prints the folder and job
+    back."""
+    target = _target(carried)
+    partners = [g for g in carried.get("partner", []) if g.get("path")]
+    if not partners:
+        raise NotWired("HADDOCK docking needs a partner to dock onto the target")
+    root = _run_root(node, "haddock")
+    spec = _haddock_spec("%s_%s" % (flow.name, node.id), node.settings, target, partners)
     os.makedirs(os.path.join(flow_dir, "inputs"), exist_ok=True)
     spec_file = os.path.join(flow_dir, "inputs", "%s_haddock.json" % node.id)
     with open(spec_file, "w", encoding="utf-8") as fh:

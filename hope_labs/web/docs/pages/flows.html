@@ -82,6 +82,22 @@ opens it.</p>
 which side of the interface each belongs to is settled by HOPE-MD's own Prepare, where it always
 was. Into a docking card they do not: every water and every hetero group is dropped, a
 co-crystallised inhibitor included, except the single-atom ions that docking can use (HADDOCK's). What was dropped is in <code>prepared.json</code> and in the card's log.</p>
+<p>So the five boxes about them are on the <b>Prepare</b> card and not on <b>Prepare
+receptor</b>: <b>Crystal waters</b>, <b>Keep metals and cofactors</b>, <b>Drop the
+crystallisation buffers</b>, <b>Keep the hetero groups that are neither</b> and <b>Also drop, by
+residue name</b>. Each is read where the decision is made, over the assembled complex, so a group
+that no force field here covers is named in the refusal rather than dropped on the way without a
+word, and <b>Also drop, by residue name</b> is what that refusal asks you for. The receptor card
+has none of them, because for a receptor the answer is already settled.</p>
+<p>Three more boxes are about the structure as it arrives, and both cards have them. <b>Trim
+predicted tails below pLDDT</b> takes the terminal residues a predicted model has no confidence
+in, which is the first thing to come off one; 50 is HOPE-MD's own threshold, 0 keeps every
+residue, and a structure with no pLDDT in it is untouched. <b>Alternate location to keep</b>
+chooses between the positions a crystal structure models for the same side chain. <b>Model to
+take</b> chooses within an NMR ensemble. The minimisation has its own two: how hard the atoms the
+file already had are held (<b>Minimisation restraint</b>, so only the modelled residues move) and
+whether it runs in implicit solvent rather than vacuum, which is a better answer for a modelled
+loop and about ten times slower.</p>
 
 <h3 id="receptor">The receptor</h3>
 <p>A target linked to a docking card goes through one <b>Prepare receptor</b> card. There is one
@@ -107,6 +123,45 @@ location of each atom, and an OXT only on the last residue of a chain. The chain
 residue numbers and the insertion codes are kept exactly as they were, because the hotspots are
 written in them.</p>
 
+<h2 id="docking-cards">What the docking cards can be told</h2>
+<p>Each docking card offers the settings its own tool offers, with that tool's bounds and that
+tool's defaults, so a flow docks the way the tool's own page docks. A box left empty where empty
+is a real answer says in grey what the tool will do instead. The few below are the ones worth
+knowing about, and they are all under <b>More settings</b> unless said otherwise.</p>
+<p><b>HADDOCK docking</b> is driven by residues, and both sides can name them. The target's
+hotspots are the receptor's active residues, as they always were; <b>Partners' active residues</b>
+is the same thing on the partner, for a known epitope, and each of the first three partners has a
+box of its own, as does each partner's list of chains, so a protein partner and a two-chain DNA
+duplex can be docked in one card. A partner with no box of its own takes the first partner's. The
+passive residues of either side follow the active ones unless you say otherwise: the surface
+around them where a molecule names any, its whole surface where it names none. Name residues on
+the partner alone and the docking is still driven by residues, with the receptor's whole surface
+passive. Name none anywhere, with the hotspots unticked, and it is ab initio.</p>
+<p>The rest of that card is HADDOCK's own advanced options, which a flow could not reach at all:
+<b>Rescore the top poses with MM-GBSA</b>, which is the only way to compare one partner with
+another, since HADDOCK's own score was made to rank the models of one run; the engines that score
+them and how many poses; <b>Refine the final models in water</b>, which HADDOCK's own page ticks
+for a DNA or RNA partner and which a flow therefore used to lose; the clustering, its cutoff and
+the smallest cluster kept; a sampling of your own past the three presets; a seed, and docking each
+partner more than once with a seed apiece; a restraints file of your own; a nucleic acid's
+secondary structure as dot-bracket, whose base pairs are then held through every refinement; a
+peptide partner closed into a ring; the residues HADDOCK may move freely; a known complex to
+compare the models with; and the ions and cofactors to keep by name. The memory, the Slurm
+throttle and any other Slurm options are there too.</p>
+<p><b>ADCP docking</b> can dock a peptide as a ring. <b>Dock each peptide as</b> takes a linear
+chain, a ring closed head to tail, or a ring through a disulfide between two cysteines; a peptide
+that cannot close the ring asked for is left behind by name, with the reason, and the rest are
+docked. <b>Build the box around</b> is where the grid box comes from: the hotspots, which is what
+it has always been; a ligand or peptide already in the receptor, named by its chain or as
+<code>A:NUT:201</code>, which is the surest way to dock into the site something is already sitting
+in; or the pocket AutoSite finds. The box's own padding and its smallest and largest size are
+settings of the tool's page and its job file and not of its command line, so they are not offered
+here. The rescoring's solvation model, its engine, how many poses it scores and how many it
+reports the mean of are all on the card, as are the share of replicas that start as a helix, the
+poses minimised with OpenMM afterwards, the AutoSite version, the receptor gradient, keeping every
+replica's trajectory, and the limit on how many peptides are docked at once. ADCP names no
+partition of its own, so an empty <b>Partition</b> leaves the choice to the scheduler.</p>
+
 <h2 id="one-run-each">One run per structure, and which structures</h2>
 <p>Everything that reaches <b>HOPE-MD</b> is one run per structure, and the card says which. What
 arrives is ranked across all of a track's partners together, by the score the tool that made them
@@ -131,6 +186,56 @@ Replicates stop at five, the timestep is 2 fs or 4, and a frame count whose inte
 whole number of steps, or is longer than the 200 ps MM-GBSA takes its frames at, is refused on the
 canvas with the number to type instead. <b>Account to charge</b> reaches every job of every run,
 the preparation job included.</p>
+<p><b>Frames to keep</b> is 5000, which over the 100 ns the card asks for by default is a frame
+every 20 ps: HOPE-MD's own interval, and the one all three of its presets use. The number on the
+card is a count and the interval is the length divided by it, so a longer run needs more frames;
+the canvas says which number to type. A run of three replicates of a 30 000-atom complex is about
+5.5 GB of trajectory at that interval, which is what <b>Tidy each run when it finishes</b> is
+for.</p>
+
+<h3 id="box-and-salt">The box, the salt and the bilayer</h3>
+<p><b>Box shape</b> and <b>Padding</b> are the water box: a truncated octahedron by default,
+because it holds the fewest waters for the same distance between periodic images, with 12 Å
+between the solute and the edge. The padding cannot go under the 10 Å cutoff, or the complex
+would see its own image. <b>Salt</b> and <b>Salt concentration</b> neutralise the box and then
+bring it to a concentration, 150 mM NaCl by default; MgCl<sub>2</sub> is there for a nucleic acid,
+which binds Mg<sup>2+</sup>. The concentration is also the salt MM-GBSA is computed at, so it
+changes the binding energy as well as the box, which is why a nucleic-acid run is worth setting
+it for.</p>
+<p><b>What it is simulated in</b> is a water box or a lipid bilayer. A membrane protein in a water
+box is not a slower answer but the wrong one, and until this box existed a flow could only ask for
+water. A bilayer is tiled from a pre-equilibrated patch of the <b>Lipid</b> chosen, with
+<b>Water above and below the bilayer</b> on each face and its centre at <b>Bilayer centre along
+z</b>, which is 0 by the OPM convention. A bilayer build fixes the protein force field, the water
+and the box shape, and the card writes all three for you as it does Desmond's. What it cannot
+write for you is the salt, because quietly swapping MgCl<sub>2</sub> for NaCl would change the
+chemistry of the run: a bilayer takes a monovalent pair, and the canvas says so. Crystal waters
+cannot be built into one either, so a bilayer under a preparation that keeps them is refused at
+the box to change.</p>
+<p><b>How the structure is oriented</b> matters for a flow, because a folded or docked model is
+not oriented: its membrane normal is not z. Say its transmembrane <b>segments</b> as
+<code>A:30-56, A:71-96</code>, or orient the structure before the flow and leave the orientation
+as imported.</p>
+
+<h3 id="scoring-window">The scoring window, and where it runs</h3>
+<p>MM-GBSA averages over a slice of the production rather than all of it, and which slice is a
+real question: the first nanoseconds are the complex still settling into its box. <b>Score
+from</b> and <b>Score to</b> are that slice, and <b>Score every</b> is how often a frame of it is
+taken. It can be no finer than the frames kept, which is the other half of why the default frame
+count matters: at a frame every 200 ps nothing could ever be rescored more finely than 200 ps.</p>
+<p><b>Residues held still in production</b> holds named residues through the run, written the way
+the hotspots are, for a run meant to answer what the rest does while these stay put. <b>Production
+restraint</b> is how hard, and is the first rung of the equilibration ladder whether or not any
+residue is named.</p>
+<p><b>GPU type</b> is worth knowing about on Grace: the a40 nodes sit on a partition of their own
+and are often free while a100 jobs queue, and <b>auto</b> takes whichever type has a free card at
+submit. <b>Run on</b> can be CPU instead, which is one whole node for a short look while every
+card is busy: Amber or GROMACS, at most 10 ns and 500 frames, and the card's own bounds move to
+match the moment you choose it. <b>CPU cores</b>, <b>Memory</b> and <b>Replicates running at
+once</b> are the rest of the job: the last throttles a run's replicates rather than queueing all
+of them at once. A walltime typed into <b>Walltime</b> is each production job's limit, so a
+shorter one cuts a long run into more segments; left empty, a run past the queue's limit is
+chained into segments anyway.</p>
 <p>The flow's own <b>Results</b> page then puts that card's runs side by side: the structure each
 one is of, its rank and the score it arrived with, anything it was told to differ in, and its
 binding energy and interface RMSD as its own analysis reports them.</p>

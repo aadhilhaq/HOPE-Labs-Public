@@ -1,14 +1,16 @@
-HOPE Labs: one launcher for a set of molecular design and simulation tools on a cluster
-Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. Authored by Aadhil Haq. All rights reserved.
+HOPE Labs: the launcher for the HOPE Lab's tools, and HOPE-flow
+Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. Authored by Aadhil Haq, Samavath Mallawarachchi and Lasan Manujitha. All rights reserved.
 
 This software is not open source. No licence to use, copy, modify or
-distribute it is granted without written permission from Dr. Sandun Fernando.
+distribute it is granted to anyone outside the HOPE Lab without written
+permission from Dr. Sandun Fernando.
 
-It is a launcher: it signs in to a cluster, starts the tools installed there
-and draws them as a flow. It implements none of the methods those tools run.
-Each tool keeps its own licence and its own notices, and the terms of one of
-them reach this launcher: BindCraft2 may not be offered to third parties as a
-hosted service.
+It is a launcher: it signs in to Texas A&M's clusters, starts the lab's tools
+there and draws them as a flow. It implements none of the methods those tools
+run. Each tool keeps its own licence and its own notices, and the terms of one
+of them reach this launcher: BindCraft2 may not be offered to third parties as
+a hosted service, so giving anyone outside the group this launcher, or a page
+it serves, would breach that tool's licence rather than this one.
 
 The third-party programs and libraries it uses keep their own licences; see
 THIRD_PARTY_NOTICES.md.

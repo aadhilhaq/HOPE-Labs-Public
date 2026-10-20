@@ -196,7 +196,8 @@ def preview(tool, path, asked_chains, hotspots, binder_min, binder_max):
                           if int(one[1:]) not in keep.get(one[0], [])]
         # RFdiffusion has nowhere to put an insertion code, so a hotspot carrying one is refused
         # against the box rather than dropped on the way into a job that would then aim a residue
-        # away from the site. Its own words for it, from its own helper.
+        # away from the site. Its own words for it, from its own helper, and BoltzGen's below are
+        # the same words: RFdiffusion3 is the one of the three that keeps a code.
         out["refused"] = rfdiffusion_design.coded_why(hotspots)
         out["contig"] = rfdiffusion_design.contig(keep, int(binder_min), int(binder_max))
         out["hotspots"] = named
@@ -230,6 +231,11 @@ def preview(tool, path, asked_chains, hotspots, binder_min, binder_max):
             out["lines"].append("infer_ori_strategy: com, so the binder may grow anywhere on "
                                 "the target")
     else:
+        # BoltzGen has nowhere to put an insertion code either: its binding residues are
+        # positions in the chain, and the box is read here as a chain, a number and a range, so
+        # a coded hotspot was dropped on the way into a twelve-hour run aimed at the residue of
+        # the same number. Its own words for it, from its own helper, which are RFdiffusion's.
+        out["refused"] = boltzgen_design.coded_why(hotspots)
         asked = boltzgen_design.wanted(hotspots, sorted(keep)[0])
         binding = {}
         for chain, numbers in sorted(asked.items()):

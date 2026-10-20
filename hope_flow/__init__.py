@@ -20,7 +20,9 @@ AUTHORS = ("Aadhil Haq",)
 PI = "Dr. Sandun Fernando"
 
 #: The fallback for a bundle built without the LICENSE beside it.
-FALLBACK_COPYRIGHT = ("Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. Authored by Aadhil Haq. All rights reserved.")
+FALLBACK_COPYRIGHT = ("Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. "
+                      "Authored by Aadhil Haq, Samavath Mallawarachchi and Lasan Manujitha. "
+                      "All rights reserved.")
 
 
 def copyright_line():

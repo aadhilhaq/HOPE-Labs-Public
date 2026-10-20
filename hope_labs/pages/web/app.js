@@ -1,4 +1,4 @@
-/* The design page, for whichever of the two tools the server was started for.
+/* The design page, for whichever of the design tools the server was started for.
    Two screens: Design, which reads a target and queues a run, and Runs, which reads the run
    folders and the queue.
 

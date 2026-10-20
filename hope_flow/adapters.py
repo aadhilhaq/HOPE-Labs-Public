@@ -31,6 +31,18 @@ from .cards import DOCKABLE_MAX_LENGTH
 STANDARD = set("ACDEFGHIKLMNPQRSTVWY")
 DOCKABLE_MIN_LENGTH = 5
 
+#: ADCP 1.1's own syntax for the residues outside the standard twenty, from the same file
+#: (peptide.EXTENDED): an optional "&" for the D form, the one-letter code of the standard
+#: residue whose coarse potential is used, and a non-standard side chain's library name in angle
+#: brackets. "N<BHD>PIS&DVD" is seven residues, the first an asparagine derivative and the fifth
+#: a D-aspartate. Read here because this file was counting characters and comparing them with the
+#: twenty: every such peptide was left behind as having no rotamer, which ADCP 1.1 does have.
+#:
+#: The library names are not checked. ADCP checks them against the install's own side-chain
+#: library, which an adapter has no access to, so an unknown name is the docking's refusal to
+#: make rather than one to guess at here.
+EXTENDED = re.compile(r"&?[A-Z](?:<[A-Z0-9]{1,4}>)?")
+
 #: Where a thing with no score of its own sorts: last, and never in the middle of the ones that
 #: have one. The same number the docking's own report sorts a missing score to.
 NO_SCORE = 1e9
@@ -77,26 +89,88 @@ def _column(row, *names):
     return ""
 
 
+def _residues(seq):
+    """The residues of a sequence, one string each: "A", or "&D" and "N<BHD>" in ADCP 1.1's own
+    syntax. Its own reading (peptide.residues), so a length is residues and not characters."""
+    return EXTENDED.findall(seq) if ("<" in seq or "&" in seq) else list(seq)
+
+
 def _dockable(name, seq):
     """Why this peptide cannot be docked, or "" when it can.
 
-    The same four refusals ADCP's own check makes, in the same order, so a peptide this lets
-    through is one the docking will take rather than one it will refuse a minute later.
+    The same refusals ADCP's own check makes, in the same order, so a peptide this lets through
+    is one the docking will take rather than one it will refuse a minute later. A sequence in
+    ADCP 1.1's extended syntax is read as that: its residues are counted as residues, and each
+    one's coarse letter is what has to be one of the twenty.
     """
     seq = (seq or "").strip().upper()
     if not seq:
         return "no sequence"
-    odd = sorted(set(seq) - STANDARD)
+    residues = _residues(seq)
+    if "<" in seq or "&" in seq:
+        # Whatever the pattern does not account for is a mistake in the syntax, which is how
+        # ADCP's own check reads it, and the position is given as a person counts.
+        covered = set()
+        for found in EXTENDED.finditer(seq):
+            covered.update(range(found.start(), found.end()))
+        stray = [i + 1 for i in range(len(seq)) if i not in covered]
+        if stray:
+            return ("the docking cannot read %s at position%s %s: a non-standard residue is a "
+                    "letter and its library name, as N<BHD>, and a D residue is & before its "
+                    "letter, as &D"
+                    % ("/".join(sorted({seq[i - 1] for i in stray})),
+                       "" if len(stray) == 1 else "s",
+                       ", ".join(str(i) for i in stray[:8])))
+        odd = sorted({r.lstrip("&")[0] for r in residues} - STANDARD)
+    else:
+        odd = sorted(set(seq) - STANDARD)
     if odd:
         return "the docking has no rotamer for %s" % ", ".join(odd)
-    if len(seq) < DOCKABLE_MIN_LENGTH:
-        return "%d residues, shorter than the %d the docking needs" % (len(seq), DOCKABLE_MIN_LENGTH)
-    if len(seq) > DOCKABLE_MAX_LENGTH:
-        return "%d residues, longer than the %d the docking takes" % (len(seq), DOCKABLE_MAX_LENGTH)
+    if len(residues) < DOCKABLE_MIN_LENGTH:
+        return "%d residues, shorter than the %d the docking needs" % (len(residues),
+                                                                       DOCKABLE_MIN_LENGTH)
+    if len(residues) > DOCKABLE_MAX_LENGTH:
+        return "%d residues, longer than the %d the docking takes" % (len(residues),
+                                                                      DOCKABLE_MAX_LENGTH)
     return ""
 
 
-def _peptides_file(flow_dir, edge, pairs):
+#: What the ring named on an ADCP card is called in the peptide file's third column, and in a
+#: sentence about a peptide that cannot take it (adcp_dock/peptide.py, RING_NAMES and RING_AS).
+RING_NAMES = {"none": "linear", "backbone": "head to tail", "disulfide": "disulfide"}
+RING_AS = {"none": "as a linear chain", "backbone": "as a ring head to tail",
+           "disulfide": "as a ring through a disulfide"}
+
+
+def _ring_asked(flow, edge):
+    """The ring the docking card asks every peptide to be closed into: "", "backbone" or
+    "disulfide". "" where the card says linear, which is what it says unless somebody changed
+    it, and the file is then written in the plain named form it always was."""
+    dst = flow.node(edge.dst)
+    said = str((dst.settings if dst else {}).get("cyclic") or "none").strip().lower()
+    return said if said in ("backbone", "disulfide") else ""
+
+
+def _ring_problem(seq, ring):
+    """Why this peptide cannot be closed into `ring`, or "" when it can.
+
+    ADCP does not check this itself: given -cys and a peptide with one cysteine, ADCP 1.1.21
+    docked it and reported poses with no warning, so the run described as cyclic a peptide that
+    was never closed. Its own command line refuses the whole run for one such peptide; a flow
+    leaves that peptide behind by name and docks the rest.
+    """
+    if ring != "disulfide":
+        return ""
+    # C, and its D form &C. A non-standard residue built on the cysteine model (C<HCS>) is not
+    # counted: whether its side chain has a thiol where cysteine's is depends on the residue.
+    have = sum(1 for r in _residues(seq) if r in ("C", "&C"))
+    if have >= 2:
+        return ""
+    return ("a disulfide ring needs two cysteines and this has %s"
+            % ("none" if have == 0 else "one"))
+
+
+def _peptides_file(flow_dir, edge, pairs, ring=""):
     """Write ADCP's peptides file: one "name: SEQUENCE" a line, which it reads as it stands.
 
     A colon cannot occur in a sequence, so the named form is the one of the several ADCP accepts
@@ -108,6 +182,12 @@ def _peptides_file(flow_dir, edge, pairs):
     second track wrote over the first and both carried back the same path, so the docking was
     given one file holding one track: a design run's peptides went missing between a log saying
     how many had been carried and the run that docked the others.
+
+    `ring` is the ring the card asks every peptide to be closed into. With one, the file is
+    written as the three columns ADCP reads with a header - name, sequence, ring - so that each
+    peptide carries its ring rather than inheriting it, and a peptide that cannot close the ring
+    asked for is left behind by name. Without one, which is the usual case, the file is the plain
+    named form it has always been.
     """
     where = os.path.join(flow_dir, "inputs",
                          "%s_from_%s_peptides.txt" % (edge.dst, edge.src))
@@ -118,11 +198,20 @@ def _peptides_file(flow_dir, edge, pairs):
         if seq in seen:
             dropped.append((name, "the same sequence as %s" % seen[seq]))
             continue
+        why = _ring_problem(seq, ring)
+        if why:
+            dropped.append((name, "%s, so it cannot be docked %s" % (why, RING_AS[ring])))
+            continue
         seen[seq] = name
         kept.append((re.sub(r"[^A-Za-z0-9_.-]", "_", name) or "peptide", seq))
     with open(where, "w", encoding="utf-8") as fh:
-        for name, seq in kept:
-            fh.write("%s: %s\n" % (name, seq))
+        if ring:
+            fh.write("name\tsequence\tring\n")
+            for name, seq in kept:
+                fh.write("%s\t%s\t%s\n" % (name, seq, RING_NAMES[ring]))
+        else:
+            for name, seq in kept:
+                fh.write("%s: %s\n" % (name, seq))
     return where, kept, dropped
 
 
@@ -336,7 +425,7 @@ def _bindcraft_to_adcp(flow, record, edge, flow_dir):
             dropped.append((name, why))
         else:
             pairs.append((name, seq))
-    path, kept, same = _peptides_file(flow_dir, edge, pairs)
+    path, kept, same = _peptides_file(flow_dir, edge, pairs, _ring_asked(flow, edge))
     dropped.extend(same)
     return {"kind": "sequences", "count": len(kept), "path": path, "dropped": dropped,
             "what": "%d design(s) from %s%s%s"
@@ -625,7 +714,7 @@ def _designs_to_adcp(flow, record, edge, flow_dir):
             dropped.append((name, why))
         else:
             pairs.append((name, seq))
-    path, kept, same = _peptides_file(flow_dir, edge, pairs)
+    path, kept, same = _peptides_file(flow_dir, edge, pairs, _ring_asked(flow, edge))
     dropped.extend(same)
     return {"kind": "sequences", "count": len(kept), "path": path, "dropped": dropped,
             "what": "%d design(s) from %s%s" % (len(kept), read, _said(dropped))}
@@ -855,20 +944,30 @@ def _prepared_to_hopemd(flow, record, edge, flow_dir):
 
 
 def _prepared_to_dock(flow, record, edge, flow_dir):
-    """The best prepared structure, as the partner of a docking.
+    """One prepared structure, as the partner of a docking.
 
     One partner per link, as a docking takes them: where the preparation holds several - the
-    samples of one fold - the best is the one docked, and the rest are there for the simulation.
-    """
+    samples of one fold - the best is the one docked, and the rest are there for the simulation."""
     got, dropped, node = _prepared_structures(flow, record, edge)
     if not got:
         return {"kind": "prepared", "count": 0, "dropped": dropped,
                 "what": "the preparation prepared nothing%s" % _said(dropped)}
-    best = got[0]
+    dst = flow.node(edge.dst)
+    pick = (dst.settings if dst else {}).get("partner_pick")
+    try:
+        rank = max(1, int(float(pick))) if pick not in (None, "") else 1
+    except (TypeError, ValueError):
+        rank = 1
+    if rank > len(got):
+        raise NotWired("the docking asks for prepared structure %d and the preparation handed "
+                       "over %d; ask for one of 1 to %d" % (rank, len(got), len(got)))
+    best = got[rank - 1]
     return {"kind": "prepared", "count": 1, "path": best["path"],
             "chains": best["receptor_chains"] + best["partner_chains"],
             "prepared": True, "dropped": dropped,
-            "what": "%s, prepared molecule by molecule%s" % (best["name"], _said(dropped))}
+            "what": "%s, prepared molecule by molecule%s%s"
+                    % (best["name"], "" if rank == 1 else " (rank %d of %d)" % (rank, len(got)),
+                       _said(dropped))}
 
 
 #: The docking cards, which take the target's receptor prepared rather than the target itself.
@@ -884,8 +983,8 @@ BY_JUNCTION = {
     ("target", "target", "boltzgen"): _target_to_anything,
     ("target", "target", "prepare_receptor"): _target_to_anything,
     ("bindcraft", "sequences", "adcp"): _bindcraft_to_adcp,
-    # Both design tools this repository drives itself leave the same record, so one pair of
-    # adapters reads both.
+    # Every design tool this repository drives itself leaves the same record, so one pair of
+    # adapters reads them all.
     ("rfdiffusion", "sequences", "adcp"): _designs_to_adcp,
     # RFdiffusion3 writes the same designs.json, so the same readers serve it and nothing
     # downstream had to learn a third format.
