@@ -1,0 +1,64 @@
+<h1>The target and hotspots</h1>
+<p class="lead">The target is what the binder is designed against, and the hotspots are the
+residues it should touch. The hotspots are also the one thing on this page that is not what you
+type, so the page shows you what they become.</p>
+
+<h2 id="three-ways-to-give-a-target">Three ways to give a target</h2>
+<table>
+<tr><th>Where it comes from</th><th>What to do</th></tr>
+<tr><td><b>PDB id</b></td><td>Four characters. The entry is fetched from the RCSB on the login
+node, which has the internet, and copied into the run folder. A compute node has none, so a job
+cannot fetch its own target.</td></tr>
+<tr><td><b>Structure file</b></td><td>Drop a <code>.pdb</code> file on the page or choose one. It
+is kept in the server's own scratch folder and copied into the run folder when you submit.</td></tr>
+<tr><td><b>Path on the cluster</b></td><td>A path to a file already on Grace, for one too large to
+upload or one another tool left.</td></tr>
+</table>
+<div class="note"><b>It has to be a PDB file.</b> The step that converts the hotspots reads the
+target by PDB column positions, so an mmCIF would be copied in and then found to contain no
+chains. The page refuses one rather than letting a job discover it.</div>
+
+<h2 id="chains">Chains</h2>
+<p>After the target is read, one chip appears per amino-acid chain, carrying the chain's letter,
+how many residues it has, and the first and last residue numbers it uses. Every chain is selected
+to begin with; click a chip to drop one.</p>
+<p>The chains you keep are the ones written into the specification as the target. A chain that is
+dropped is not in the run at all.</p>
+
+<h2 id="hotspots">Hotspots, in the structure's numbering</h2>
+<p>Write them the way every other tool in the lab takes them, which is the numbering the chips
+show:</p>
+<table>
+<tr><th>What you type</th><th>What it means</th></tr>
+<tr><td><code>54,56,66-70</code></td><td>residues 54, 56 and 66 to 70 of the first chain you
+kept</td></tr>
+<tr><td><code>A54,B12-16</code></td><td>residue 54 of chain A and residues 12 to 16 of chain B</td></tr>
+<tr><td><code>A54,56,57</code></td><td>54, 56 and 57 of chain A: a residue with no letter takes
+the chain from the token before it</td></tr>
+</table>
+<p>A residue you name that the chain has not got turns the box red and names it. A run is not
+queued without hotspots.</p>
+
+<h2 id="what-the-job-is-told">What the job is told</h2>
+<p>BoltzGen's specification numbers binding residues by their <b>position in the chain</b>,
+counting from 1 at the first residue present. That is not the numbering in the file. Under the
+hotspots box the page shows the conversion, one line per chain:</p>
+<pre><code>chain A: 54,56,66,67,68,69,70 in the file are positions 37,39,49,50,51,52,53
+         (the chain is numbered 18 to 290)
+the binder is asked for as "70..100"</code></pre>
+<p>Here the chain begins at residue 18, so residue 54 in the file is the 37th residue present.
+Both sets of numbers are shown because that is the only way to see the conversion is right. If the
+chain happens to start at 1 the two will match, and that is also correct.</p>
+<p>The job checks it a second time before anything expensive starts. It asks BoltzGen to write the
+specification out as a structure with the binding residues marked, reads those marks back, and
+refuses to go on if they are not the positions that were asked for. A run that reaches the
+generation step has had its hotspots proved.</p>
+<div class="note"><b>Gaps in a chain shift the positions.</b> A crystal structure with a
+disordered loop missing has fewer residues present than its numbering suggests, and the conversion
+counts what is present. That is what BoltzGen wants, and it is another reason to read the line
+rather than assume it.</div>
+
+<h2 id="choosing-hotspots-well">Choosing hotspots well</h2>
+<p>Three to six exposed residues on one face is the usual choice. A residue buried in the core
+cannot be bound and asking for it wastes the run; a set spread over two faces asks for a binder
+that cannot exist.</p>

@@ -1,0 +1,194 @@
+<h1>Flows</h1>
+<p class="lead">Draw the chain once, fill in the target, launch the whole of it. The cluster runs
+it card by card whether the launcher is open or not.</p>
+
+<h2 id="drawing">Drawing one</h2>
+<p>Drag a card from the list on the left onto the canvas and join the sockets. A link the tools
+cannot make is refused as you draw it rather than when it is queued; a link that needs a
+preparation gets one, put in as you draw it, and the panel on the right
+fills in the card you have picked. Where a flow has a <b>target</b>, it is usually the only card
+that needs anything: everything joined to it takes the same receptor and the same hotspots, so the
+design, the docking and the simulation are all aimed at one site.</p>
+<p>The receptor reaches each card in the form that card can use. The docking cards (ADCP docking,
+HADDOCK docking) are given it prepared, once, by a
+<b>Prepare receptor</b> card that the canvas puts between the target and them. The design tools
+(BindCraft2, RFdiffusion, RFdiffusion3 and BoltzGen) are given the target cleaned instead, never
+protonated, so a design card cannot be linked to a prepared receptor at all. Why each is given
+what it is given is under <a href="#receptor">The receptor</a>.</p>
+<p>The <b>hotspots</b> are asked for only where something in the flow aims at a site: the design
+tools, ADCP docking, and HADDOCK docking while it is driven by the interface. A blind docking, a co-fold and a simulation have no site, so they need none, and a
+flow with no site-aimed card in it needs no target card at all. Boltz-2 co-folding a receptor with
+the strand or peptide that binds it, prepared and simulated, is a whole flow on its own.</p>
+<p>A fold can go to three places. Into the target, a folded protein becomes the receptor. Into
+<b>HADDOCK docking</b>, each fold that
+arrives becomes one more partner, docked onto the target in a job of its own, and HADDOCK hands on
+the best model of each partner's best clusters. Into <b>HOPE-MD</b>, a co-folded complex is
+simulated as it was folded, with no docking in the flow at all. On the two links that do not go
+to the target a <b>preparation</b> stands in the middle, because nothing is docked or simulated
+unprepared: see below. A simulation with DNA or RNA in it takes the engine's usual nucleic-acid
+force field unless the HOPE-MD card names another.</p>
+<p><b>Boltz-2</b> folds one chain or several. One sequence gives a structure for a target card to
+take; fill in a second sequence, and its kind, and the two are folded together as a complex (a
+receptor with the DNA, RNA or peptide that binds it), which goes on to be prepared and simulated
+with no docking in the flow at all. Ask for more than one structure and every sample is handed on,
+best first, for the card below to take the best few of. A complex of more than three different
+chains is a job for the Boltz-2 page itself.</p>
+<p>Numbers have arrows and the range the tool actually allows. A box left empty where empty is a
+real answer says in grey what will happen instead, which is usually the tool's own default. A
+field the card answers for itself, such as the timestep of an engine that fixes its own, is
+shown with the reason rather than left to be filled in and ignored.</p>
+
+<h2 id="preparing">Preparation, which is not optional</h2>
+<p>A predicted or docked structure is coordinates, not chemistry: its histidines have no
+protonation state, its termini are not settled, its disulfides are unmeasured and its gaps are
+holes. So every link that carries a structure into a docking card or into HOPE-MD has a <b>Prepare</b> card
+in the middle of it, and every link from a target into a docking card has the <b>Prepare
+receptor</b> card. The canvas puts them there as you draw the link, and neither has a × to take it
+off: each belongs to its link rather than being a card of its own. Take the link off to be rid of
+it.</p>
+<p>It splits what arrives into the receptor and the partner, prepares each on its own (one pH
+for the whole flow, protonation, termini, disulfides, gaps), puts them back together and checks
+the net charge. A receptor or partner of several chains is prepared whole, so a dimer held by
+disulfides between its chains keeps them. Preparing each molecule separately is the point: protonating an assembled complex answers
+those questions for the interface as well, which is the one place the answer depends on how the
+two molecules happen to have been put together. The work is HOPE-MD's own Prepare stage, run once
+per molecule, and HOPE-MD is then told the structure is already prepared so that it does not do it
+again over the assembled complex.</p>
+<p>A gap is found from the sequence the file records (its <code>SEQRES</code>), so a deposited
+structure has its missing loops built back up to the longest the card allows, 12 at most, and a
+predicted model, which has no gaps, has none to build. They are built as ADCP builds them: only a
+gap inside a chain, never a chain's missing ends; from a fixed seed, so the same structure gives
+the same loop; relaxed with the residues either side on springs; and every join checked. A loop
+that cannot be made to fit stops that structure's preparation, and the message says to lower
+<b>Longest gap to model</b>. A built residue takes the number of the missing residue, or an
+insertion code where that number is taken. A gap longer than the limit is left open and its two
+ends are capped: an NME on the residue before it and an ACE on the
+residue after it, so neither end is a charged terminus the protein does not have. The caps take
+the numbers of the missing residues next to the gap (a gap between A:190 and A:195 gets NME A:191
+and ACE A:194), or insertion codes where no number is free (thrombin's H:149A-149E gets NME
+H:149B and ACE H:149D), and no residue is renumbered, so hotspots name the residues they named before; a
+hotspot on a residue that is still missing is refused, cap or no cap. With <b>Cap the breaks</b>
+off, each piece ends in charged termini instead, an OXT before the gap and
+NH<sub>3</sub><sup>+</sup> after it. A structure that has been prepared before has its hydrogens
+and the OXT at each break taken off first, and keeps the caps it has, so preparing it again gives
+the same chains, caps and states.</p>
+<p>What it decided is written beside the flow, in the card's own folder, as
+<code>prepared.json</code>: for every molecule its protonation states, its termini, its
+disulfides (including any that hold two molecules together), the gaps modelled and left, and its
+charge; and for every structure the net charge and what makes it up. <b>Files</b> on the card
+opens it.</p>
+<p>What becomes of the waters, ions, metals and cofactors depends on the card below. Into
+<b>HOPE-MD</b> they ride through the preparation at their own coordinates, and which to keep and
+which side of the interface each belongs to is settled by HOPE-MD's own Prepare, where it always
+was. Into a docking card they do not: every water and every hetero group is dropped, a
+co-crystallised inhibitor included, except the single-atom ions that docking can use (HADDOCK's). What was dropped is in <code>prepared.json</code> and in the card's log.</p>
+
+<h3 id="receptor">The receptor</h3>
+<p>A target linked to a docking card goes through one <b>Prepare receptor</b> card. There is one
+per target, shared by every docking card the target feeds, so everything one flow docks is
+docked against the same structure. It takes the target's own chains and no others, and
+prepares them as one molecule with HOPE-MD's Prepare: protonation by propka at the flow's pH,
+AMBER residue names, termini and disulfides, and gaps up to the longest the card allows built back
+from the file's <code>SEQRES</code>. The waters and hetero groups go, as into any docking. Each
+docking card is then told that its receptor is prepared, and at which pH, so that it does not
+prepare it again its own way. Where a docking card has a pH box of its own, it shows the flow's pH,
+set for you: one flow has one pH.</p>
+<p>The hotspots are checked against the prepared receptor, residue by residue. Each is
+<b>present</b> (the same chain, number, insertion code and residue, a protonation-state name such
+as HID apart), <b>built</b> (a residue the file was missing and the preparation modelled back) or
+<b>missing</b>. A hotspot on a built residue is flagged on the card, because a site on a modelled
+loop is a site on a guess. A missing one stops every docking card that aims at the site, with the
+residue named, rather than letting it dock somewhere else.</p>
+<p>The design tools are not given a prepared receptor. The names a preparation gives (HID, CYX,
+ASH) and the hydrogens it adds crash some of them and are read as something else by the rest. So
+the target card writes a cleaned copy for them: heavy atoms only, HID, HIE and HIP back to HIS,
+CYX to CYS, ASH to ASP, GLH to GLU and LYN to LYS, no waters, hetero groups or caps, one alternate
+location of each atom, and an OXT only on the last residue of a chain. The chain letters, the
+residue numbers and the insertion codes are kept exactly as they were, because the hotspots are
+written in them.</p>
+
+<h2 id="one-run-each">One run per structure, and which structures</h2>
+<p>Everything that reaches <b>HOPE-MD</b> is one run per structure, and the card says which. What
+arrives is ranked across all of a track's partners together, by the score the tool that made them
+gave them, so the best five of a docking of three partners are the best five it docked and not the
+five of whichever partner was named first. <b>Which of what arrives to simulate</b> is by rank,
+which takes that many off the top, or by name, which takes the ones you name whatever their rank:
+the names are the ones the preparation gives them, a docking's
+<code>&lt;partner&gt;_cluster&lt;n&gt;</code>, a fold's <code>&lt;card&gt;_model&lt;n&gt;</code>, a
+peptide's <code>&lt;peptide&gt;_pose&lt;n&gt;</code>. A name nothing answers to is said in the
+card's log rather than passed over.</p>
+<p>One structure can be given its own settings without a second card. <b>Settings for one
+structure</b>, under More settings, takes a group per structure as
+<code>name: key=value, key=value</code>, with a semicolon between groups, and the keys are this
+card's own: <code>3cc1_cluster2: length_ns=200, engine=openmm</code> runs that one structure for
+longer on another engine and leaves the rest of the batch alone. A key the card has not got, or a
+number outside what it allows, is refused before anything is queued.</p>
+<p>Every box on that card is bounded by what HOPE-MD will actually run, and the pairs it insists
+on are made for you: an engine that fixes its timestep shows it fixed, and the force field, the
+water and the box shape follow the engine unless you name them, so a Desmond run is written with
+OPLS, a three-site water and an orthorhombic box rather than refused for asking for the others.
+Replicates stop at five, the timestep is 2 fs or 4, and a frame count whose interval is not a
+whole number of steps, or is longer than the 200 ps MM-GBSA takes its frames at, is refused on the
+canvas with the number to type instead. <b>Account to charge</b> reaches every job of every run,
+the preparation job included.</p>
+<p>The flow's own <b>Results</b> page then puts that card's runs side by side: the structure each
+one is of, its rank and the score it arrived with, anything it was told to differ in, and its
+binding energy and interface RMSD as its own analysis reports them.</p>
+
+<h2 id="launching">Launching, and what it costs</h2>
+<p><b>Launch the flow</b> asks the cluster what the flow would do and shows it: what each card
+will queue, where it lands, and the numbers that decide what it costs. Nothing is committed until
+<b>Queue it</b>. Once it is, the flow outlives the launcher, the laptop and the connection that
+queued it: each card is submitted with a dependency on the one before.</p>
+
+<h2 id="watching">Watching one</h2>
+<p><b>Watch a queued flow</b> opens it with how far it has got across the top: a bar that fills as
+stages finish, the share done, and every stage in the order they run, each marked done, queued,
+running, failed, stopped or waiting: queued while its job waits for a node, running once it has
+one. The stage at work pulses and its part of the bar moves. The page reads
+the record again every twenty seconds while anything is left to happen, and the flow carries on
+whether it is open or not.</p>
+<p>Click any stage, in that row or on the drawing, and it opens beside the drawing: its job, its
+folder, how long it has been at it, the end of its log, and what it has made so far: structures to
+turn in a viewer, pictures, tables and reports, exactly as Results shows a run. The stage that needs
+you is the one shown first; while nothing does, the panel follows the stage at work, until you pick
+one yourself.</p>
+<p>In the portal you will see two kinds of job: the short <code>flow-</code> ones, which are the
+engine's own bookkeeping and last seconds, and the real job named after the tool.</p>
+
+<h2 id="results">Its results</h2>
+<p>A flow's results are in as many folders as it has cards, so <b>Results</b> on a running or
+finished flow gathers them onto one page: the chain, what each card left, the first rows of its
+tables, and the files worth keeping. The page carries everything it shows, so it can be sent to
+somebody with no account on the cluster. <b>Files</b> on any card opens that card's folder.</p>
+
+<h2 id="carrying-on">When something fails</h2>
+<p>A stage that fails stops the stages after it, because each waits on the one before, unless a
+stage has another track still feeding it: HOPE-MD fed by both ADCP docking and HADDOCK docking runs on
+what the track that worked brought, and says so on its card. A stage that fails is tried once more
+by itself when the flow wakes it again, which covers a node that died under it; a second failure
+waits for you. A banner then
+says which stage, why, and which stages have finished and are kept, with what to do about it beside
+it. The end of the failed stage's own log is in the panel under it, so the reason is in front of you
+rather than in a file.</p>
+<p><b>Carry on from</b> the stage named on the button queues from there. What has already run is left
+alone: its folders are on disk, cost what they cost, and are not made again. That holds inside a
+simulation stage too: the runs it finished are kept, and only the ones that did not are queued
+again. A run's report or video failing does not fail the stage. This is the right
+answer when a flow stopped for a reason that has nothing to do with the flow: a node died, a queue
+was full, an allocation ran out overnight. A flow can also stall, with nothing of it left in the
+queue and nothing failed; the banner says so, the stage whose turn did not come is the one shown,
+with the log of the job that was to start it, and Carry on is the answer to that too.</p>
+<p>A stage can fail while another track of the same flow is still running. The banner says so at
+once, but carrying on waits until nothing of the flow is left in the queue, so that nothing runs
+twice; until then it offers only <b>Report this</b>.</p>
+<p><b>Fix and carry on</b> is for when a setting was the problem. It puts the flow
+back on the canvas with the cards that have already run shown but not offered, so you can correct
+what has not run and carry on from there. Three things are refused, and each for the same reason:
+the record and the folders must not disagree. A flow with anything still in the queue has to be
+stopped or waited for first; a card that has finished cannot be changed, removed or rewired,
+because its results were made from what it was given; and a finished card cannot lose a link,
+because what the cards below it receive comes through it.</p>
+<p><b>Report this</b>, on a flow with a stage that failed or that has stalled, writes a report of
+what happened, with the jobs, that stage's own log and its settings already gathered. You see the
+whole report before it is sent.</p>

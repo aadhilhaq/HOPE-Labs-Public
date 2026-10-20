@@ -1,0 +1,80 @@
+<h1>What a run leaves</h1>
+<p class="lead">One folder per run, holding the structure that went in, the specification that was
+written from it, the job that was sent, BoltzGen's own output, and one small file that the rest of
+the lab's tools read.</p>
+
+<h2 id="the-run-folder">The run folder</h2>
+<pre><code>pdl1_20261003-1204/              the run, as the Runs screen lists it
+  flow.json                      what was asked for, as a flow of two cards
+  submission.json                who submitted it, when, the job id, the plan
+  inputs/target.pdb              the structure, fetched or copied once
+  state/boltzgen.json            what became of the card
+  pdl1_boltzgen/                 the job's own folder
+    plan.json                    what the job was told
+    job.sbatch                   the script that was queued
+    slurm_&lt;jobid&gt;.out            the log
+    target.yaml                  the specification, hotspots converted
+    checked/                     the specification written out and read back
+    final_ranked_designs/        BoltzGen's own output, with its metrics tables
+    designs.json                 the designs, best first
+    cache/                       what the job wrote for itself</code></pre>
+<p>The two levels are not an accident. The outer folder is a flow of two cards, a target and the
+tool on it, which is exactly what the page submits and exactly what the canvas would have drawn;
+the inner one is the job's own. That is why a run queued from the canvas and a run queued here
+look the same on disk and can both be read here.</p>
+
+<h2 id="the-specification">The specification, and the file that proves it</h2>
+<p><code>target.yaml</code> is what BoltzGen was actually given: the chains kept, the binding
+residues as positions in the chain, and the binder asked for as a length range. It is short enough
+to read, and it is the file to look at if a run designed against the wrong patch.</p>
+<p><code>checked/</code> holds the specification written back out as a structure, with a raised
+B-factor on every binding residue. That is how the conversion is proved without a GPU: the job
+reads those marks back and refuses to go on if they are not the positions it asked for. If the run
+got past that point, the hotspots were right.</p>
+
+<h2 id="designs-json">designs.json</h2>
+<p>The one file anything else reads. It holds the designs best first:</p>
+<pre><code>{"tool": "boltzgen",
+ "designs": [{"name": "pdl1_design_7",
+              "path": ".../final_ranked_designs/final_30_designs/rank1_pdl1_design_7.cif",
+              "binder_chains": ["B"],
+              "target_chains": ["A"],
+              "sequence": "GSHMKELAEQ...",
+              "score": 1}]}</code></pre>
+<p>The score is BoltzGen's own final rank, so 1 is the best. Which chain is the binder is read out
+of each structure rather than assumed: BoltzGen renames the chains of what it writes, so the
+letter asked for in the specification is not the letter that comes out, and a binder can be the
+same length as a small target. The chains are matched on sequence instead, the designed sequence
+against the metrics table and the target's against the file that went in. A design where that
+cannot be settled is dropped and named in the log.</p>
+
+<h2 id="boltzgen-s-own-output">BoltzGen's own output</h2>
+<p><code>final_ranked_designs/</code> is BoltzGen's, not the page's, and is worth opening when a
+run has finished:</p>
+<table>
+<tr><th>What</th><th>What it holds</th></tr>
+<tr><td><code>final_30_designs/</code></td><td>The re-folded structures of the designs the tool
+recommends, named with their rank. These are the structures <code>designs.json</code> points
+at.</td></tr>
+<tr><td><code>intermediate_ranked_10_designs/</code></td><td>The earlier ranked set, which is what
+exists in the middle of a run.</td></tr>
+<tr><td>the metrics tables</td><td>The scores behind the ranking, one row per design and about
+thirty columns. <code>designs.json</code> keeps the rank; these keep everything the rank was made
+from, and they are what to read if you want to filter differently.</td></tr>
+</table>
+
+<h2 id="what-the-score-is-and-is-not">What the score is, and is not</h2>
+<div class="note"><b>The rank comes from BoltzGen's own re-folding.</b> It generated the design,
+then predicted the complex again and scored what it predicted. That is a genuine filter and it is
+why the designs come out in an order worth trusting more than their generation order. It is still
+a model scoring a model's work, and it is not an affinity.</div>
+<p>If the run was submitted with folding turned off, there is no ranking at all and
+<code>designs.json</code> is in no meaningful order.</p>
+
+<h2 id="taking-a-design-further">Taking a design further</h2>
+<p>From the launcher's canvas, the <b>designed complexes</b> output of this card goes straight
+into HOPE-MD, which will simulate the binder on the target and compute a binding energy for it.
+The <b>design sequences</b> output goes into the docking instead, for designs short enough for it
+to take, which is thirty residues or fewer.</p>
+<p>By hand: each structure named in <code>designs.json</code> is a complete complex in mmCIF and
+can be opened or handed to anything that reads one.</p>

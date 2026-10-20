@@ -1,0 +1,65 @@
+<h1>What a run leaves</h1>
+<p class="lead">One folder per run, holding the structure that went in, the job that was sent, the
+backbones, the sequences, and one small file that the rest of the lab's tools read.</p>
+
+<h2 id="the-run-folder">The run folder</h2>
+<pre><code>pdl1_20261003-1204/              the run, as the Runs screen lists it
+  flow.json                      what was asked for, as a flow of two cards
+  submission.json                who submitted it, when, the job id, the plan
+  inputs/target.pdb              the structure, fetched or copied once
+  state/rfdiffusion.json         what became of the card
+  pdl1_rfdiffusion/              the job's own folder
+    plan.json                    what the job was told
+    job.sbatch                   the script that was queued
+    slurm_&lt;jobid&gt;.out            the log
+    rfdiffusion/                 the backbones, design_0.pdb onwards
+    proteinmpnn/                 one folder per backbone, with every sequence
+    designs.json                 the designs, best first
+    cache/                       what the job wrote for itself</code></pre>
+<p>The two levels are not an accident. The outer folder is a flow of two cards, a target and the
+tool on it, which is exactly what the page submits and exactly what the canvas would have drawn;
+the inner one is the job's own. That is why a run queued from the canvas and a run queued here
+look the same on disk and can both be read here.</p>
+
+<h2 id="designs-json">designs.json</h2>
+<p>The one file anything else reads. It is written when the run finishes, and it holds the designs
+best first:</p>
+<pre><code>{"tool": "rfdiffusion",
+ "designs": [{"name": "design_3",
+              "path": ".../rfdiffusion/design_3.pdb",
+              "binder_chains": ["A"],
+              "target_chains": ["B"],
+              "sequence": "SPEELKAIAEE...",
+              "score": 1.284}]}</code></pre>
+<p>Which chain is the binder and which is the target is read out of each design rather than
+assumed. RFdiffusion writes the diffused chain first and the target after it, which is the
+opposite way round from the contig that asked for them, so the chains are matched against the
+sequences of the target that went in: whatever is left over, and is the length that was asked
+for, is the binder. A design where that cannot be settled is skipped and named in the log rather
+than passed on the wrong way round.</p>
+
+<h2 id="the-backbones-and-the-sequences">The backbones and the sequences</h2>
+<p><code>rfdiffusion/design_0.pdb</code> and its siblings are the raw diffusion output: the target
+kept verbatim and the binder as a chain of glycines, because a backbone has no sequence yet. They
+are the structures <code>designs.json</code> points at, and the sequence in the record is the one
+to read onto them.</p>
+<p><code>proteinmpnn/design_0/seqs/design_0.fa</code> holds every sequence ProteinMPNN proposed
+for that backbone, with its score in each header, and the backbone's own glycine sequence as the
+first record. The page keeps the best; the file is there if you want the others.</p>
+
+<h2 id="what-the-score-is-and-is-not">What the score is, and is not</h2>
+<div class="note"><b>The score is ProteinMPNN's, and it is about the sequence.</b> It is the
+model's negative log likelihood for the sequence it designed, so lower is better and a design at
+0.9 is one ProteinMPNN was more sure about than one at 1.4. It says nothing about whether the
+binder binds, how tightly, or whether it folds at all.</div>
+<p>Nothing in this run predicts the complex again. That is the gap between a run here and a
+BindCraft2 campaign, which spends most of its time refolding candidates and throwing away the ones
+that do not hold up. Treat the designs as proposals to be filtered, not as results.</p>
+
+<h2 id="taking-a-design-further">Taking a design further</h2>
+<p>From the launcher's canvas, the <b>designed complexes</b> output of this card goes straight into
+HOPE-MD, which will simulate the binder on the target and compute a binding energy for it. The
+<b>design sequences</b> output goes into the docking instead, for designs short enough for it to
+take, which is thirty residues or fewer.</p>
+<p>By hand: the structure named in each record is a complete complex and can be opened, folded
+again, or handed to anything that reads a PDB.</p>

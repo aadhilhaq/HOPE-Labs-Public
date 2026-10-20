@@ -1,0 +1,50 @@
+<h1>The Tools page</h1>
+<p class="lead">Every tool, a block each, saying what it does, whether it is running, and what
+it hands on.</p>
+
+
+<h2 id="a-block">A block</h2>
+<ul>
+<li><b>The name</b>, and beside it the tool's category, or <b>running</b> while it is up.</li>
+<li><b>One line</b> saying what you would use it for, and under it what it does.</li>
+<li><b>takes</b> and <b>leaves</b>: what another tool can hand it, and what it leaves for the
+next one. Every tool leaves something, and some take something: the two folding tools take
+sequences, HADDOCK docking a receptor and its partners, and HOPE-MD the poses, designs and
+complexes the rest of them leave.</li>
+<li><b>Launch</b>, or <b>Open</b> once the tool is running, and <b>Stop</b> beside it then.</li>
+<li>The dashed buttons, such as <b>&rarr; HOPE-MD</b>: the tool that usually comes next in the
+lab's order of work. Hold the pointer over one to see the step it stands for.</li>
+</ul>
+
+<h2 id="launching-a-tool">Launching a tool</h2>
+<p><b>Launch</b> opens the tool's tab straight away. The tab starts the tool on the login
+node and shows that it is doing so; the page it then shows is the tool's own. The block says
+<b>running</b> once the tool is up, and the dot beside its name on the left turns green. The page
+reads the tools' state a few seconds after you press Launch, and every fifteen seconds after
+that.</p>
+<div class="note"><b>The tab opens inside your click.</b> Chrome lets a page open a tab only
+while the click that asked for it is fresh, about five seconds, and starting a tool takes longer
+than that. So the tab comes first, and the tab starts the tool. If nothing opens at all, see
+<a href="getting-started.html#allow-its-tabs">Let its tabs open</a>.</div>
+<p>A tool has one tab. <b>Open</b>, its name on the left, and a dashed button anywhere else that
+leads to it all go to that tab rather than starting a second copy of the tool. See
+<a href="windows.html#one-tab-per-tool">One tab per tool</a>.</p>
+
+<h2 id="stopping-a-tool">Stopping a tool</h2>
+<p><b>Stop</b> ends the tool's page server on the login node and closes the port forwarded to it.
+It does not touch anything the tool submitted: queued and running jobs carry on, and their run
+folders stay where they are. Launch the tool again to see them.</p>
+
+<h2 id="finding-a-tool">Finding a tool</h2>
+<p>With this many tools the page no longer fits on one screen, which is what the categories and
+the search are for. There are four categories, in the order the tools are listed: <b>Docking</b>,
+<b>Design</b>, <b>Folding</b> and <b>Simulation</b>. Design is the largest, and
+Folding holds the two tools that take a sequence and give back a structure. The count
+beside the heading says how many blocks are shown, of how many, and how many tools are
+running.</p>
+
+<h2 id="the-rail">The column on the left</h2>
+<p>The dark column on the left is the same in all three views. Under <b>The tools</b> it lists every
+tool, with a dot that is green while the tool is running; clicking a name opens its tab, as
+<b>Launch</b> or <b>Open</b> would. The note at its foot is the one thing to remember about cost:
+every tool runs under your own account, and the jobs it submits are charged to you.</p>

@@ -1,0 +1,48 @@
+<h1>What a run leaves</h1>
+<p class="lead">The folder, the files in it, the numbers beside each structure, and how to take any
+of it somewhere else.</p>
+
+<h2>The run folder</h2>
+<pre><code>demo_20261005-1830/
+  submission.json              what was asked for, and what Slurm was asked
+  entities.json                the rows exactly as they were given
+  inputs/demo.fasta            what phase one read
+  fold/demo/
+    demo.a3m                   phase one's alignment
+    demo.pickle                the same alignment, as ColabFold keeps it
+    demo_unrelaxed_rank_001_alphafold2_multimer_v3_model_3_seed_000.pdb
+    demo_scores_rank_001_....json
+    demo_predicted_aligned_error_v1.json
+    cite.bibtex                the citations for this exact configuration
+  job.sbatch                   the job, as it was queued
+  slurm_12345678.out           the log
+  cache/                       everything the tool wanted to write in your home folder</code></pre>
+<p>The alignments are the large part. Phase one leaves several megabytes per protein sequence, and
+a run with a few chains in it is a few hundred megabytes before a structure is written. That is why
+the run folder goes in your scratch and why the page refuses to put one in your home folder.</p>
+
+<h2>The numbers beside each structure</h2>
+<p>ColabFold writes a scores file beside each structure. The page shows the mean
+pLDDT across the chain, and pTM and ipTM where the model produced them. For a complex the
+confidence column is the ipTM, which is what ColabFold itself ranks a complex by; for a single
+chain it is the mean pLDDT.</p>
+<p>The structures are named <code>rank_001</code> upwards, best first, and the rank is part of the
+filename rather than something the page worked out.</p>
+<p>ColabFold also writes <code>cite.bibtex</code> into the run, listing the papers for the exact
+configuration that ran. It is the most reliable citation list for a particular run, and it is
+offered for download.</p>
+<p>pLDDT is per residue confidence and is the one to look at first. pTM says how much of the fold
+is likely to be right overall, and ipTM says how much the interface between chains is likely to be
+right, which for a complex is usually the question you came with.</p>
+
+<h2>Taking the results somewhere</h2>
+<p>Two ways, because they answer different questions.</p>
+<p><b>To a folder on the cluster.</b> Give a path and press Copy the structures, or Copy the whole
+run. This is much faster than going through this page, and it is where the lab's work belongs. A
+path inside your home folder is refused, with the reason: home is 10 GB and 10,000 files, and one
+run is more than both.</p>
+<p><b>To your own computer.</b> The save button beside each structure, and Save the best model, ask
+your browser where to put the file. In Chrome you get a real folder and filename chooser; in
+Firefox and Safari the file goes to your downloads folder, because those browsers have no chooser
+to offer. A structure is a few hundred kilobytes, so this is the right way to take one model and
+the wrong way to take a whole run.</p>

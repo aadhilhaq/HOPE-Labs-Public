@@ -1,0 +1,33 @@
+<h1>The Runs screen</h1>
+<p class="lead">Your runs, what Slurm makes of them, and the two things you can do to a job that
+is already queued.</p>
+
+<h2>The list</h2>
+<p>Newest first, with a dot for the state: amber for queued, teal and blinking for running, green
+for finished, rust for stopped. Mine shows yours; Everyone shows every run in the folders this
+page was started with, which is how to see what a colleague's run did without asking them.</p>
+<p>A folder is a run when it holds a <code>submission.json</code>, and the page writes that before
+it queues anything, so a run whose submission failed is still listed and can still be read.</p>
+
+<h2>What the tiles say</h2>
+<p>Structures is how many are on disk, counted by looking rather than by reading the log: a log
+line can be printed before the work it describes has finished. Alignments is what phase one left.
+Chains and residues are what was asked for.</p>
+
+<h2>Cancel, and Queue again</h2>
+<p>Cancel runs <code>scancel</code> on the job. Slurm decides whether you may, which is to say it
+is your job or it is not. What is already on disk stays in the run folder.</p>
+<p>Queue again submits the same job script a second time. It is phase two only, so it needs no
+network: the alignments are already in the folder. Use it for a run that ran out of walltime or
+died on a bad node. Boltz-2 starts again from the beginning either way, because it writes no
+checkpoint a second job could pick up.</p>
+
+<h2>The log</h2>
+<p>The last couple of hundred lines of the Slurm log, with the whole file a download away. The job
+prints the node, the card and the driver before it folds anything, because when folding fails on a
+new node it is almost always the card or the driver rather than the tool.</p>
+
+<h2>What was folded</h2>
+<p>The entities as you gave them, row by row, with the chains each became. Beside them, the input
+file the job actually read, so an argument about what a finished run folded can be settled from
+the run folder rather than from memory.</p>

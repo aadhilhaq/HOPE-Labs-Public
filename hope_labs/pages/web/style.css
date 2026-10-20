@@ -1,0 +1,169 @@
+/* The design page: the same palette as HOPE-MD, the docking console and BindCraft2, so the lab's
+   tools read as kin and nobody has to work out which one they are looking at from the colour. */
+:root{
+  --ground:#eef3f3; --card:#ffffff; --ink:#0f1719; --dim:#5f6f71;
+  --line:#d7e2e2; --line-soft:#e7eeee; --wait:#e9f0f0;
+  --teal:#0d5c6b; --green:#146b47; --rust:#c2603a; --amber:#b07a1c; --good:#146b47;
+  --teal-soft:#e3eef0; --rust-soft:#f7ece7; --on-accent:#ffffff;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+/* dark: the computer's setting unless the header button said otherwise. Both blocks carry the
+   same values so the button wins either way. */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a; --good:#4cbf94;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --on-accent:#0b1113; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a; --good:#4cbf94;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --on-accent:#0b1113; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:13.5px/1.5 var(--sans);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+
+.apphead{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--card);flex:0 0 auto;flex-wrap:wrap;row-gap:6px}
+.mark{display:flex;align-items:center;gap:9px}.nm{font-weight:600;font-size:15px}
+.bd{font-family:var(--mono);font-size:10.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:inline-flex;background:var(--wait);border:1px solid var(--line);border-radius:8px;padding:2px;margin-left:auto}
+.tab{font-size:12.5px;font-weight:500;color:var(--dim);padding:4px 14px;border-radius:6px;border:0;background:none;display:inline-flex;gap:7px;align-items:center}
+.tab.on{background:var(--teal);color:var(--on-accent);font-weight:600}
+.tab em{font-style:normal;font-size:10px;font-weight:600;background:var(--rust);color:var(--on-accent);border-radius:999px;padding:0 6px;line-height:16px}
+.pill{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--dim)}
+.pill.on{background:var(--teal);border-color:var(--teal);color:var(--on-accent);font-weight:600}
+.pill.theme{font-family:var(--mono)}
+/* Docs is a link rather than a button, and should not be underlined for it. */
+.pill.docs{text-decoration:none;font-weight:600}
+.pill.docs:hover{border-color:var(--teal);color:var(--teal)}
+
+/* ---------------------------------------------------------------- design */
+.screen{display:grid;grid-template-columns:1fr var(--railw,370px);flex:1;min-height:0}
+.stage{padding:14px;display:flex;flex-direction:column;gap:11px;min-width:0;overflow:auto}
+.rail{padding:12px 14px 34px;overflow-y:auto;min-width:0;border-left:1px solid var(--line);background:var(--card)}
+.box{border:1px solid var(--line);border-radius:9px;background:var(--card);padding:10px 12px;min-width:0}
+.box>h2{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:600;margin:0 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.box>h2 .why{text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim)}
+.modes{display:inline-flex;background:var(--wait);border:1px solid var(--line);border-radius:7px;padding:2px}
+.modes button{font-size:12px;font-weight:500;color:var(--dim);padding:3px 11px;border-radius:5px;border:0;background:none}
+.modes button.on{background:var(--teal);color:var(--on-accent);font-weight:600}
+#targetout{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px}
+#chainchips{margin-top:7px}
+
+.grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);font-weight:600;margin:12px 0 4px;display:flex;align-items:center;gap:8px;background:var(--wait);border:1px solid var(--line-soft);border-left:3px solid var(--line);border-radius:7px;padding:5px 9px 5px 7px}
+.grp.done{border-left-color:var(--good)}
+.grp.bad{border-left-color:var(--rust)}
+.grp:first-child{margin-top:0}
+/* More settings is a button in the shape of a group heading: the twenty settings behind it are
+   the tool's own considered defaults, and nobody should have to refuse them to reach the one
+   they came for. */
+.grp.more{cursor:pointer;width:100%;text-align:left}
+.grp.more:hover{border-color:var(--teal)}
+.grp.more .why{text-transform:none;letter-spacing:0;font-weight:400;margin-left:auto}
+.stepno{flex:0 0 auto;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--dim);background:var(--card)}
+.grp.done .stepno{background:var(--good);border-color:var(--good);color:#fff}
+.grp.bad .stepno{border-color:var(--rust);color:var(--rust)}
+label.f{display:block;font-size:11px;line-height:1.3;color:var(--dim);margin:7px 0 3px}
+label.f.bad{color:var(--rust);font-weight:600}
+/* A setting's name, then its reason underneath rather than running on from it. The cards these
+   forms are built from explain themselves in whole sentences, and a sentence set in the same
+   size and colour as the name reads as part of it: "Backbones to generate each is a separate
+   diffusion" is one line nobody can parse. */
+label.f .fname{color:var(--ink);font-weight:500;font-size:11.5px}
+label.f .why{display:block;font-size:10.5px;line-height:1.35;margin-top:1px}
+.inp{width:100%;border:1px solid var(--line);border-radius:7px;background:var(--card);padding:6px 9px;font-size:12.5px;color:var(--ink);min-height:31px}
+.inp.mono,select.inp{font-family:var(--mono);font-size:11.5px}
+.inp:focus{outline:2px solid var(--teal-soft);border-color:var(--teal)}
+.inp.bad{border-color:var(--rust);box-shadow:0 0 0 1px var(--rust)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.withbtn{display:flex;gap:6px}.withbtn .inp{flex:1}
+.errmsg{font-size:11px;color:var(--rust);margin-top:3px;line-height:1.45}
+.tick{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:8px;cursor:pointer}
+.tick input{margin:0}
+.tick .why{margin-left:2px}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;text-align:center;border-radius:7px;padding:8px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:var(--on-accent)}
+.btn.sm{flex:0 0 auto;padding:5px 10px;font-size:11.5px;font-weight:500}
+.btn:disabled{opacity:.45;cursor:default}
+.help{display:inline-block;width:13px;height:13px;line-height:12px;border-radius:50%;border:1px solid var(--line);color:var(--dim);font-size:9px;font-weight:600;text-align:center;margin-left:5px;cursor:help;vertical-align:middle}
+.why{color:var(--dim);font-size:11.5px}
+.note{font-size:11.5px;color:var(--dim);margin:8px 0 0;line-height:1.5}
+.note.warn{color:var(--amber)}
+.pick{color:var(--teal);cursor:pointer;text-decoration:underline}
+.chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;background:var(--teal-soft);color:var(--teal);margin:0 4px 4px 0;font-family:var(--mono);border:1px solid transparent;cursor:pointer}
+.chip.on{background:var(--teal);color:var(--on-accent)}
+.chip.plain{background:var(--wait);color:var(--dim);cursor:default}
+.derived{background:var(--teal-soft);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:7px;padding:9px 11px;margin-top:9px}
+.derived .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:600}
+.derived .v{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--teal);line-height:1.6;overflow-wrap:anywhere}
+.derived .n{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:4px;white-space:pre-wrap}
+.drop{border:1px dashed var(--line);border-radius:8px;padding:14px;text-align:center;color:var(--dim);font-size:12px}
+.drop.over{border-color:var(--teal);background:var(--teal-soft);color:var(--teal)}
+ul.problist{margin:0;padding-left:18px;font-size:12.5px;color:var(--rust)}
+ul.problist li{margin-bottom:3px}
+table.t{border-collapse:collapse;width:100%;font-size:11.5px;font-family:var(--mono)}
+table.t th{text-align:left;font-family:var(--sans);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.t td{padding:4px 6px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+table.t td.wrap{white-space:normal;word-break:break-all;font-size:10.5px}
+.tblbox{overflow-x:auto}
+
+/* ---------------------------------------------------------------- runs */
+.rscreen{display:grid;grid-template-columns:var(--rrailw,300px) 1fr;flex:1;min-height:0}
+.rrail{padding:12px;overflow-y:auto;overflow-x:hidden;min-width:0;border-right:1px solid var(--line)}
+.runrow{display:flex;align-items:center;gap:8px;padding:6px 7px;border-radius:6px;font-size:12.5px;cursor:pointer;border:0;background:none;width:100%;text-align:left}
+.runrow:hover{background:var(--wait)}.runrow.on{background:var(--wait);font-weight:600}
+.runrow .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.runrow .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+.dot.run{background:var(--teal);animation:blink 1.1s ease-in-out infinite}
+.dot.fin{background:var(--good)}.dot.stop{background:var(--rust)}.dot.q{background:var(--amber)}.dot.dry{opacity:.45}.dot.unk{background:var(--line)}
+@keyframes blink{50%{opacity:.15}}
+.legend{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);margin:2px 0 8px;flex-wrap:wrap}
+.legend .dot{width:7px;height:7px;margin-left:4px;border-radius:50%;display:inline-block}
+.legend .dot.run{animation:none}
+.runrow .ago{margin-left:auto;font-size:10.5px;color:var(--dim);font-weight:400}
+.rmain{padding:14px 16px 34px;display:flex;flex-direction:column;gap:11px;overflow:auto;min-width:0}
+.rmain>*{flex-shrink:0}
+.runhead{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.runhead h1{font-size:17px;margin:0;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.tile{border:1px solid var(--line);border-radius:9px;background:var(--card);padding:8px 10px 7px;min-width:0}
+.tk{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);font-weight:600}
+.tile .big{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--teal);line-height:1.15;margin-top:5px}
+.tile .sub{font-size:10.5px;color:var(--dim);line-height:1.4;margin-top:4px}
+.log{font:11px/1.5 var(--mono);background:var(--wait);border-radius:7px;padding:9px;max-height:320px;overflow:auto;white-space:pre-wrap;margin:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px;margin:0}
+.kv dt{color:var(--dim)}.kv dd{margin:0;font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere}
+.flash{position:fixed;right:16px;bottom:38px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:8px;padding:10px 13px;font-size:12.5px;max-width:430px;box-shadow:0 6px 24px rgba(0,0,0,.14);z-index:50}
+.flash.bad{border-left-color:var(--rust)}
+.empty{color:var(--dim);font-size:12.5px;padding:18px 2px}
+@media (max-width:900px){
+  .screen,.rscreen{grid-template-columns:1fr;overflow:auto}
+  .rail{border-left:0;border-top:1px solid var(--line)}
+  .rrail{border-right:0;border-bottom:1px solid var(--line)}
+  .tiles{grid-template-columns:1fr 1fr}
+}
+
+/* A number and a walltime get arrows. The browser's own spinner is a few pixels of target
+   clipped against the border of a box this size, and on a touchpad it cannot be hit at all, so
+   it is taken off and two drawn in its place. Firefox's rule and WebKit's are separate; neither
+   honours the other's. */
+.spin{position:relative;display:flex}
+.spin .inp{flex:1 1 auto;padding-right:22px;min-width:0}
+.spin .inp[type=number]{appearance:textfield;-moz-appearance:textfield}
+.spin .inp::-webkit-outer-spin-button,
+.spin .inp::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
+.spin .arrows{position:absolute;top:1px;right:1px;bottom:1px;width:20px;display:flex;
+  flex-direction:column;border-left:1px solid var(--line);border-radius:0 6px 6px 0;overflow:hidden}
+.spin .arrows button{flex:1 1 0;min-height:0;display:flex;align-items:center;
+  justify-content:center;border:0;background:var(--wait,transparent);color:var(--dim);
+  font-size:8px;line-height:1;padding:0;cursor:pointer}
+.spin .arrows button:hover{color:var(--teal)}
+.why.bounds{font-size:10px;opacity:.75}

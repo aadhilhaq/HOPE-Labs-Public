@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOPE Labs</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62 62"><rect x="8" y="8" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="33" y="8" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="8" y="33" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="33" y="33" width="21" height="21" rx="5" fill="%23c2603a"/></svg>'>
+<style>
+  /* the tab a tool opens in, while the tool starts; then the tab goes on to the tool's own page.
+     The bar along the bottom is shared with the docs; a message lifts clear of it. */
+  :root{--accent:var(--teal)}
+  /*__CREDITBAR_CSS__*/
+  body{display:block;min-height:100vh;padding-bottom:28px}
+  .wait .acts{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .wait pre{margin:8px 0 0;white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<header class="toolbar">
+  <svg width="17" height="17" viewBox="0 0 62 62" aria-hidden="true" style="flex:0 0 auto">
+    <rect x="8" y="8" width="21" height="21" rx="5" fill="var(--teal)"/>
+    <rect x="33" y="8" width="21" height="21" rx="5" fill="var(--teal)"/>
+    <rect x="8" y="33" width="21" height="21" rx="5" fill="var(--teal)"/>
+    <rect x="33" y="33" width="21" height="21" rx="5" fill="var(--rust)"/>
+  </svg>
+  <b id="t-name">…</b>
+  <span class="why" id="t-tag"></span>
+  <span class="spacer"></span>
+  <a class="btn sm" id="t-docs" href="/docs/windows.html" target="_blank" rel="noopener"
+     title="HOPE Labs documentation: how a tool opens, and how a run is handed from one tool to the next">HOPE Labs docs</a>
+</header>
+
+<div class="handoff" id="t-from" hidden>
+  <span class="lb">from the run</span>
+  <code id="t-from-path"></code>
+  <button class="btn sm" id="t-from-copy">Copy path</button>
+  <span class="why">paste it into the tool's import box</span>
+</div>
+
+<div class="wait" id="t-wait">
+  <span class="spin"></span>
+  <div>
+    <b>Starting <span id="t-wait-name">the tool</span> on the login node</b><br>
+    <span class="why">The first start of the day takes up to a minute while its environment loads. This tab goes on to the tool by itself.</span>
+  </div>
+</div>
+
+<div class="wait" id="t-ready" hidden>
+  <div>
+    <b><span id="t-ready-name"></span> is ready.</b><br>
+    <span class="why">Copy the run's folder now, then paste it into the tool's import box.</span>
+    <div class="acts"><button class="btn pri" id="t-go">Copy the path and open the tool</button></div>
+  </div>
+</div>
+
+<div class="wait" id="t-failed" hidden>
+  <div>
+    <b><span id="t-failed-name"></span> did not start.</b>
+    <pre id="t-failed-why"></pre>
+    <div class="acts"><button class="btn pri" id="t-retry">Try again</button></div>
+  </div>
+</div>
+
+<!--__CREDITBAR__-->
+<script src="/static/tool.js"></script>
+</body>
+</html>

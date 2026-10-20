@@ -1,0 +1,57 @@
+<h1>The target and hotspots</h1>
+<p class="lead">What the binder is designed against, which face of it, and the one thing about
+the numbering that will catch you out.</p>
+
+<h2 id="the-target">The target</h2>
+<p>A PDB id to fetch, or a path to a file already on Grace. Both <code>.pdb</code> and
+<code>.cif</code> are read. <b>Chains</b> names the chains the binder is designed against;
+everything else in the file is ignored rather than kept out of the way, so a structure that
+arrived with its own bound peptide should have that chain left out.</p>
+
+<h2 id="hotspots">Hotspots</h2>
+<p>The residues the binder has to reach, written as <code>A:63,A:67,A:73</code>. They do two
+things. They are passed to the model as the residues the design must contact, and they decide
+where the design is grown from: the origin is placed ten angstroms out from their centre of
+mass, so the binder forms off the face you named rather than wherever the target's centre
+happens to be.</p>
+<p>The model takes hotspots at the atom level as well, naming particular side-chain atoms. This
+page sends whole residues, because that is what a target card carries. For binder design that is
+the normal case; the atom-level form is what the active-site work in the paper uses.</p>
+<div class="note"><b>No hotspots is allowed and is not the same as a mistake.</b> With none
+named, the origin falls back to the target's centre of mass and the binder may grow anywhere on
+it. The run says so in its log rather than refusing.</div>
+
+<h2 id="the-numbering">The numbering, which is not yours</h2>
+<p>Two renumberings happen, and only the first of them is visible on the form.</p>
+<p>Going in, the contig has to name the target's residues as a range, and that range is read off
+the structure rather than assumed. A cropped PDB keeps its original numbering: MDM2 in 1YCR runs
+from 25 to 109, not from 1, and the contig says <code>A25-109</code>. Assuming a range starting
+at 1 would be perfectly well formed and would design against the wrong residues.</p>
+<p>The box under the hotspots shows that contig, with the hotspots and the origin strategy beside
+it, as the job will be given them:</p>
+<pre><code>contig: 70-100,/0,A25-109
+select_hotspots: A63, A67, A73, each as a whole residue ("ALL")
+infer_ori_strategy: hotspots, so the binder grows off the face they are on</code></pre>
+<p>Read it before you submit: the range it took off your structure, and every residue it will aim
+at, are both in there.</p>
+<p>Coming out, the model relabels and renumbers everything it writes, in the order the contig
+put it. The design comes back as chain <b>A</b> numbered from 1, and the target follows as chain
+<b>B</b> renumbered from 1, whatever it was called and however it was numbered on the way in.
+<a href="results.html">What a run leaves</a> says what that means for reading the output.</p>
+
+<h2 id="a-target-with-gaps">A target with gaps in its chain</h2>
+<p>Most crystal structures have holes in them. Residues nobody could see in the density are not
+in the file at all, and the numbering steps over them: 7A3R's chain A is numbered 1 to 395 but
+has no 191 to 194, no 226 or 227, and three more holes besides. The target is given to the tool
+as it was deposited, so the holes come with it.</p>
+<p>The contig names each stretch of resolved residues on its own, with a chain break between
+them, so 7A3R's chain A goes in as six pieces:</p>
+<pre><code>70-100,/0,A1-190,/0,A195-225,/0,A228-270,/0,A275-342,/0,A345-381,/0,A386-395</code></pre>
+<p>A break is what a hole in the chain really is, because there is no peptide bond across it.
+Written without one, the stretches either side would be bonded together and renumbered as though
+the backbone ran straight through, which is a claim about the protein that is not true. The
+target therefore comes back under one chain letter per stretch, <b>B</b> to <b>G</b> for this
+one, and the design is still chain <b>A</b>.</p>
+<p>A hotspot that falls in a hole is refused by name before anything is queued, because there is
+no such residue to aim at. The chips above the box say how each chain is numbered but not where
+its holes are, so a refusal naming the residue is how you find out.</p>

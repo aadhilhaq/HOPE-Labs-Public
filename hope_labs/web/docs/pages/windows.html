@@ -1,0 +1,37 @@
+<h1>A tool's tab</h1>
+<p class="lead">Each tool opens in a tab of its own, on the tool's own page: the same page its own
+launcher opens, with nothing of HOPE Labs around it.</p>
+
+<p>The page in the tab is the tool's, down to its own <b>Docs</b> button and the bar along its
+bottom. Its buttons, its file browser and its fetches work as they do when the tool is opened on its
+own, because that is what it is. To reach another tool, go back to the HOPE Labs tab and pick it
+there.</p>
+<p>RFdiffusion, RFdiffusion3, BoltzGen, Boltz-2 and ColabFold ship no page of their own, so the
+page in the tab is the lab's. It is still the tool's page in every way that matters here:
+its own documentation behind its own Docs button, its own bar, its own Runs screen, and nothing of
+the launcher around it.</p>
+
+<h2 id="while-it-starts">While it starts</h2>
+<p>A tool that is not running yet is started by its tab, which shows <b>Starting</b> and the
+tool's name while it waits. The first start of the day can take up to a minute while the tool's
+environment loads on the login node. HOPE Labs waits up to two minutes for the tool to say it is
+ready. Past that, or if the tool stops before then, the tab says why, with a <b>Try again</b>
+button; <a href="troubleshooting.html#starting-a-tool">When something goes wrong</a> lists those
+messages.</p>
+
+<h2 id="one-tab-per-tool">One tab per tool</h2>
+<p>Each tab is named after its tool, so asking for a tool again, from its block or from the column on
+the left, goes back to its tab instead of starting a second copy of the tool. A tab already showing
+the tool is only brought forward, not loaded again, so a form you had filled in there is kept.
+Whether your browser also switches to that tab by itself depends on the browser; if it does not,
+the tab is the one with the tool's name.</p>
+<p>Closing a tab does not stop its tool. It keeps running on the login node until you press
+<b>Stop</b> on its block or sign out, and opening it again is quick.</p>
+
+<h2 id="handing-on-a-run">Handing on a run</h2>
+<p>When a tab is opened from a run in <a href="results.html">Results</a>, it shows the run's
+folder with a <b>Copy path</b> button while the tool starts, and waits for one more click when the
+tool is ready: <b>Copy the path and open</b> the tool. The tools' own pages cannot yet be opened on a
+folder, so the path is handed over by hand: it goes on the clipboard, and you paste it into the
+tool's import box. If your browser will not let the page copy, the path is selected for you instead,
+ready for <kbd>Ctrl</kbd>+<kbd>C</kbd>, and the button becomes <b>Open</b> the tool.</p>

@@ -1,0 +1,53 @@
+<h1>The sequences</h1>
+<p class="lead">The rows, what is checked in them, and why the checking is on this page rather
+than left to the tool.</p>
+
+<h2>One row per chain</h2>
+<p>A folding run is a list of entities. Each row is a type, an optional name, a sequence and a
+number of copies. The copies are chains of the same sequence: a row of 300 residues with three
+copies is three chains and 900 residues, and the running total under the rows says so.</p>
+<p>The name is yours, for reading the run folder later. It is not the chain id.</p>
+
+<h2>The types</h2>
+<table>
+<tr><th>Type</th><th>Letters</th><th>Notes</th></tr>
+<tr><td>Protein</td><td>the twenty standard amino acids, and X</td>
+    <td>One chain per row. The chains are written into one FASTA record, joined by colons, which
+    is how ColabFold is told that they belong in one structure.</td></tr>
+</table>
+<p>There is no other type, because ColabFold has no other model. A nucleic acid pasted in is
+refused with a sentence saying so rather than folded as a protein.</p>
+
+<h2>Why the letters are checked here</h2>
+<p>Neither folding tool refuses a sequence it does not understand. ColabFold maps every character
+it has no residue for to its unknown token and folds what is left, so a lowercase sequence becomes
+a chain of nothing but unknown residues and comes back with a confidence score on it. That is the
+worst kind of failure, because it looks like a result.</p>
+<p>So the sequence box marks every letter the tool has no residue for, where it is, and the run is
+refused until they are gone. Lower case is simply made upper case, because case carries no meaning
+in a sequence. A gap character is refused with a message of its own: it usually means a row of an
+alignment has been pasted instead of a sequence.</p>
+
+<h2>Chain ids</h2>
+<p>Chain ids are handed out A, B, C in row order, one per copy, and the page shows which letters
+each row became. That is the order the tool names its chains in, so the ids on the page are the
+ids in the structure that comes back. Twenty-six chains is the limit, counting copies.</p>
+
+<h2>Pasting and uploading</h2>
+<p>Paste sequences takes a bare sequence or FASTA and makes one row per record, with the name from
+the header. The type is read off the letters where the letters settle it: a U with no T is RNA, a T
+with no U is DNA. A sequence of nothing but A, C and G is a protein, a DNA strand and an RNA strand
+all at once, so it is read as a protein and the page says that it guessed. Nothing is decided
+quietly.</p>
+<p>Upload a FASTA does the same with a <code>.fasta</code>, <code>.fa</code>, <code>.faa</code> or
+<code>.txt</code> file from your own computer. Two megabytes is the most it takes, which is about
+two million residues; a sequence file is kilobytes, so anything near the cap is something else.
+The file is read in your browser and its contents are sent to the page, because the page runs on
+the cluster and the cluster cannot see your computer.</p>
+
+<h2>How large a run may be</h2>
+<p>Five thousand residues in all is the most this page will queue, and over about fifteen hundred
+it says so: both tools hold something that grows with the square of the residue count, so what
+runs out is the card rather than the clock. The plan box names the card and how much memory it
+has, and <a href="resources.html">Resources and submitting</a> says which cards this cluster
+has.</p>

@@ -1,0 +1,61 @@
+<h1>BoltzGen on Grace</h1>
+<p class="lead">A page in front of the lab's BoltzGen install: give it a target, say where the
+binder should bind, choose what kind of binder you want, and it queues one GPU job that generates
+binders, folds them again and ranks them.</p>
+
+<h2 id="what-the-page-does">What the page does</h2>
+<p>BoltzGen generates a binder against a target. Unlike most design tools it is not limited to a
+protein receptor: a target can be a protein, a peptide, a nucleic acid or a small molecule, and
+the kind of binder you want is chosen as a protocol rather than as a set of settings. Having
+generated candidates it re-folds each one with the target, scores the complex and ranks what
+survives, all inside the same run.</p>
+<p>This page takes the target, the hotspots, the protocol and the binder length, converts the
+hotspots into the form BoltzGen wants and shows you the conversion, writes the run folder and
+queues the job. Nothing is installed and no module is loaded: BoltzGen and its environment are at
+<code>envs/boltzgen</code> in the HOPE Labs folder, and its model weights are in a cache
+beside it.</p>
+<p>The server runs as you. The job is queued under your own account, Slurm charges your
+allocation, and the page shows only the runs you can read.</p>
+
+<h2 id="the-two-screens">The two screens</h2>
+<table>
+<tr><th>Screen</th><th>What it is for</th></tr>
+<tr><td><b>Design</b></td><td>The target, the hotspots, the protocol, the binder length and the
+resources, with a box that says what Slurm will be asked for and another that shows the hotspots
+as positions in the chain, which is how BoltzGen counts them. <b>Submit</b> stays off while
+anything is unanswered.</td></tr>
+<tr><td><b>Runs</b></td><td>Your runs and their Slurm state, the designs written so far, the
+ranked designs once the run has finished, the log, and where the results are. A job can be
+cancelled here, and one that stopped can be queued again.</td></tr>
+</table>
+
+<h2 id="the-hotspot-conversion">The one thing this page is for</h2>
+<div class="note"><b>BoltzGen numbers hotspots by position in the chain, not by the numbering the
+structure file uses.</b> Every other tool in the lab takes the file's own numbering, and so does
+this form, which means something has to convert. Getting it wrong does not fail: it designs
+against a different patch of the surface, for twelve hours, and the result looks exactly like a
+run that worked.</div>
+<p>So the form converts, shows you the conversion before anything is queued, and the job checks it
+again: BoltzGen is asked to write the specification out as a structure with the binding residues
+marked, those marks are read back, and the run refuses to go on if they are not the residues that
+were asked for. That is the whole reason this page is worth having over a hand-written
+specification.</p>
+
+<h2 id="the-same-run-from-a-flow">The same run, from a flow</h2>
+<p>This tool can also be one card of a flow, drawn on the launcher's canvas with a docking or a
+simulation after it. The page and the canvas queue the run through the same code, so the two are
+the same run: the same specification, the same job script, the same run folder, and the same
+refusals for the same reasons.</p>
+
+<h2 id="what-it-is-not">What it is not</h2>
+<div class="note"><b>A ranked design is a prediction, not a measurement.</b> The ranking comes
+from BoltzGen re-folding its own designs and scoring the complexes it predicts. That is a real
+filter and it is more than some tools do, but it is still a model's opinion of a model's design.
+Binding, selectivity and expression have to be tested at the bench.</div>
+<p>BoltzGen is not the lab's work. It is by Hannes St&auml;rk and colleagues, and it re-folds with
+Boltz-2. The bar along the bottom of the page names the version this install runs, and
+<a href="citing.html">How to cite</a> says what to cite.</p>
+
+<h2 id="where-to-start">Where to start</h2>
+<p><a href="getting-started.html">Getting started</a> opens the page and says where runs go. Then
+<a href="target.html">The target and hotspots</a>, which is where the conversion above happens.</p>

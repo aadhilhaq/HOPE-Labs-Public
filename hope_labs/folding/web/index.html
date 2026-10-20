@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__APP__</title>
+<!-- The shell and the palette are the design page's, so the lab's four pages read as kin; this
+     page's own stylesheet is the entity rows, the box that says what the job will be told, and
+     the viewer. The server looks in this page's web folder first and the design page's second. -->
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/folding.css">
+<style>
+  /* The bar along the bottom, the one the documentation draws, in this page's colours: the kit
+     knows one accent and calls it --accent, and here that is the teal. */
+  .creditbar{--accent:var(--teal)}
+  /*__CREDITBAR_CSS__*/
+</style>
+<link rel="icon" href="__FAVICON__">
+</head>
+<body data-tool="__TOOL__">
+<header class="apphead">
+  <span class="mark">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm" id="appname">__APP__</span>
+  </span>
+  <span class="bd" id="where"></span>
+  <button class="pill theme" id="theme" title="switch between light and dark">&#9681; dark</button>
+  <span class="tabs">
+    <button class="tab on" data-screen="setup">Fold</button>
+    <button class="tab" data-screen="runs">Runs <em id="runcount" hidden></em></button>
+  </span>
+  <!-- Docs last, so it sits in the corner where a documentation link is looked for. It opens in
+       a tab of its own and carries no token: the documentation is the same for everyone. -->
+  <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+     title="How this page works, box by box, with what to do when something goes wrong">Docs</a>
+</header>
+
+<!-- Said across the top rather than left to be discovered: a tool that is not installed here
+     cannot be queued, and the sentence names the folder that was looked in. -->
+<p class="banner" id="notinstalled" hidden></p>
+
+<!-- ============================== FOLD ============================== -->
+<main id="screen-setup" class="screen">
+  <section class="stage">
+
+    <div class="box">
+      <h2>1 &nbsp;What to fold
+        <span class="why" id="takes"></span></h2>
+      <div id="rows"></div>
+      <div class="entbar">
+        <button class="btn sm" id="addrow">+ Add entity</button>
+        <button class="btn sm" id="pastebtn">Paste sequences&hellip;</button>
+        <!-- Two places a FASTA can come from, and they are not the same place. The page is
+             reached over a forwarded port, so the browser is on a laptop and the cluster cannot
+             see its disk: Browse walks the cluster's own filesystem, where a file a previous run
+             left actually is, and the second reads a file on the laptop and sends its contents
+             through the connection that is already open. -->
+        <button class="btn sm" id="fastabrowse">Browse the cluster&hellip;</button>
+        <button class="btn sm" id="uploadbtn">From this computer&hellip;</button>
+        <input type="file" id="uploadfile" accept=".fasta,.fa,.faa,.txt,.seq,text/plain" hidden>
+        <span style="flex:1"></span>
+        <span class="why" id="total"></span>
+      </div>
+      <div id="pastebox" hidden>
+        <label class="f" for="pastetext"><span class="fname">A bare sequence, or FASTA</span>
+          <span class="why">One row per record. The type is read off the letters where they
+            settle it, and shown so it can be changed.</span></label>
+        <textarea class="inp mono" id="pastetext" rows="5"
+                  placeholder="&gt;heavy chain&#10;QVQLVQSGAEVKKPGASVKVSCKAS&#10;&gt;light chain&#10;DIQMTQSPSSLSASVGDRVTITCRAS"></textarea>
+        <div class="entbar">
+          <button class="btn sm pri" id="pasteadd">Read these</button>
+          <button class="btn sm" id="pastecancel">Cancel</button>
+          <span class="why" id="pastesays"></span>
+        </div>
+      </div>
+      <p class="errmsg" id="rowserr" hidden></p>
+    </div>
+
+    <div class="box" id="toldbox">
+      <h2>2 &nbsp;What the job will be told
+        <span class="modes" id="toldmodes">
+          <button data-told="input" class="on">The input file</button>
+          <button data-told="command">The command</button>
+        </span></h2>
+      <p class="note" id="toldwhat">Add an entity to see it.</p>
+      <pre class="told" id="toldtext"></pre>
+      <p class="note" id="phaseone" hidden></p>
+    </div>
+
+    <div class="box">
+      <h2>What Slurm will be asked for</h2>
+      <div class="derived" id="plan"><div class="k">plan</div><div class="n">Add an entity to see the card, the partition and the memory the job asks for.</div></div>
+      <p class="note" id="notes" hidden></p>
+    </div>
+
+    <div class="box" id="probbox" hidden>
+      <h2>Before this can be queued</h2>
+      <ul class="problist" id="problems"></ul>
+    </div>
+
+  </section>
+
+  <!-- ------------------------------- the rail ------------------------------- -->
+  <aside class="rail">
+    <div class="grp" id="g-tool"><span class="stepno">3</span> <span id="g-tool-name">The run</span></div>
+    <div id="fields-main"></div>
+
+    <div class="grp" id="g-res"><span class="stepno">4</span> Resources</div>
+    <div id="fields-res"></div>
+
+    <div class="grp more" id="g-more"><span class="stepno">+</span> More settings
+      <span class="why" id="morecount"></span></div>
+    <div id="fields-more" hidden></div>
+
+    <div class="grp" id="g-where"><span class="stepno">5</span> Where it goes</div>
+    <label class="f" for="name"><span class="fname">Run name</span></label>
+    <input class="inp mono" id="name" placeholder="from the first sequence">
+    <label class="f" for="out"><span class="fname">Run folder</span></label>
+    <div class="withbtn">
+      <input class="inp mono" id="out" placeholder="chosen for you">
+      <button class="btn sm" id="outbrowse" title="browse the cluster for a folder, or make one">Browse&hellip;</button>
+    </div>
+    <p class="errmsg" id="out-err" hidden></p>
+
+    <div class="btns">
+      <button class="btn pri" id="go" disabled>Submit</button>
+      <button class="btn" id="dry" disabled title="write the run folder, the input and the job script; fetch no alignments and queue nothing">Dry run</button>
+    </div>
+    <p class="note" id="golast" hidden></p>
+  </aside>
+</main>
+
+<!-- ============================== RUNS ============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <section class="rrail">
+    <div class="row" style="justify-content:space-between">
+      <span class="modes" id="scope">
+        <button data-scope="mine" class="on">Mine</button>
+        <button data-scope="all">Everyone</button>
+      </span>
+      <button class="pill" id="refresh" title="read the run folders and the queue again">&#8635;</button>
+    </div>
+    <div class="legend">queued<span class="dot q"></span> running<span class="dot run"></span> finished<span class="dot fin"></span> stopped<span class="dot stop"></span></div>
+    <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+  </section>
+  <section class="rmain" id="rundetail">
+    <p class="empty">Pick a run on the left.</p>
+  </section>
+</main>
+
+<!-- ============================== THE PICKER ==============================
+     A dialog rather than a listing inside the page, and the docking console's dialog in both
+     shape and wiring: a listing that opened in the page would push everything below it down as
+     it drew, so the control that opened it moves out from under the pointer, and a folder of
+     two hundred runs would push the rest of the form off the screen. Somebody who has used that
+     console has learned this dialog already. -->
+<dialog id="picker">
+  <div class="dlg-h"><b id="pickertitle">Choose a file</b>
+    <div class="crumbs" id="crumbs"></div></div>
+  <!-- A scratch folder holds hundreds of entries and finding one by eye is the slow part of
+       this dialog. Typing filters what is listed, here rather than on the server, because the
+       listing is already in the page and a request per keystroke would be slower than the
+       scrolling it replaces. -->
+  <div class="pickfilter">
+    <input type="search" id="pickfind" autocomplete="off"
+           placeholder="Type to filter this folder&hellip;"
+           aria-label="Filter the list below">
+    <span class="why" id="pickfindnote"></span>
+  </div>
+  <div class="listing" id="listing"></div>
+  <div class="dlg-f">
+    <span class="why" id="pickernote"></span>
+    <span class="pickacts">
+      <button class="btn sm" id="pickernew">+ New folder</button>
+      <button class="btn sm" id="pickeruse">Use this folder</button>
+      <button class="btn sm" id="pickerclose">Close</button>
+    </span>
+  </div>
+</dialog>
+
+<script src="/static/app.js"></script>
+<!--__CREDITBAR__-->
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__APP__</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  /* The bar along the bottom, the one the documentation draws, in this page's colours: the kit
+     knows one accent and calls it --accent, and here that is the teal. */
+  .creditbar{--accent:var(--teal)}
+  /*__CREDITBAR_CSS__*/
+</style>
+<link rel="icon" href="__FAVICON__">
+</head>
+<body data-tool="__TOOL__">
+<header class="apphead">
+  <span class="mark">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm" id="appname">__APP__</span>
+  </span>
+  <span class="bd" id="where"></span>
+  <button class="pill theme" id="theme" title="switch between light and dark">&#9681; dark</button>
+  <span class="tabs">
+    <button class="tab on" data-screen="setup">Design</button>
+    <button class="tab" data-screen="runs">Runs <em id="runcount" hidden></em></button>
+  </span>
+  <!-- Docs last, so it sits in the corner where a documentation link is looked for. It opens in
+       a tab of its own and carries no token: the documentation is the same for everyone. -->
+  <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+     title="How this page works, box by box, with what to do when something goes wrong">Docs</a>
+</header>
+
+<!-- ============================== DESIGN ============================== -->
+<main id="screen-setup" class="screen">
+  <section class="stage">
+
+    <div class="box">
+      <h2>1 &nbsp;Target
+        <span class="modes" id="modes">
+          <button data-mode="pdb" class="on">PDB id</button>
+          <button data-mode="file">Structure file</button>
+          <button data-mode="path">Path on the cluster</button>
+        </span>
+      </h2>
+
+      <div id="mode-pdb">
+        <label class="f" for="pdbid">Four-character RCSB id; the entry is fetched here and copied into the run folder</label>
+        <div class="withbtn">
+          <input class="inp mono" id="pdbid" placeholder="5O45" maxlength="8" autocomplete="off">
+          <button class="btn sm" id="fetch">Fetch</button>
+        </div>
+      </div>
+
+      <div id="mode-file" hidden>
+        <div class="drop" id="drop">
+          Drop a <b>.pdb</b> file here, or
+          <label class="pick">choose a file<input type="file" id="file" accept=".pdb" hidden></label>
+        </div>
+        <p class="note">Both tools read a target by its PDB columns, so an mmCIF is not a target
+          either of them can aim at.</p>
+      </div>
+
+      <div id="mode-path" hidden>
+        <label class="f" for="serverpath">A path on the cluster, for a file too large to upload or one a previous run left</label>
+        <div class="withbtn">
+          <input class="inp mono" id="serverpath" placeholder="/scratch/user/&lt;NetID&gt;/target.pdb" autocomplete="off">
+          <button class="btn sm" id="readpath">Read</button>
+        </div>
+      </div>
+
+      <div id="targetout" hidden>
+        <div class="row" style="justify-content:space-between">
+          <span><b id="tname"></b> <span class="why" id="tsays"></span></span>
+          <span class="why" id="tpath"></span>
+        </div>
+        <div id="chainchips"></div>
+      </div>
+      <p class="errmsg" id="terr" hidden></p>
+      <p class="errmsg" id="chains-err" hidden></p>
+    </div>
+
+    <div class="box" id="hotbox">
+      <h2>2 &nbsp;Where the binder should bind
+        <span class="why">residue numbers of this structure, not a count from the first residue</span></h2>
+      <label class="f" for="hotspots"><span class="fname">Hotspots, the residues to contact</span><span class="help" title="54,56,66-70 for one chain, or A54,B12-16 across chains. Both tools design far better with them, and a run is not queued without them.">?</span></label>
+      <input class="inp mono" id="hotspots" placeholder="54,56,66-70" autocomplete="off">
+      <p class="errmsg" id="hotspots-err" hidden></p>
+      <div class="derived" id="hotpreview" hidden>
+        <div class="k" id="hotpreviewk">as the job will be told it</div>
+        <div class="v" id="hotpreviewv"></div>
+        <div class="n" id="hotpreviewn"></div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h2>What Slurm will be asked for</h2>
+      <div class="derived" id="plan"><div class="k">plan</div><div class="n">Give a target to see the card, the partition and the memory the job asks for.</div></div>
+      <p class="note" id="notes" hidden></p>
+    </div>
+
+    <div class="box" id="probbox" hidden>
+      <h2>Before this can be queued</h2>
+      <ul class="problist" id="problems"></ul>
+    </div>
+
+  </section>
+
+  <!-- ------------------------------- the rail ------------------------------- -->
+  <aside class="rail">
+    <div class="grp" id="g-binder"><span class="stepno">3</span> Binder</div>
+    <div class="row2">
+      <div>
+        <label class="f" for="binder_min"><span class="fname">Shortest, residues</span></label>
+        <input class="inp mono" id="binder_min">
+      </div>
+      <div>
+        <label class="f" for="binder_max"><span class="fname">Longest, residues</span></label>
+        <input class="inp mono" id="binder_max">
+      </div>
+    </div>
+    <p class="why" id="binderwhy">A length is sampled in this range for each design, so a narrow
+      range gives designs that can be compared with one another.</p>
+
+    <!-- The tool's own settings, its resources, and the rest behind a toggle. All three are
+         built from the card the server sends, so the page offers what the canvas offers. -->
+    <div class="grp" id="g-tool"><span class="stepno">4</span> <span id="g-tool-name">The run</span></div>
+    <div id="fields-main"></div>
+
+    <div class="grp" id="g-res"><span class="stepno">5</span> Resources</div>
+    <div id="fields-res"></div>
+
+    <div class="grp more" id="g-more"><span class="stepno">+</span> More settings
+      <span class="why" id="morecount"></span></div>
+    <div id="fields-more" hidden></div>
+
+    <div class="grp" id="g-where"><span class="stepno">6</span> Where it goes</div>
+    <label class="f" for="name"><span class="fname">Run name</span></label>
+    <input class="inp mono" id="name" placeholder="from the target">
+    <label class="f" for="out"><span class="fname">Run folder</span></label>
+    <input class="inp mono" id="out" placeholder="chosen for you">
+    <p class="errmsg" id="out-err" hidden></p>
+
+    <div class="btns">
+      <button class="btn pri" id="go" disabled>Submit</button>
+      <button class="btn" id="dry" disabled title="write the run folder and the job script, and queue nothing">Dry run</button>
+    </div>
+    <p class="note" id="golast" hidden></p>
+  </aside>
+</main>
+
+<!-- ============================== RUNS ============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <section class="rrail">
+    <div class="row" style="justify-content:space-between">
+      <span class="modes" id="scope">
+        <button data-scope="mine" class="on">Mine</button>
+        <button data-scope="all">Everyone</button>
+      </span>
+      <button class="pill" id="refresh" title="read the run folders and the queue again">&#8635;</button>
+    </div>
+    <div class="legend">queued<span class="dot q"></span> running<span class="dot run"></span> finished<span class="dot fin"></span> stopped<span class="dot stop"></span></div>
+    <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+  </section>
+  <section class="rmain" id="rundetail">
+    <p class="empty">Pick a run on the left.</p>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+<!--__CREDITBAR__-->
+</body>
+</html>

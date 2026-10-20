@@ -1,0 +1,57 @@
+<h1>What the messages mean</h1>
+<p class="lead">The refusals on the form, the refusals at Submit, and the lines in a job's log
+that are worth recognising.</p>
+
+<h2>On the form</h2>
+<h3>'J' is not an amino acid</h3>
+<p>A letter the tool has no residue for, marked where it is in the sequence box. It is refused
+here because it would not be refused by the tool: the character would become an unknown residue
+and the structure would come back with a confidence score on it.</p>
+
+<h3>take the gaps out</h3>
+<p>There is a gap character in the sequence, which usually means a row of an alignment was pasted
+rather than a sequence. A gap is not a residue, and it stops the job rather than being
+ignored.</p>
+
+<h3>%d residues in all, and 5000 is the most this page will queue</h3>
+<p>What it says. A complex that size wants more than one card, and this page asks for one.</p>
+
+<h2>At Submit</h2>
+<h3>the alignments could not be fetched</h3>
+<p>Phase one failed and nothing was queued. The alignment server rations its answers and queues
+when it is busy, so trying again later is usually the answer. The sentence after the colon is the
+server's own.</p>
+
+<h3>the alignment fetch gave up after 40 minutes</h3>
+<p>The server took longer than the page is prepared to hold a login node for. Nothing was queued.
+Try again, or fold from the sequence alone if you only want a look.</p>
+
+<h3>Boltz-2 is not installed on &lt;site&gt;</h3>
+<p>The page is running somewhere the tool is not. It names the folder it looked in. The form still
+works and still shows what a run would be told; Submit does not.</p>
+
+<h2>In the job's log</h2>
+<h3>STOPPING: there is no usable GPU on this node</h3>
+<p>The job asked for a card and Slurm gave it one, and then <code>nvidia-smi</code> found nothing,
+which means the driver and the node disagree rather than that the queue went wrong. The job stops
+rather than folding on the processor, which would spend the whole booking and finish nothing.</p>
+
+<h3>STOPPING: the tool finished and wrote no structure</h3>
+<p>The job's own check. Both tools can finish having produced nothing and report success, so the
+script looks for the structures and refuses to call that a completed run. The reason is in the
+lines above.</p>
+
+<h3>Failed to process &lt;path&gt;. Skipping.</h3>
+<p>In the job's log. Boltz-2 wraps every input in a catch all, prints this and carries on, and if
+it was the only input it then exits reporting success having produced nothing. That is why the job
+script looks for the structures afterwards and stops with a message of its own when there are
+none. The line above this one in the log is the real reason.</p>
+
+<h3>Missing MSA's in input and --use_msa_server flag not set.</h3>
+<p>Boltz-2's own words, in the job's log, for a protein chain whose <code>msa</code> line is
+absent. The page always writes one, so this means the YAML in the run folder was edited by hand.
+Add <code>msa: empty</code> to the chain, or point it at an alignment.</p>
+
+<h3>Cannot mix custom and auto-generated MSAs in the same input!</h3>
+<p>Also Boltz-2's own, and also only reachable by editing the YAML: either every protein chain
+names an alignment or none of them does.</p>

@@ -1,0 +1,39 @@
+<h1>Looking at a structure</h1>
+<p class="lead">The two viewers, what the colours mean, and why both are bundled with the
+page.</p>
+
+<h2>The viewer</h2>
+<p>When a run has finished, its structures are listed best first and the top one is drawn below the
+table. Press view on any row to draw that one instead. The files are mmCIF, and PDB when you asked for that format, and both viewers
+read them.</p>
+<p>3Dmol.js is the default: it is small, it loads at once, and it is enough for looking at a fold
+and turning it over. Mol* is the other choice in the menu beside the viewer. It is five megabytes,
+so it is fetched the first time it is asked for and then kept, and it is worth asking for when you
+want its sequence panel or a closer look at an interface.</p>
+
+<h2>Why they are bundled</h2>
+<p>Both viewers are files in this page rather than addresses on the internet. The page is served on
+a login node and reached through a forwarded port, so a browser looking at it can fetch from the
+page and from nowhere else. A viewer loaded from a content delivery network would be an empty box.
+The versions and the licences are recorded in the page's own vendor folder.</p>
+
+<h2>The colours</h2>
+<p>The structure is coloured by pLDDT, the model's own confidence in each residue, because that is
+what a person opens a predicted structure to see. The bands are AlphaFold's own, and so are the
+colours, so the scale is the one you have seen before.</p>
+<table>
+<tr><th>Colour</th><th>pLDDT</th><th>What it means</th></tr>
+<tr><td>dark blue</td><td>above 90</td><td>very high confidence; the backbone and usually the side
+chains can be trusted</td></tr>
+<tr><td>light blue</td><td>70 to 90</td><td>confident; the backbone is probably right</td></tr>
+<tr><td>yellow</td><td>50 to 70</td><td>low; treat the local geometry with suspicion</td></tr>
+<tr><td>orange</td><td>below 50</td><td>very low; often a genuinely disordered region, and should
+not be interpreted as a structure</td></tr>
+</table>
+<p>The confidence is read out of the B-factor column of the file, which is where both tools write
+it. The scale is worked out from the file rather than from which tool wrote it, because ColabFold
+writes pLDDT out of a hundred and Boltz-2 writes it out of one, and a scale read the wrong way
+round would colour a confident model as a hopeless one.</p>
+<p>A ligand or a nucleic acid has no cartoon to draw, so it is drawn as sticks in the same colours.
+A region that is orange in a complex is frequently a linker or a terminus rather than a failure,
+and a whole chain that is orange usually means the alignment was poor or absent.</p>

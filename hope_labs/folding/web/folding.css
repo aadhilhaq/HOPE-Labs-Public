@@ -1,0 +1,215 @@
+/* The folding page's own parts: the entity rows, the box that says what the job will be told,
+   and the viewer. Everything else, the palette and the shell, is /static/style.css, which is the
+   design page's file served by this page's server. One palette, four pages. */
+
+/* Said across the top when the tool is not installed at this site. Not a dismissible notice:
+   it is the reason Submit is refused, and it stays while that is true. */
+.banner{margin:0;padding:8px 16px;background:var(--rust-soft);color:var(--rust);
+  border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.5}
+
+/* ---- the entity rows ------------------------------------------------------ */
+/* One row per entity, laid out as AlphaFold Server's are and as the docking console's peptide
+   rows are: the number, the type, a name, the sequence, the copies. Every column carries its
+   label above its control so the controls line up on one baseline. */
+.ent{display:flex;gap:10px;align-items:flex-start;background:var(--wait);
+  border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;margin-bottom:8px}
+.ent .entnum{color:var(--dim);font-size:11.5px;font-weight:600;min-width:16px;text-align:right;
+  font-variant-numeric:tabular-nums;user-select:none;padding-top:19px}
+.ent .col{display:flex;flex-direction:column;min-width:0}
+.ent .kind{flex:0 0 112px}
+.ent .nm{flex:0 0 120px}
+.ent .sqwrap{flex:1 1 auto;min-width:0}
+.ent .cp{flex:0 0 74px}
+.ent .tools{display:flex;gap:2px;align-self:flex-start;padding-top:18px}
+.ent label{font-size:10.5px;color:var(--dim);margin-bottom:3px;height:13px;line-height:13px}
+/* The controls start at one height. 44px rather than 31: the sequence box carries its residue
+   numbers above the letters, so it is taller than a plain input. A height rather than a minimum
+   for the ones that hold a line, and a minimum for the sequence box, which grows (below). */
+.ent .inp{height:44px}
+.ent select.inp{height:44px}
+
+/* ---- the copies stepper --------------------------------------------------- */
+/* Drawn rather than left to the browser. A number input's own spinner is sized for a 31px field
+   and this one is 44px tall and 74px wide: Chrome draws the two arrows in the middle third of
+   it, each about five pixels of target, clipped against the border and nowhere near the digits.
+   So the native one is taken off and two buttons put in its place, each half the field's full
+   height, which is 21px of target apiece. The arrow keys still work: it is still a number
+   input, and this only replaces what is drawn on top of it. */
+.spin{position:relative;display:flex}
+.spin .inp{flex:1 1 auto;padding-right:21px;min-width:0}
+/* Firefox's spinner and WebKit's are taken off separately; neither honours the other's rule. */
+.spin .inp{appearance:textfield;-moz-appearance:textfield}
+.spin .inp::-webkit-outer-spin-button,
+.spin .inp::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
+.spin .arrows{position:absolute;top:1px;right:1px;bottom:1px;width:19px;display:flex;
+  flex-direction:column;border-left:1px solid var(--line-soft);border-radius:0 6px 6px 0;
+  overflow:hidden}
+.spin .arrows button{flex:1 1 0;min-height:0;display:flex;align-items:center;
+  justify-content:center;border:0;background:var(--wait);color:var(--dim);font-size:8px;
+  line-height:1;padding:0}
+.spin .arrows button:first-child{border-bottom:1px solid var(--line-soft)}
+.spin .arrows button:hover:not(:disabled){background:var(--teal-soft);color:var(--teal)}
+/* At the end of the range the button does nothing, and says so by looking spent rather than by
+   being clicked and ignored. */
+.spin .arrows button:disabled{opacity:.3;cursor:default}
+
+/* the sequence editor: letters in tens, each group numbered above itself */
+/* It grows with what is in it. A 338-residue chain read through a four-line window is a chain
+   nobody checks, and checking it by eye against what was meant to be folded is the whole reason
+   the letters are laid out in tens with their numbers over them. Past the maximum it scrolls,
+   because a row taller than the screen puts the controls beside it out of reach; the maximum is
+   a share of the window rather than a count of lines, since how many letters fit on a line
+   depends on how wide the column is. */
+.seq{background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:19px 10px 5px;font-family:var(--mono);font-size:12px;line-height:2.05;
+  box-sizing:border-box;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;
+  overflow-y:auto;height:auto;min-height:44px;max-height:min(46vh,340px)}
+/* An empty box has no residue numbers, so the headroom they need would only push the
+   placeholder down. It is centred instead, and the box keeps the same height either way, so
+   nothing jumps when the first letter is typed. */
+.seq:empty{padding:0 10px;display:flex;align-items:center}
+.seq:empty::before{content:attr(data-ph);color:var(--dim);font-family:var(--sans);
+  font-size:11.5px}
+.seq.plain:not(:empty){padding:12px 10px 11px;line-height:1.6}
+.seq:focus{outline:2px solid var(--teal-soft);border-color:var(--teal)}
+.seq.bad{border-color:var(--rust);box-shadow:0 0 0 1px var(--rust)}
+.grp10{position:relative;display:inline-block;margin-right:1.1em;letter-spacing:.17em}
+.grp10::after{content:attr(data-n);position:absolute;right:.17em;top:-1.3em;font-size:9.5px;
+  letter-spacing:0;color:var(--dim);font-weight:500}
+/* A letter the tool has no residue for. Marked where it is, because the position is what a
+   person needs in order to fix it, and neither tool would have told them: Boltz-2 folds an
+   unknown letter as its unknown token and reports a confidence for the result. */
+.seq .x{color:var(--rust);font-weight:700;background:var(--rust-soft);border-radius:2px}
+.seq .u{color:var(--amber)}
+.seqlen{font-size:10.5px;color:var(--dim);margin-top:3px}
+.entbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px}
+#pastebox{margin-top:9px;border-top:1px solid var(--line-soft);padding-top:8px}
+textarea.inp{resize:vertical;font-family:var(--mono);font-size:11.5px;min-height:70px}
+
+/* ---- what the job will be told ------------------------------------------- */
+/* The box that justifies the page. A chain id or a copy count read wrong costs hours and does
+   not fail, so the input is shown exactly as it will be written rather than described. */
+pre.told{font:11px/1.55 var(--mono);background:var(--wait);border:1px solid var(--line-soft);
+  border-left:3px solid var(--teal);border-radius:7px;padding:9px 11px;margin:0;
+  max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ---- the viewer ---------------------------------------------------------- */
+.vwrap{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  background:var(--card);height:380px}
+#viewer,#viewerM{position:absolute;inset:0;width:100%;height:100%}
+.vbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:0 0 8px}
+.vbar .why{margin-left:auto}
+/* The pLDDT key. The bands are AlphaFold's own and the colours are its colours, because a
+   person reading one of these has seen that scale before. */
+/* The pLDDT key, in the viewer's bottom-right corner: the top right is Mol*'s own buttons and the
+   bottom left its axes. It lets the pointer through, so turning the structure by a corner still
+   turns it. */
+.plddtkey{position:absolute;right:10px;bottom:10px;z-index:3;pointer-events:none;
+  background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  font-size:10.5px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.10);opacity:.94}
+.pkeyhead{font-weight:600;margin-bottom:3px;color:var(--ink)}
+.pkeyrow{display:flex;align-items:center;gap:7px;color:var(--ink)}
+.pkeyswatch{display:inline-block;width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+.copybox{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap;margin-top:8px}
+.copybox>div{flex:1 1 220px;min-width:0}
+
+/* ---- the picker ----------------------------------------------------------- */
+/* The docking console's dialog, in this page's palette. Kept here rather than in the shared
+   stylesheet because the design pages have no picker: a target there is a PDB id, a file or a
+   path that is read straight away, and nothing walks the filesystem. */
+dialog#picker{border:1px solid var(--line);border-radius:12px;padding:0;
+  width:min(680px,92vw);background:var(--card);color:var(--ink)}
+dialog#picker::backdrop{background:rgba(0,0,0,.45)}
+#picker .dlg-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;
+  align-items:baseline;flex-wrap:wrap}
+#picker .dlg-h b{font-size:14px}
+#picker .crumbs{font-size:12px;color:var(--dim);word-break:break-all;flex:1 1 100%;
+  font-family:var(--mono)}
+#picker .crumbs button{background:0;border:0;color:var(--teal);padding:0 2px;font:inherit}
+#picker .pickfilter{display:flex;align-items:center;gap:9px;padding:8px 14px;
+  border-bottom:1px solid var(--line-soft)}
+#picker .pickfilter input{flex:1 1 auto;min-width:0;border:1px solid var(--line);
+  border-radius:7px;background:var(--card);color:var(--ink);padding:5px 9px;font-size:12.5px}
+/* Every scrolling list on these pages has a maximum height, for the same reason the dialog is a
+   dialog: a folder of two hundred entries must not grow past the screen. */
+#picker .listing{max-height:56vh;overflow:auto;padding:6px 0}
+#picker .listing button{display:flex;width:100%;gap:10px;background:0;border:0;color:inherit;
+  font:inherit;text-align:left;padding:7px 16px;align-items:center;border-radius:0;
+  font-size:12.5px}
+#picker .listing button:hover{background:var(--wait)}
+#picker .listing .sz{margin-left:auto;color:var(--dim);font-size:11px;
+  font-variant-numeric:tabular-nums}
+#picker .listing .place{font-weight:600}
+#picker .listing .why{padding:12px 16px;display:block}
+#picker .dlg-f{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:10px;
+  align-items:center;justify-content:space-between;flex-wrap:wrap}
+#picker .pickacts{display:flex;gap:8px;align-items:center}
+
+/* The settings rail's own numbers use the same arrows the Copies box does, and a duration gets
+   an Estimate under it: the one thing on this page that can work a walltime out is the form. */
+.fld .spin{margin-top:2px}
+.fldacts{display:flex;gap:6px;margin-top:5px}
+.why.bounds{font-size:10px;opacity:.75}
+
+/* ---- the row's menu --------------------------------------------------------- */
+/* AlphaFold Server's three dots: everything about a row that is not one of its boxes. Drawn on
+   the page rather than inside the row, so a row near the bottom of a scrolled list does not clip
+   it, and placed above the button when there is no room below. */
+.ent .tools .dots{font-size:15px;line-height:1;padding:5px 10px;font-weight:700;cursor:pointer}
+.ent .tools .dots:hover{border-color:var(--teal);color:var(--teal)}
+.rowmenu{position:fixed;z-index:60;min-width:230px;background:var(--card);
+  border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 26px rgba(0,0,0,.18);padding:5px}
+.rmitem{display:flex;flex-direction:column;align-items:flex-start;width:100%;background:0;
+  border:0;border-radius:6px;padding:7px 10px;font:inherit;font-size:12.5px;color:var(--ink);
+  text-align:left;cursor:pointer}
+.rmitem small{color:var(--dim);font-size:10.5px;margin-top:1px}
+.rmitem:hover:not(:disabled),.rmitem:focus-visible{background:var(--wait);outline:0}
+.rmitem:disabled{opacity:.45;cursor:default}
+
+/* A modified residue in the sequence box, and the line under a row that lists them. */
+.seq .m{background:var(--teal-soft);color:var(--teal);font-weight:700;border-radius:2px;
+  box-shadow:inset 0 -2px 0 var(--teal)}
+.modslink{background:0;border:0;padding:0;font:inherit;color:var(--teal);cursor:pointer;
+  text-align:left}
+.modslink:hover{text-decoration:underline}
+.seqlen a{color:var(--teal)}
+
+/* ---- the modifications dialog ----------------------------------------------- */
+dialog#mods{border:1px solid var(--line);border-radius:12px;padding:0;width:min(760px,94vw);
+  background:var(--card);color:var(--ink)}
+dialog#mods::backdrop{background:rgba(0,0,0,.45)}
+#mods .dlg-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;
+  align-items:baseline}
+#mods .dlg-h b{font-size:14px}
+#mods .dlg-h .pill{margin-left:auto;cursor:pointer}
+.modbody{padding:10px 16px 4px}
+.modbody>p.why{margin:0 0 6px}
+/* The chain, a button a residue, numbered in tens as the sequence box is. */
+.modgrid{font-family:var(--mono);font-size:12.5px;line-height:2.3;max-height:40vh;overflow:auto;
+  padding:16px 6px 6px;border:1px solid var(--line-soft);border-radius:8px;background:var(--wait)}
+.modgrid .grp10{letter-spacing:0;margin-right:.9em}
+.modres{border:0;background:0;font:inherit;padding:1px 2px;margin:0;min-width:1.25em;
+  cursor:pointer;color:var(--ink);border-radius:3px}
+.modres:hover{background:var(--teal-soft)}
+.modres.on{background:var(--teal-soft);color:var(--teal);font-weight:700;
+  box-shadow:inset 0 -2px 0 var(--teal)}
+.modres.sel{outline:2px solid var(--teal);outline-offset:0}
+.modpick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 6px}
+.modpick b{font-size:13px;min-width:44px}
+.modpick select.inp{flex:1 1 260px;min-width:0}
+.modpick input.inp{flex:0 0 96px}
+.modlist{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px}
+.modchip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);overflow:hidden;font-size:11.5px}
+.modgo{background:0;border:0;padding:3px 4px 3px 10px;font:inherit;color:var(--ink);cursor:pointer}
+.modgo:hover{color:var(--teal)}
+.modx{background:0;border:0;padding:3px 9px 3px 5px;font:inherit;color:var(--dim);cursor:pointer}
+.modx:hover{color:var(--rust)}
+#mods .dlg-f{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:10px;
+  align-items:center;justify-content:space-between}
+
+/* A run's sequences under "What was folded": wrapped anywhere, scrolled past a few lines. */
+.seqshow{display:flex;gap:8px;align-items:flex-start;margin:4px 0 2px}
+.seqshow code{flex:1 1 auto;min-width:0;font:11px/1.55 var(--mono);word-break:break-all;
+  background:var(--wait);border:1px solid var(--line-soft);border-radius:6px;padding:4px 8px;
+  max-height:7.8em;overflow:auto}

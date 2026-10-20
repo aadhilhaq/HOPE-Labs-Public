@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up HOPE Labs</title>
+<!-- The shell and the palette are the design page's, as every page of ours has them. -->
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/setup.css">
+<style>
+  .creditbar{--accent:var(--teal)}
+  /*__CREDITBAR_CSS__*/
+</style>
+<link rel="icon" href="/favicon.ico">
+</head>
+<body>
+<header class="apphead">
+  <span class="mark">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm">Set up HOPE Labs</span>
+  </span>
+  <span class="bd" id="where"></span>
+  <button class="pill theme" id="theme" title="switch between light and dark">&#9681; dark</button>
+  <a class="pill docs" href="/docs/set-up.html" target="_blank" rel="noopener"
+     title="What this page does, and what to do when an install stops">Docs</a>
+</header>
+
+<p class="banner" id="banner" hidden></p>
+
+<main class="setup">
+
+  <!-- ============================== THE CLUSTER ============================== -->
+  <section class="box" id="clusterbox">
+    <h2>1 &nbsp;This cluster <span class="why" id="probed"></span></h2>
+    <p class="note" id="unread" hidden>HOPE Labs has not read this cluster yet. Reading it asks
+      Slurm which partitions there are, which cards are in each and which of them you may use.
+      Nothing is queued, and it takes about half a minute.</p>
+    <div class="tblbox"><table class="parts" id="parts"></table></div>
+    <div class="choices" id="choices">
+      <label class="f"><span class="fname">GPU jobs go to</span>
+        <select class="inp" id="gpupart"></select></label>
+      <label class="f"><span class="fname">and ask for</span>
+        <select class="inp" id="card"></select></label>
+      <label class="f"><span class="fname">Short CPU steps go to</span>
+        <select class="inp" id="cpupart"></select></label>
+    </div>
+    <details class="more" id="morebox">
+      <summary>Name, address and web proxy</summary>
+      <div class="choices">
+        <label class="f"><span class="fname">The name the pages use</span>
+          <input class="inp" id="cname" maxlength="60"></label>
+        <label class="f"><span class="fname">The address people sign in to</span>
+          <input class="inp mono" id="caddress" placeholder="login.example.edu"></label>
+        <label class="f"><span class="fname">Web proxy, if the login node needs one</span>
+          <input class="inp mono" id="cproxy" placeholder="none"></label>
+      </div>
+    </details>
+    <div class="entbar">
+      <button class="btn sm pri" id="save">Save these</button>
+      <button class="btn sm" id="probe">Read the cluster again</button>
+      <span class="why" id="clustersays"></span>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">GPU nodes</span>
+        <span class="v" id="gpufacts">not asked yet</span>
+        <button class="btn sm" id="gpucheck" title="Queue a one-minute job that reports the cards, the driver and the network">Ask a GPU node</button></div>
+      <div class="fact"><span class="k">From this login node</span>
+        <span class="v" id="netfacts"></span></div>
+    </div>
+  </section>
+
+  <!-- ============================== THE TOOLS ============================== -->
+  <section class="box" id="toolsbox">
+    <h2>2 &nbsp;Tools <span class="why" id="room"></span></h2>
+    <div id="toollist"></div>
+    <div class="entbar installbar">
+      <label class="f acct"><span class="fname">Account for the check jobs</span>
+        <input class="inp mono" id="account" placeholder="your default"></label>
+      <span style="flex:1"></span>
+      <span class="why" id="ticked"></span>
+      <button class="btn pri" id="install" disabled>Install the ticked tools</button>
+    </div>
+    <p class="errmsg" id="toolserr" hidden></p>
+  </section>
+
+  <!-- ============================== THE LOG ============================== -->
+  <section class="box" id="logbox">
+    <h2>3 &nbsp;What the install is doing
+      <select class="inp logpick" id="logtool"></select>
+      <span class="why" id="logsays"></span></h2>
+    <pre class="log" id="log">Nothing has been installed from this page yet.</pre>
+  </section>
+</main>
+
+<!--__CREDITBAR__-->
+<script src="/static/setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<h1>What the messages mean</h1>
+<p class="lead">The refusals on the form, the refusals at Submit, and the lines in a job's log
+that are worth recognising.</p>
+
+<h2>On the form</h2>
+<h3>'J' is not an amino acid</h3>
+<p>A letter the tool has no residue for, marked where it is in the sequence box. It is refused
+here because it would not be refused by the tool: the character would become an unknown residue
+and the structure would come back with a confidence score on it.</p>
+
+<h3>take the gaps out</h3>
+<p>There is a gap character in the sequence, which usually means a row of an alignment was pasted
+rather than a sequence. A gap is not a residue, and it stops the job rather than being
+ignored.</p>
+
+<h3>%d residues in all, and 5000 is the most this page will queue</h3>
+<p>What it says. A complex that size wants more than one card, and this page asks for one.</p>
+
+<h2>At Submit</h2>
+<h3>the alignments could not be fetched</h3>
+<p>Phase one failed and nothing was queued. The alignment server rations its answers and queues
+when it is busy, so trying again later is usually the answer. The sentence after the colon is the
+server's own.</p>
+
+<h3>the alignment fetch gave up after 40 minutes</h3>
+<p>The server took longer than the page is prepared to hold a login node for. Nothing was queued.
+Try again, or fold from the sequence alone if you only want a look.</p>
+
+<h3>ColabFold is not installed on &lt;site&gt;</h3>
+<p>The page is running somewhere the tool is not. It names the folder it looked in. The form still
+works and still shows what a run would be told; Submit does not.</p>
+
+<h2>In the job's log</h2>
+<h3>STOPPING: there is no usable GPU on this node</h3>
+<p>The job asked for a card and Slurm gave it one, and then <code>nvidia-smi</code> found nothing,
+which means the driver and the node disagree rather than that the queue went wrong. The job stops
+rather than folding on the processor, which would spend the whole booking and finish nothing.</p>
+
+<h3>STOPPING: the tool finished and wrote no structure</h3>
+<p>The job's own check. Both tools can finish having produced nothing and report success, so the
+script looks for the structures and refuses to call that a completed run. The reason is in the
+lines above.</p>
+
+<h3>no alignment, skipping</h3>
+<p>In the job's log. ColabFold was given an alignment path that is not there, and it skipped the
+construct rather than failing. Check that <code>fold/&lt;name&gt;/&lt;name&gt;.a3m</code> exists;
+if it does not, phase one did not finish, and the run should be submitted again.</p>
+
+<h3>Network is unreachable, while predicting</h3>
+<p>Something in the job tried to reach the internet. Nothing in the job as this page writes it
+does, so this means the job script was edited: the most likely culprits are
+<code>--templates</code>, which can make ColabFold query the MSA server even with an alignment on
+disk, and a model type other than <code>alphafold2_multimer_v3</code>, which sends it to fetch
+weights this install does not have.</p>
+
+<h3>No module named 'openmm'</h3>
+<p>Relaxation was asked for. This environment has neither OpenMM nor PDBFixer, so
+<code>--amber</code>, <code>--num-relax</code> and <code>--use-gpu-relax</code> cannot work; the
+page never passes them.</p>

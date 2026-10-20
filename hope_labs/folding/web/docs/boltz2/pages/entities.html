@@ -1,0 +1,122 @@
+<h1>The sequences</h1>
+<p class="lead">The rows, what is checked in them, and why the checking is on this page rather
+than left to the tool.</p>
+
+<h2>One row per chain or molecule</h2>
+<p>A folding run is a list of entities, laid out as AlphaFold Server lays them out. Each row is a
+type, an optional name, what the entity is and a number of copies. The copies are more of the same
+row: a row of 300 residues with three copies is three chains and 900 residues, and two copies of
+Mg²⁺ are two ions. The running total under the rows says what is in the run.</p>
+<p>The name is yours, for reading the run folder later. It is not the chain id.</p>
+
+<h2>The types</h2>
+<table>
+<tr><th>Type</th><th>Letters</th><th>Notes</th></tr>
+<tr><td>Protein</td><td>the twenty standard amino acids, and X</td>
+    <td>One chain per row. An alignment is fetched per distinct sequence.</td></tr>
+<tr><td>DNA</td><td>A, C, G, T, and N</td>
+    <td>One strand per row. A duplex is two rows, or one row with two copies when the strands are
+    the same.</td></tr>
+<tr><td>RNA</td><td>A, C, G, U, and N</td>
+    <td>One strand per row. No alignment is fetched for a nucleic acid.</td></tr>
+<tr><td>Ligand</td><td>picked from a list</td>
+    <td>AlphaFold Server's ligands, by their Chemical Component Dictionary codes: ATP, ADP, AMP,
+    GTP, GDP, FAD, NAD, NADP, NADPH, haem, haem C, palmitic, oleic, myristic and citric acid.
+    Its four chlorophylls are not offered, because Boltz-2's dictionary does not have them.</td></tr>
+<tr><td>Ion</td><td>picked from a list</td>
+    <td>Mg²⁺, Zn²⁺, Cl⁻, Ca²⁺, Na⁺, Mn²⁺, K⁺, Fe³⁺, Cu²⁺ and Co²⁺. One ion per copy: four zinc
+    ions are one row with four copies.</td></tr>
+<tr><td>CCD Code</td><td>a code, typed</td>
+    <td>Any other component, by its code in the Chemical Component Dictionary, such as SAM or NAG.
+    The page checks that Boltz-2 has the code before the run is queued, and links to the code's
+    page at the RCSB so you can see what it is.</td></tr>
+<tr><td>SMILES</td><td>SMILES</td>
+    <td>A molecule with no code. Boltz-2 reads it with RDKit and standardises it before folding,
+    so the molecule modelled may differ slightly from the one you typed. AlphaFold Server has no
+    such row; Boltz-2 does.</td></tr>
+</table>
+<p>A T in an RNA row and a U in a DNA row are both refused here. Neither is refused by Boltz-2:
+its tables have no residue for either, so it substitutes the unknown base and folds the result
+without a word said.</p>
+
+<h2>The menu on each row</h2>
+<p>The <b>&#8942;</b> at the end of a row holds everything about it that is not one of its boxes,
+as on AlphaFold Server:</p>
+<table>
+<tr><th>Item</th><th>What it does</th></tr>
+<tr><td>Modifications…</td><td>Protein, DNA and RNA rows. Opens the chain residue by residue so
+    you can say which residues are modified, and to what.</td></tr>
+<tr><td>Reverse complement</td><td>DNA and RNA rows. Adds the paired strand as the next row,
+    written 5′ to 3′ with the same number of copies, so a duplex is two clicks rather than a
+    strand typed backwards by hand.</td></tr>
+<tr><td>Duplicate</td><td>Adds another row the same as this one, modifications included.</td></tr>
+<tr><td>Delete</td><td>Takes the row off.</td></tr>
+</table>
+
+<h2 id="modifications">Modifications</h2>
+<p>Click a residue in the chain, then choose what it becomes. Only the modifications made from
+that residue are listed, which are AlphaFold Server's own:</p>
+<table>
+<tr><th>Chain</th><th>Modifications offered</th></tr>
+<tr><td>Protein</td><td>phosphoserine (SEP), phosphothreonine (TPO), phosphotyrosine (PTR),
+    phosphohistidine (NEP, HIP), acetyl-, methyl-, dimethyl- and trimethyllysine (ALY, MLZ, MLY,
+    M3L), crotonyllysine (KCR), hydroxylysine (LYZ), homocitrulline (YHA), dimethyl- and
+    methylarginine (2MR, AGM), citrulline (CIR), 4- and 3-hydroxyproline (HYP, HY3),
+    malonyl-, palmitoyl- and nitrosocysteine (MCS, P1L, SNC), hydroxyasparagine (AHB),
+    aminosuccinimide (SNN) and formyltryptophan (TRF)</td></tr>
+<tr><td>DNA</td><td>5-methyl-, N4-methyl-, 5-hydroxymethyl-, 5-formyl- and 5-carboxycytosine
+    (5CM, C34, 5HC, 5FC, 1CC), O6-methyl- and 8-oxoguanine (6OG, 8OG), N6-methyladenine (6MA), and
+    an abasic site (3DR), which can stand in for any base</td></tr>
+<tr><td>RNA</td><td>pseudouridine (PSU), 5-methyl-, 2′-O-methyl- and 3-methyluridine (5MU, OMU,
+    UR3), 5-methyl-, 2′-O-methyl-, N4,2′-O-dimethyl- and 5-formylcytidine (5MC, OMC, 4OC, RSQ),
+    N6-methyl-, N6,N6-dimethyl- and 2′-O-methyladenosine (6MZ, MA6, A2M), and N2-methyl-,
+    7-methyl- and 2′-O-methylguanosine (2MG, 7MG, OMG)</td></tr>
+</table>
+<p><b>Another CCD code…</b> at the bottom of the list takes any other modified residue by its
+code. The page checks that Boltz-2 has it, but cannot check which residue it belongs on.</p>
+<p>Modified residues are marked in the sequence box, and listed under the row with their
+positions; clicking that list opens the dialog again. Changing a row's type takes its
+modifications off, because each belongs to one kind of chain, and the page says so when it
+happens.</p>
+<p>Two things are checked that Boltz-2 does not check. A listed modification must sit on the
+residue it is made from: Boltz-2 would put a phosphoserine on a methionine if it were told to.
+And rows with the same sequence must carry the same modifications, because Boltz-2 folds them as
+copies of one entity with the first row's modifications, and the others would be lost without a
+word. So a homodimer with one copy modified and the other not is refused, with the reason,
+rather than folded as something else.</p>
+
+<h2>Why the letters are checked here</h2>
+<p>Neither folding tool refuses a sequence it does not understand. Boltz-2 maps every character
+it has no residue for to its unknown token and folds what is left, so a lowercase sequence becomes
+a chain of nothing but unknown residues and comes back with a confidence score on it. That is the
+worst kind of failure, because it looks like a result.</p>
+<p>So the sequence box marks every letter the tool has no residue for, where it is, and the run is
+refused until they are gone. Lower case is simply made upper case, because case carries no meaning
+in a sequence. A gap character is refused with a message of its own: it usually means a row of an
+alignment has been pasted instead of a sequence.</p>
+
+<h2>Chain ids</h2>
+<p>Chain ids are handed out A, B, C in row order, one per copy, and the page shows which letters
+each row became. That is the order the tool names its chains in, so the ids on the page are the
+ids in the structure that comes back. Twenty-six chains is the limit, counting copies.</p>
+
+<h2>Pasting and uploading</h2>
+<p>Paste sequences takes a bare sequence or FASTA and makes one row per record, with the name from
+the header. The type is read off the letters where the letters settle it: a U with no T is RNA, a T
+with no U is DNA. A sequence of nothing but A, C and G is a protein, a DNA strand and an RNA strand
+all at once, so it is read as a protein and the page says that it guessed. Nothing is decided
+quietly.</p>
+<p>Upload a FASTA does the same with a <code>.fasta</code>, <code>.fa</code>, <code>.faa</code> or
+<code>.txt</code> file from your own computer. Two megabytes is the most it takes, which is about
+two million residues; a sequence file is kilobytes, so anything near the cap is something else.
+The file is read in your browser and its contents are sent to the page, because the page runs on
+the cluster and the cluster cannot see your computer.</p>
+
+<h2>How large a run may be</h2>
+<p>Boltz-2 counts in tokens: one for each residue of a chain, modified or not, and one for each
+atom of a ligand, an ion or a SMILES. ATP is 31 tokens and an ion is one. Five thousand tokens in
+all is the most this page will queue, and over about fifteen hundred it says so: both tools hold
+something that grows with the square of the token count, so what runs out is the card rather
+than the clock. The plan box names the card and how much memory it
+has, and <a href="resources.html">Resources and submitting</a> says which cards this cluster
+has.</p>

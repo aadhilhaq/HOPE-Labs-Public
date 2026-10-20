@@ -1,0 +1,36 @@
+<h1>Resources and submitting</h1>
+<p class="lead">One GPU job does the whole run: the diffusion and then the sequences. What
+follows is what that job asks Slurm for, and why.</p>
+
+<h2 id="the-card-and-the-partition">The card and the partition</h2>
+<p><b>Card</b> is which GPU to ask for. The designs are diffused in one batch, so memory is set
+by how many were asked for rather than by how long the run is; eight designs of a hundred
+residues against a small target sit comfortably on a 40 GB A100.</p>
+<p>The partition follows the card. On Grace the A100s are in <code>gpu</code> and the A40s are a
+partition of their own, <code>gpu-a40</code>, so a job asking for an A40 in <code>gpu</code> is
+refused outright rather than queued. The page works it out and shows it in the <b>What Slurm
+will be asked for</b> box. Naming a partition yourself in <b>More settings</b> overrides that,
+which is there for a reservation.</p>
+
+<h2 id="walltime">Walltime</h2>
+<p>Twelve hours is the default. Write it as <code>12:00:00</code>, or <code>2-00:00:00</code>
+for two days.</p>
+<div class="note"><b>There is no checkpoint.</b> A job that runs out of walltime loses the
+diffusion. Any designs already written stay on disk, but <code>designs.json</code> is written at
+the end, and <b>Queue again</b> on the Runs screen starts the job from the beginning.</div>
+
+<h2 id="cores-memory-and-the-caches">Cores, memory and the caches</h2>
+<p>The job takes eight cores and 64 GB of host memory, and neither is a choice on the form. The
+box shows them so a run's provenance is complete.</p>
+<p>Everything the job writes for itself goes to scratch rather than to a home directory:
+<code>XDG_CACHE_HOME</code>, <code>MPLCONFIGDIR</code> and <code>CUDA_CACHE_PATH</code>. A home
+directory on Grace runs out of files long before it runs out of space, and a cache written there
+is how that happens.</p>
+
+<h2 id="the-checkpoint">The checkpoint, and why a compute node cannot fetch it</h2>
+<p>The model's weights are 2.5 GB and live once in the HOPE Labs folder,
+at <code>ML_programs/foundry_checkpoints</code>. The job is pointed at that copy and told not to
+reach for more, because a compute node on Grace has no outbound network: a run that tried to
+download anything would hang rather than fail, which is the worse of the two.</p>
+<p>If the checkpoint is ever missing the page refuses the run and says where it should be, rather
+than queueing a job that will fail twenty minutes in.</p>

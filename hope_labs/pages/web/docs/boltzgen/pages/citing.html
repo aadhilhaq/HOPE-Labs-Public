@@ -1,0 +1,68 @@
+<h1>How to cite</h1>
+<p class="lead">The designs are BoltzGen's work, and its folding step is Boltz-2's. Cite BoltzGen
+as its authors ask, and acknowledge the computing.</p>
+
+<h2 id="boltzgen">BoltzGen</h2>
+<p>BoltzGen is by Hannes St&auml;rk and colleagues, and it is what generated, folded and ranked
+your binders. Its repository asks for this:</p>
+<div class="tip">St&auml;rk, H. et al. BoltzGen: Toward Universal Binder Design. <i>bioRxiv</i>
+(2025). <a href="https://doi.org/10.1101/2025.11.20.689494" target="_blank" rel="noopener">doi:10.1101/2025.11.20.689494</a></div>
+<p>It is a preprint, with no journal version yet, so that is the reference to use. The installed
+package itself ships no citation file, so this is taken from the project's own repository at
+<a href="https://github.com/HannesStark/boltzgen" target="_blank" rel="noopener">github.com/HannesStark/boltzgen</a>,
+which is also where to check whether a journal version has appeared.</p>
+<p>The version this install runs is in the bar along the bottom of the page, read from the
+environment itself rather than typed here, so it names what actually ran.</p>
+
+<h2 id="boltz-2">Boltz-2</h2>
+<p>BoltzGen's folding step re-folds each design with the target using Boltz-2, and its affinity
+step uses Boltz-2 as well, so two of the model files in the shared cache are Boltz-2's. BoltzGen's
+own repository asks only for the reference above and carries no Boltz-2 citation, so if your
+methods section goes into how the designs were scored, take that reference from Boltz-2's own
+project rather than from here.</p>
+
+<h2 id="the-viewer">The viewer</h2>
+<p>A run from this page can be opened in HOPE Labs' own viewer, under <b>Results</b>. A figure made
+there cites 3Dmol.js, which draws it, and one that shows a surface cites MSMS as well, which
+computed the surface:</p>
+<div class="tip">Rego, N. and Koes, D. 3Dmol.js: molecular visualization with WebGL.
+<i>Bioinformatics</i> <b>31</b>, 1322 to 1324 (2015).
+<a href="https://doi.org/10.1093/bioinformatics/btu829" target="_blank" rel="noopener">doi:10.1093/bioinformatics/btu829</a></div>
+<div class="tip">Sanner, M. F., Olson, A. J. and Spehner, J.-C. Reduced surface: an efficient way to
+compute molecular surfaces. <i>Biopolymers</i> <b>38</b>, 305 to 320 (1996).
+<a href="https://doi.org/10.1002/(SICI)1097-0282(199603)38:3%3C305::AID-BIP4%3E3.0.CO;2-Y" target="_blank" rel="noopener">doi:10.1002/(SICI)1097-0282(199603)38:3&lt;305::AID-BIP4&gt;3.0.CO;2-Y</a></div>
+
+<h2 id="the-computing">The computing</h2>
+<div class="tip">Please acknowledge Texas A&amp;M High Performance Research Computing (HPRC) for
+the computational resources.</div>
+<p>Every run from this page is on Grace, so this sentence belongs in the acknowledgements of
+anything that used it.</p>
+
+<h2 id="licences">Licences</h2>
+<table>
+<tr><th>What</th><th>Terms</th></tr>
+<tr><td>BoltzGen, the code</td><td>MIT. Copyright (c) 2025 Hannes St&auml;rk. The full text
+is in the install, at <code>boltzgen-0.3.2.dist-info/licenses/LICENSE</code>.</td></tr>
+<tr><td>BoltzGen, the weights</td><td>No licence file travels with the checkpoints themselves. The
+card they are published with declares MIT and states no further condition, and that card is saved
+beside the shared cache as <code>boltzgen-1-model-card.md</code>, at the revision the cache holds,
+so it can be read here rather than taken on trust.</td></tr>
+<tr><td>The Boltz-2 model files</td><td>Two of the checkpoints are Boltz-2's. The card above names
+<code>boltz-community/boltz-2</code> as the base model, which is where they come from, and its own
+card declares MIT as well.</td></tr>
+<tr><td>The molecule data</td><td>The small-molecule archive the run reads comes from
+<code>boltzgen/inference-data</code>, whose card is saved beside the cache as
+<code>inference-data-card.md</code> and declares MIT.</td></tr>
+<tr><td>This page</td><td>The lab's, as the bar along the bottom states.</td></tr>
+</table>
+<p>The table is a summary and the files are the authority. Where the answer matters, read the
+<code>LICENSE</code> in the install and the saved cards in the cache directory, whose
+<code>README-weights.txt</code> says which revision each one was taken at. None of this is legal
+advice; if your use is commercial, have someone qualified read the terms rather than this
+page.</p>
+
+<h2 id="this-page">This page</h2>
+<p>The page, the code that queues the run and these documentation pages are by Aadhil Haq, HOPE
+Lab, PI Dr. Sandun Fernando, Texas A&amp;M University. They set a run up and read what comes back;
+they do none of the science, so a methods section rarely needs them. If yours does, name the page
+with the version in the bar along the bottom.</p>

@@ -1,0 +1,39 @@
+<h1>What a run leaves</h1>
+<p class="lead">The structures, the record the next card reads, and which chain is actually the
+design.</p>
+
+<h2 id="the-structures">The structures</h2>
+<p>One file per design, written as compressed CIF and unpacked beside itself. Each holds the
+binder and the target together: the design arrives already placed, so docking it again is a
+choice rather than a necessity.</p>
+<p>Beside each structure the model writes its own JSON of what it did, including the contig it
+actually sampled and, where a motif was scaffolded, where each constrained atom ended up.</p>
+
+<h2 id="which-chain-is-the-design">Which chain is the design</h2>
+<p>Chain <b>A</b>, numbered from 1. Not the chain you named on the form.</p>
+<p>The model relabels everything it writes in contig order, and the contig puts the design
+first. So a target that went in as chain A comes back as chain B, renumbered from 1. On a run
+against MDM2 the output is chain A of 61 residues, which is the design, and chain B of 85,
+which is MDM2 going in as A25-109.</p>
+<div class="note">This is worth knowing before opening one in a viewer, and the run records it
+explicitly: <code>designs.json</code> names the binder's chains and the target's rather than
+leaving it to be worked out.</div>
+
+<h2 id="designs-json">designs.json</h2>
+<p>The record every design tool here writes, and the only thing a following card reads. One
+entry per design, best first:</p>
+<ul>
+<li><code>name</code> and <code>path</code>, the design and where its structure is</li>
+<li><code>binder_chains</code> and <code>target_chains</code>, as the output labels them</li>
+<li><code>sequence</code>, ProteinMPNN's best for that backbone</li>
+<li><code>rfd3_sequence</code>, the model's own, kept for comparison</li>
+<li><code>score</code>, ProteinMPNN's score for the kept sequence, lowest first</li>
+</ul>
+<p>Because the format is the one RFdiffusion and BoltzGen already write, the cards that follow
+needed no change to accept these designs: a sequence can go to ADCP and a complex to HOPE-MD.</p>
+
+<h2 id="the-two-sequences">Why there are two sequences</h2>
+<p>The model writes a sequence as it diffuses, and ProteinMPNN writes another for the same
+backbone. They differ substantially. Neither is obviously right, so both are kept and the
+ProteinMPNN one is what is handed on, because it is the one the authors' own pipeline orders
+from and it comes with a score to rank by.</p>

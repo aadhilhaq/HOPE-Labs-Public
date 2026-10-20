@@ -1,0 +1,48 @@
+<h1>Resources and submitting</h1>
+<p class="lead">One GPU job does the whole run: the diffusion and the sequence design together,
+in RFdiffusion's own environment. What follows is what that job asks Slurm for, and why.</p>
+
+<h2 id="the-card-and-the-partition">The card and the partition</h2>
+<p><b>Card</b> is which GPU to ask for. <code>auto</code> means an A100, which is what both
+halves of the run are comfortable on.</p>
+<p>The partition follows the card. On Grace the A100s, the T4s and the RTX cards are in
+<code>gpu</code> and the A40s are a partition of their own, <code>gpu-a40</code>, so a job asking
+for an A40 in <code>gpu</code> is refused outright rather than queued. The page works the
+partition out from the card and shows it in the <b>What Slurm will be asked for</b> box, so you
+can see what is about to be asked. Naming a partition yourself in <b>More settings</b> overrides
+that, which is there for a reservation.</p>
+
+<h2 id="walltime-and-starting-again">Walltime and starting again</h2>
+<p>Twelve hours is the default and four days is the most the <code>gpu</code> partition allows.
+Write it as <code>12:00:00</code>, or <code>2-00:00:00</code> for two days.</p>
+<div class="note"><b>There is no checkpoint.</b> A job that runs out of walltime loses the run.
+The backbones already written stay on disk and can be read, but <code>designs.json</code> is
+written at the very end, and <b>Queue again</b> on the Runs screen starts the same job script from
+the beginning rather than carrying on. So it is worth asking for longer than you think you need:
+an idle hour on a card costs the allocation far less than a lost twelve.</div>
+
+<h2 id="cores-memory-and-the-caches">Cores, memory and the caches</h2>
+<p>The job takes eight cores and 48 GB of host memory, and neither is a choice on the form. They
+are what the two halves of the run need and nothing is gained by asking for more; the box shows
+them so a run's provenance is complete.</p>
+<p>Everything the job writes for itself goes inside the run folder. The job script points
+<code>XDG_CACHE_HOME</code>, <code>MPLCONFIGDIR</code>, <code>CUDA_CACHE_PATH</code>,
+<code>TMPDIR</code>, <code>HF_HOME</code> and <code>TORCH_HOME</code> at
+<code>cache/</code> under the run, so nothing reaches your home folder, which on Grace would fill
+up and start failing other things. The caches are safe to delete once a run is finished.</p>
+
+<h2 id="the-account">The account</h2>
+<p><b>Account to charge</b> is empty by default, which charges your own default allocation. Fill
+it in only if you have been told to put this work on a particular account. The page does not
+check that you are a member of it; Slurm does, at submission, and says so.</p>
+
+<h2 id="submit-and-dry-run">Submit and Dry run</h2>
+<p><b>Submit</b> writes the run folder, copies the structure into it, writes the plan and the job
+script, and queues the job. <b>Dry run</b> does all of that except the last step.</p>
+<p>A dry run is not a simulation of a submission. It is the submission, with <code>sbatch</code>
+taken out: the same target fetch, the same checks, the same plan, the same script. If a dry run
+is refused, a real one would have been refused for the same reason, and the reason is the one you
+see. It is the right first move on any target you have not used before.</p>
+<p><b>Submit</b> stays off while the <b>Before this can be queued</b> box has anything in it.
+Those sentences are the same ones a flow holding this card would be refused with, so a form the
+page will take is a flow the cluster will take.</p>

@@ -1,0 +1,81 @@
+<h1>How to cite</h1>
+<p class="lead">HOPE Labs opens the tools; it does none of the science. Cite the tools whose
+results you report, and acknowledge the computing.</p>
+
+<h2 id="the-tools">The tools</h2>
+<p>Each tool records in its runs what it used, and each tool's own documentation says how to cite
+it. Cite from there.</p>
+<table>
+<tr><th>Tool</th><th>By</th></tr>
+<tr><td>ADCP docking</td><td>the HOPE Lab; the docking itself is ADCP, from the ADCP 1.1 suite of
+Scripps Research</td></tr>
+<tr><td>BindCraft2</td><td>the Pacesa lab:
+<a href="https://github.com/PacesaLab/BindCraft2" target="_blank" rel="noopener">github.com/PacesaLab/BindCraft2</a></td></tr>
+<tr><td>RFdiffusion</td><td>the Institute for Protein Design, University of Washington:
+<a href="https://github.com/RosettaCommons/RFdiffusion" target="_blank" rel="noopener">github.com/RosettaCommons/RFdiffusion</a>.
+The sequences are ProteinMPNN's, by its own authors</td></tr>
+<tr><td>BoltzGen</td><td>Hannes St&auml;rk and colleagues:
+<a href="https://github.com/HannesStark/boltzgen" target="_blank" rel="noopener">github.com/HannesStark/boltzgen</a>.
+It ranks by re-folding with Boltz-2, so cite that too</td></tr>
+<tr><td>Boltz-2</td><td>Jeremy Wohlwend, Gabriele Corso, Saro Passaro and colleagues, under the
+MIT licence:
+<a href="https://github.com/jwohlwend/boltz" target="_blank" rel="noopener">github.com/jwohlwend/boltz</a>.
+The alignments come from the ColabFold MSA server</td></tr>
+<tr><td>ColabFold</td><td>Milot Mirdita, Konstantin Sch&uuml;tze, Yoshitaka Moriwaki, Lim Heo,
+Sergey Ovchinnikov and Martin Steinegger, under the MIT licence:
+<a href="https://github.com/sokrypton/ColabFold" target="_blank" rel="noopener">github.com/sokrypton/ColabFold</a>.
+The folding is AlphaFold 2 and AlphaFold-Multimer, by DeepMind, whose weights are under
+CC BY 4.0</td></tr>
+<tr><td>HOPE-MD</td><td>the HOPE Lab</td></tr>
+</table>
+<p>The methods the tools run, AlphaFold, ProteinMPNN, Boltz-2, ADCP, Amber, OpenMM, GROMACS, NAMD,
+Desmond and the rest, belong to their authors.</p>
+<div class="note"><b>Some of the tools are opened by a page of ours.</b> RFdiffusion,
+RFdiffusion3, BoltzGen, Boltz-2 and ColabFold ship no page, so the lab wrote one, and each of those pages carries its own
+<b>How to cite</b> naming the version the install actually runs. Cite the tool and the methods it
+runs; the page is no more citable than this launcher is. ColabFold writes the citations for the
+exact configuration it used into every run, as <code>cite.bibtex</code>, which is the one to
+copy.</div>
+
+<h2 id="the-viewer">The viewer</h2>
+<p>A structure opened under <b>Results</b>, or from a flow's card, turns in 3Dmol.js, and its
+<b>Surface</b> is computed by MSMS on the cluster. A figure made in the viewer cites 3Dmol.js, and
+one that shows a surface cites MSMS as well:</p>
+<table>
+<tr><th>Cite</th><th>When</th></tr>
+<tr><td>Rego N, Koes D. 3Dmol.js: molecular visualization with WebGL. <i>Bioinformatics</i>
+31(8):1322 to 1324, 2015.
+<a href="https://doi.org/10.1093/bioinformatics/btu829" target="_blank" rel="noopener">doi:10.1093/bioinformatics/btu829</a></td>
+<td>a figure from the viewer</td></tr>
+<tr><td>Sanner MF, Olson AJ, Spehner JC. Reduced surface: an efficient way to compute molecular
+surfaces. <i>Biopolymers</i> 38(3):305 to 320, 1996.
+<a href="https://doi.org/10.1002/(SICI)1097-0282(199603)38:3%3C305::AID-BIP4%3E3.0.CO;2-Y" target="_blank" rel="noopener">doi:10.1002/(SICI)1097-0282(199603)38:3&lt;305::AID-BIP4&gt;3.0.CO;2-Y</a></td>
+<td>a figure with a surface from the viewer</td></tr>
+</table>
+<p>MSMS is Michel Sanner's, and it is run through mslib, the MSMS library in the ADCP 1.1 suite
+that ADCP docking's installer puts on the cluster. <code>THIRD_PARTY_NOTICES.md</code> gives its
+terms.</p>
+
+<h2 id="terms">Terms</h2>
+<p>HOPE Labs is the lab's, all rights reserved: <code>LICENSE</code> at the root of the repository
+is the statement, and the bar along the bottom of every page reads its copyright line out of that
+file rather than repeating it by hand. The libraries it is built from, and the tools it starts,
+keep their own licences. <code>THIRD_PARTY_NOTICES.md</code> beside it lists them, separating what
+travels inside the download from what is only an install on the cluster, and says where each
+tool's own notices are. Both files travel in the download.</p>
+<div class="note"><b>BindCraft2's terms reach the launcher.</b> Its licence permits any use,
+including commercial, with one restriction: it may not be offered to third parties as a hosted
+service. HOPE Labs signs in as you and starts the copy installed on your cluster, so do not offer
+a page it serves to other people. The same sentence is on BindCraft2's own <b>How to cite</b>
+page.</div>
+
+<h2 id="the-computing">The computing</h2>
+<p>Everything here runs on Texas A&amp;M's clusters. HOPE Labs prints this sentence in its log each
+time you sign in, for the acknowledgements of anything that used them:</p>
+<div class="tip">Please acknowledge Texas A&amp;M High Performance Research Computing (HPRC) for the
+computational resources.</div>
+
+<h2 id="hope-labs-itself">HOPE Labs itself</h2>
+<p>HOPE Labs is by Aadhil Haq, HOPE Lab (PI Dr. Sandun Fernando), Texas A&amp;M University. It is a
+launcher, and a paper's methods rarely need it; if yours does, name it with its version, which the
+bar along the bottom of its page shows.</p>

@@ -1,0 +1,41 @@
+<h1>Getting started</h1>
+<p class="lead">One run from an empty form to a structure, with the waiting explained.</p>
+
+<h2>Opening the page</h2>
+<p>Sign in to HOPE Labs, find ColabFold in the Tools list and press Launch. The launcher starts
+the page on a login node, forwards a port to your own computer and opens it. The page carries a
+token in its address: that is what makes it yours on a shared login node, so open it from the
+launcher rather than keeping the address.</p>
+
+<h2>Filling in the form</h2>
+<ol class="steps">
+<li>Add a row for each chain. The first row is there already. Paste the sequence and
+say how many copies of it you want. A homodimer is one row with two copies; a heterodimer is two
+rows with one copy each.</li>
+<li>Watch the second box. It shows a FASTA record exactly as it will be written, chain ids and all.
+That box is the reason this page exists: a copy count or a chain id read wrong does not fail, it
+folds something else for a few hours and reports a confidence score for it.</li>
+<li>Leave the settings alone unless you have a reason. They are ColabFold's own defaults, and the
+reason for each is written beside it.</li>
+<li>Press Submit.</li>
+</ol>
+
+<h2>The wait after Submit</h2>
+<p>Submit does two things. First it fetches the alignments, here on the login node, and that takes
+a minute or two per distinct protein sequence, longer when the alignment server is busy. The
+button says so while it is happening. Then it writes the job and queues it, and the page moves to
+the Runs screen.</p>
+<p>If you would rather not wait at all, set Alignments to fold from the sequence alone. Nothing is
+fetched, the job is queued at once, and the structures are markedly worse. It is the right choice
+for a quick look and the wrong one for anything you intend to keep.</p>
+
+<h2>Trying the page without spending a card</h2>
+<p>Dry run writes the run folder, a FASTA record and the job script, fetches no alignments and queues
+nothing. It is how to see exactly what a run would be told before asking for a GPU, and it is how
+this page is worked on.</p>
+
+<h2>Then what</h2>
+<p>The <a href="runs.html">Runs screen</a> shows the job's state and the log while it runs. When
+it finishes, the structures are listed best first and the top one is drawn in the viewer. See
+<a href="results.html">what a run leaves</a> and <a href="viewing.html">looking at a
+structure</a>.</p>

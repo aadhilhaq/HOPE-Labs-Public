@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOPE Labs</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  /* the bar along the bottom, shared with the docs */
+  :root{--accent:var(--teal)}
+  /*__CREDITBAR_CSS__*/
+  .top .docs{margin-left:4px}
+</style>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62 62"><rect x="8" y="8" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="33" y="8" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="8" y="33" width="21" height="21" rx="5" fill="%230d5c6b"/><rect x="33" y="33" width="21" height="21" rx="5" fill="%23c2603a"/></svg>'>
+</head>
+<body>
+
+<nav class="rail">
+  <span class="brand">
+    <svg width="26" height="26" viewBox="0 0 62 62" aria-hidden="true">
+      <rect x="8" y="8" width="21" height="21" rx="5" fill="#5fb3c4"/>
+      <rect x="33" y="8" width="21" height="21" rx="5" fill="#5fb3c4"/>
+      <rect x="8" y="33" width="21" height="21" rx="5" fill="#5fb3c4"/>
+      <rect x="33" y="33" width="21" height="21" rx="5" fill="#e08a63"/>
+    </svg>
+    <span>
+      <span class="nm">HOPE Labs</span><br>
+      <span class="sub" id="who">connecting…</span>
+    </span>
+  </span>
+
+  <button class="ritem on" data-view="tools"><span class="nm">Tools</span></button>
+  <button class="ritem" data-view="flow"><span class="nm">Flows</span></button>
+  <button class="ritem" data-view="runs"><span class="nm">Results</span></button>
+
+  <div class="rlabel">The tools</div>
+  <div id="railtools"></div>
+
+  <button class="ritem quiet" id="railsetup" hidden><span class="nm">Set up this cluster</span></button>
+  <button class="ritem quiet" id="railsay"><span class="nm">Send feedback</span></button>
+
+  <div class="rfoot">
+    Each tool runs on <b id="railcluster">Grace</b> under your own account, and the jobs it submits are charged to you.
+    Closing the launcher stops the pages; anything already queued carries on.
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- A launcher older than this page, which still works: one quiet line saying what it lacks and
+       where the current one is. app.js shows it from the state and nothing else, so a current
+       launcher never shows it, and it can be put away for the session. -->
+  <div class="oldlauncher" id="oldlauncher" role="status" hidden>
+    <span class="oldicon" aria-hidden="true">!</span>
+    <span class="oldtext" id="oldlauncher-text"></span>
+    <button class="btn sm" id="oldlauncher-hide" type="button">Dismiss</button>
+  </div>
+
+  <!-- ============================ the catalogue ============================ -->
+  <section id="view-tools" style="display:flex;flex-direction:column;min-height:0;flex:1">
+    <header class="top">
+      <h1>Tools</h1>
+      <span class="why" id="toolcount"></span>
+      <span class="spacer"></span>
+      <span class="chips" id="cats"></span>
+      <span class="search">
+        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 11 L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="q" placeholder="Search the tools" autocomplete="off">
+      </span>
+      <a class="btn sm docs" href="/docs/index.html" target="_blank" rel="noopener"
+         title="How HOPE Labs works, with a picture of each part">Docs</a>
+    </header>
+    <div class="body">
+      <!-- A cluster with no HOPE Labs on it, or one where it is somewhere this computer was not
+           told. Shown instead of the tiles: none of them could start until this is answered. -->
+      <div class="newcluster" id="newcluster" hidden>
+        <h2 id="nc-title">HOPE Labs is not set up on <span id="nc-where">this cluster</span> yet</h2>
+        <div id="nc-ask">
+        <p class="why">Everything HOPE Labs needs on a cluster goes in one folder: its own code
+          first, then the tools you choose. Pick a folder with room to spare (scratch, or a
+          group folder if others will use it too), then choose the tools on the page it opens.
+          Nothing goes in your home folder.</p>
+        <div class="ncrow">
+          <input class="ncinput" id="nc-folder" placeholder="/scratch/you/hope-labs" spellcheck="false">
+          <button class="btn pri" id="nc-setup">Set HOPE Labs up here</button>
+        </div>
+        <details class="ncmore">
+          <summary>This cluster reaches the internet through a proxy</summary>
+          <div class="ncrow">
+            <input class="ncinput" id="nc-proxy" placeholder="http://proxy.example.edu:3128" spellcheck="false">
+          </div>
+        </details>
+        <p class="why">Already set up on this cluster, by you or your group? Name its folder
+          instead, and this computer remembers it.</p>
+        <div class="ncrow">
+          <input class="ncinput" id="nc-path" placeholder="/scratch/group/yourlab" spellcheck="false">
+          <button class="btn" id="nc-use">Use this one</button>
+        </div>
+        </div>
+        <pre class="nclog" id="nc-log" hidden></pre>
+        <div class="ncrow" id="nc-next" hidden>
+          <button class="btn pri" id="nc-open">Choose the tools to install</button>
+          <span class="why">The Set up page opens in a tab of its own.</span>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+
+  <!-- ============================ the canvas ============================ -->
+  <section id="view-flow" hidden style="display:none;flex-direction:column;min-height:0;flex:1">
+    <header class="top">
+      <h1>Flows</h1>
+      <span class="why">draw the chain once, fill in the target, launch the whole of it</span>
+      <span class="spacer"></span>
+      <span class="search" id="namebox">
+        <input id="flowname" placeholder="Name this flow" autocomplete="off" spellcheck="false">
+      </span>
+      <select id="flowsaved" class="pick" title="A flow kept on this computer"></select>
+      <select id="flowruns" class="pick"
+              title="A flow that has been queued from this computer, and how far it has got"></select>
+      <button class="btn sm" id="flowsave">Save</button>
+      <button class="btn sm" id="flowforget" disabled>Forget</button>
+      <button class="btn sm" id="flowexample">Start from an example</button>
+      <button class="btn sm" id="flowclear">Clear</button>
+    </header>
+
+    <div class="flowwrap" id="flowwrap">
+      <aside class="palette">
+        <div class="rlabel pl">The cards</div>
+        <div id="palette"></div>
+        <p class="phint">Click a card to put it on the canvas, or drag it there. Drag from an
+          output socket on the right of a card to an input socket on the left of another to link
+          them; click a link to take it out.</p>
+      </aside>
+
+      <div class="canvasbox">
+        <!-- The drawing and its zoom together, so the zoom is placed against the drawing and not
+             against the whole column: the bar of problems under it grows as tall as it needs to. -->
+        <div class="canvasarea">
+          <div class="canvasgrid" id="canvasgrid">
+            <div class="canvas" id="canvas">
+              <svg class="wires" id="wires"></svg>
+            </div>
+          </div>
+          <div class="zoombar" role="group" aria-label="Zoom">
+            <button class="btn sm" id="zoomout" title="Smaller (Ctrl and the scroll wheel also zoom)">&minus;</button>
+            <button class="btn sm zoomlabel" id="zoomreset" title="Back to full size">100%</button>
+            <button class="btn sm" id="zoomin" title="Larger">+</button>
+            <button class="btn sm" id="zoomfit" title="Fit the whole flow in view">Fit</button>
+          </div>
+        </div>
+        <div class="probbar">
+          <div class="probs" id="problems"></div>
+          <button class="btn pri" id="flowlaunch" disabled>Launch the flow…</button>
+        </div>
+      </div>
+
+      <aside class="panel" id="panel"></aside>
+    </div>
+
+    <!-- The plan. Launch asks the cluster what the flow would do and shows it here, queueing
+         nothing: Queue it, in the bar below, is the only thing on this page that commits an
+         allocation. The canvas is left standing behind this, so Back is a return and not a redraw. -->
+    <div class="sheet" id="flowplan" hidden>
+      <div class="sheetbody" id="planbody"></div>
+      <div class="sheetbar">
+        <div class="probs" id="planwhy"></div>
+        <button class="btn sm" id="planback">Back to the canvas</button>
+        <button class="btn pri" id="planqueue">Queue it</button>
+      </div>
+    </div>
+
+    <!-- A flow that is running: its own cards where they were drawn, coloured by what has become
+         of each, with the folders and job ids beside them. -->
+    <div class="sheet" id="flowrun" hidden>
+      <div class="runhead" id="runhead"></div>
+      <!-- Only when the flow needs somebody: what broke, what is kept, and what to do about it. -->
+      <div class="runbanner" id="runbanner" hidden>
+        <div class="runbannertext" id="runbannertext"></div>
+        <div class="acts">
+          <button class="btn sm go" id="runfix">Fix and carry on</button>
+          <button class="btn sm" id="runcarry">Carry on</button>
+          <button class="btn sm" id="runtell">Report this</button>
+        </div>
+      </div>
+      <div class="runsplit">
+        <div class="canvasgrid" id="runcanvasgrid">
+          <div class="canvas" id="runcanvas">
+            <svg class="wires" id="runwires"></svg>
+          </div>
+        </div>
+        <aside class="runcards" id="runcards"></aside>
+      </div>
+      <div class="sheetbar">
+        <div class="probs" id="runwhy"></div>
+        <button class="btn sm" id="runback">Back to the canvas</button>
+        <button class="btn sm" id="runreload">Refresh</button>
+        <button class="btn sm" id="runreport">Results of the whole flow</button>
+        <button class="btn sm" id="runstop">Stop</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================ results ============================ -->
+  <section id="view-runs" hidden style="display:none;flex-direction:column;min-height:0;flex:1">
+    <header class="top">
+      <h1>Results</h1>
+      <span class="why">every run folder the tools have written, newest first</span>
+      <span class="spacer"></span>
+      <span class="chips" id="runfilter"></span>
+      <button class="btn sm" id="runfiles" hidden
+              title="Look through the folders on the cluster">Browse files</button>
+      <button class="btn sm" id="runrefresh">Refresh</button>
+      <a class="btn sm docs" href="/docs/results.html" target="_blank" rel="noopener"
+         title="What Results lists, and how a run is handed on">Docs</a>
+    </header>
+    <div class="body" id="runbody"><p class="empty">Reading the run folders…</p></div>
+  </section>
+
+</main>
+
+<!--__CREDITBAR__-->
+<script src="/static/msms.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/flow.js"></script>
+</body>
+</html>

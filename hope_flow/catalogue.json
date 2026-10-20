@@ -1,0 +1,2321 @@
+{
+ "rules": 4,
+ "kinds": {
+  "target": "a receptor, with the chains and the residues a binder should touch",
+  "receptor": "a prepared receptor, with the chains and the residues a binder should touch",
+  "structure": "a predicted structure, with no site named on it yet",
+  "sequences": "named peptide or protein sequences, without structures",
+  "complexes": "structures of a binder already placed on the target",
+  "poses": "docked poses, ranked, in a run folder",
+  "prepared": "structures prepared molecule by molecule, ready to build",
+  "trajectories": "simulated complexes, with their binding energies"
+ },
+ "dockable_max_length": 30,
+ "linker_families": {},
+ "cards": [
+  {
+   "key": "target",
+   "name": "Target",
+   "tagline": "what everything is aimed at",
+   "tool": "",
+   "note": "",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "structure",
+     "label": "a folded structure",
+     "kinds": [
+      "structure"
+     ],
+     "required": false,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "source",
+     "label": "Where the structure comes from",
+     "kind": "choice",
+     "default": "rcsb",
+     "choices": [
+      "rcsb",
+      "file",
+      "folded"
+     ],
+     "why": "a four-character RCSB id, a file on the cluster, or the structure a folding card hands in",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "pdb_id",
+     "label": "PDB id",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fetched on a login node and copied into the flow",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "optional": true,
+         "placeholder": "not read: the structure comes from the file below",
+         "why": "the structure comes from a file, so this is left alone"
+        },
+        "folded": {
+         "optional": true,
+         "placeholder": "not read: the structure is folded for this card",
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "path",
+     "label": "Structure file",
+     "kind": "path",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "optional": false,
+         "why": "the file the flow reads the receptor from, on the cluster"
+        },
+        "rcsb": {
+         "placeholder": "not read: the structure is fetched by its id",
+         "why": "the structure is fetched by its PDB id, so this is left alone"
+        },
+        "folded": {
+         "placeholder": "not read: the structure is folded for this card",
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "chains",
+     "label": "Chains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "empty takes every chain in the file",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "hotspots",
+     "label": "Hotspots",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residue numbers of this structure, as 54,56,66-70 or A54,B12-16. Needed by the cards that aim at a site - the design tools and ADCP, and HADDOCK docking when it docks by the interface. A folded structure is numbered by the sequence it was folded from, so 54 is its 54th residue and the chains are named from A",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "binder_min",
+     "label": "Shortest designed binder, residues",
+     "kind": "number",
+     "default": 70,
+     "choices": [],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 4,
+     "most": 500,
+     "step": 5
+    },
+    {
+     "key": "binder_max",
+     "label": "Longest designed binder, residues",
+     "kind": "number",
+     "default": 100,
+     "choices": [],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 4,
+     "most": 500,
+     "step": 5
+    }
+   ]
+  },
+  {
+   "key": "boltz2",
+   "name": "Boltz-2",
+   "tagline": "fold a sequence, or co-fold a complex",
+   "tool": "boltz2",
+   "note": "One sequence folds one structure, for a target card to take. Fill in a second sequence and the two are folded together as a complex - a receptor with the DNA, RNA or peptide that binds it - which goes on to be prepared and simulated. A structure of more chains than three is a job for the Boltz-2 page.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "structure",
+     "label": "folded structure or complex",
+     "kinds": [
+      "structure",
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "sequence",
+     "label": "Sequence",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "one chain, in one-letter codes. Case does not matter - neither tool makes the distinction, so a sequence pasted in lower case is read as upper - but a letter that is not a residue does, and is refused here rather than folded as nothing",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    },
+    {
+     "key": "entity",
+     "label": "What it is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna"
+     ],
+     "why": "the alphabet the sequence is checked against, and the model used for it",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "copies",
+     "label": "Copies",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more than one folds a homo-oligomer: the same sequence again as chains A, B, C",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "sequence_2",
+     "label": "Sequence of the second chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "empty folds without it"
+    },
+    {
+     "key": "entity_2",
+     "label": "What the second one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "copies_2",
+     "label": "Copies of the second chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "sequence_3",
+     "label": "Sequence of the third chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "empty folds without it"
+    },
+    {
+     "key": "entity_3",
+     "label": "What the third one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "copies_3",
+     "label": "Copies of the third chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "alignments",
+     "label": "Alignments",
+     "kind": "choice",
+     "default": "fetch",
+     "choices": [
+      "fetch",
+      "single"
+     ],
+     "why": "fetch asks the alignment server for one per protein chain while the flow is being queued, on the login node, which is the only place that can reach it. single folds from the sequence alone: nothing is fetched, and the structure is markedly worse",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "diffusion_samples",
+     "label": "Structures to fold",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "each is a separate sample of the same model, and five takes about five times as long. They are handed on best first, and the card below takes the best few of them",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 25,
+     "step": 1
+    },
+    {
+     "key": "recycling_steps",
+     "label": "Recycling steps",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "Boltz-2's own default. More costs time roughly in proportion",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4",
+      "h100",
+      "a30"
+     ],
+     "why": "auto takes the largest card this cluster has. A card the cluster has not got is refused before anything is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "04:00:00",
+     "choices": [],
+     "why": "importing the tool takes the first five minutes of it. A job that ends early is charged for what it used, so round up rather than cut it fine",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "colabfold",
+   "name": "ColabFold",
+   "tagline": "fold a protein chain into a structure",
+   "tool": "colabfold",
+   "note": "Folds the sequence on the card with AlphaFold 2 and hands the best-ranked model to a target card, which is where the chains and the hotspots are named.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "structure",
+     "label": "folded structure",
+     "kinds": [
+      "structure"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "sequence",
+     "label": "Sequence",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "one chain, in one-letter codes. Case does not matter - neither tool makes the distinction, so a sequence pasted in lower case is read as upper - but a letter that is not a residue does, and is refused here rather than folded as nothing",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    },
+    {
+     "key": "copies",
+     "label": "Copies",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more than one folds a homo-oligomer: the same sequence again as chains A, B, C",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "alignments",
+     "label": "Alignments",
+     "kind": "choice",
+     "default": "fetch",
+     "choices": [
+      "fetch",
+      "single"
+     ],
+     "why": "fetch asks the alignment server for one per protein chain while the flow is being queued, on the login node, which is the only place that can reach it. single folds from the sequence alone: nothing is fetched, and the structure is markedly worse",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "num_models",
+     "label": "Models",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "all five is ColabFold's own default. They are ranked and the best is the one handed on",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 5,
+     "step": 1
+    },
+    {
+     "key": "num_recycle",
+     "label": "Recycling steps",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "what the lab's co-folding has always asked for",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4",
+      "h100",
+      "a30"
+     ],
+     "why": "auto takes the largest card this cluster has. A card the cluster has not got is refused before anything is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "04:00:00",
+     "choices": [],
+     "why": "importing the tool takes the first five minutes of it. A job that ends early is charged for what it used, so round up rather than cut it fine",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "bindcraft",
+   "name": "BindCraft2",
+   "tagline": "design a miniprotein binder",
+   "tool": "bindcraft",
+   "note": "Designs come out already placed on the target, so docking them again is optional.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Stop when this many designs pass",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "a campaign runs until it has this many, or until its walltime ends",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 500,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4"
+     ],
+     "why": "auto picks a card the complex fits in",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "24:00:00",
+     "choices": [],
+     "why": "a campaign that runs out carries on when it is queued again",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 3600,
+     "most": 604800,
+     "step": 3600
+    },
+    {
+     "key": "coldspots",
+     "label": "Coldspots",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues to keep clear of",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "forced",
+     "label": "Focus on the hotspots",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "yes",
+      "no"
+     ],
+     "why": "the surface outside them is rebuilt so a binder cannot settle elsewhere; left on auto it focuses whenever hotspots are given",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "max_trajectories",
+     "label": "Give up after this many attempts",
+     "kind": "number",
+     "default": "",
+     "choices": [],
+     "why": "a campaign that will never find its designs otherwise runs to its walltime",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100000,
+     "step": 100
+    },
+    {
+     "key": "gpus",
+     "label": "Cards",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "one campaign over this many cards on the one node",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 4,
+     "step": 1
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "rfdiffusion",
+   "name": "RFdiffusion",
+   "tagline": "design a binder backbone, then its sequence",
+   "tool": "rfdiffusion",
+   "note": "Designs come out placed on the target, so docking them again is optional.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Backbones to generate",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "each is a separate diffusion, and the whole run is this many",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 500,
+     "step": 1
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per backbone",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "ProteinMPNN designs this many for each backbone, and the best is kept",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "0 is what the binder-design example uses, and is a real answer rather than an empty one. Higher is more varied and fewer of them fold",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.1
+    },
+    {
+     "key": "diffuser_T",
+     "label": "Diffusion steps",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "fewer is faster and rougher, and RFdiffusion itself asserts at least 15",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 15,
+     "most": 200,
+     "step": 5
+    },
+    {
+     "key": "ckpt",
+     "label": "Checkpoint",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "Complex_base_ckpt.pt",
+      "Complex_beta_ckpt.pt"
+     ],
+     "why": "empty takes the binder-design default",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "rfd3",
+   "name": "RFdiffusion3",
+   "tagline": "design a binder, every atom at once",
+   "tool": "rfd3",
+   "note": "Designs come out placed on the target, as RFdiffusion's do.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Designs to generate",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "generated together in one pass, so this costs GPU memory rather than time",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per design",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "RFdiffusion3 writes a sequence of its own, and MPNN is still what the authors' own pipeline redesigns protein backbones with before ordering",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "step_scale",
+     "label": "Step scale",
+     "kind": "number",
+     "default": 1.5,
+     "choices": [],
+     "why": "the diversity knob. Higher is less varied and more of them hold up",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.5,
+     "most": 3.0,
+     "step": 0.1
+    },
+    {
+     "key": "num_timesteps",
+     "label": "Diffusion steps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "fewer is faster and rougher",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 20,
+     "most": 500,
+     "step": 10
+    },
+    {
+     "key": "cfg",
+     "label": "Classifier-free guidance",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "holds a design closer to what was asked of it. Off is the model's own default, and it is turned on for conditioning that must be obeyed",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "boltzgen",
+   "name": "BoltzGen",
+   "tagline": "generate a binder against the target",
+   "tool": "boltzgen",
+   "note": "Generates binders against a target of any kind, protein, peptide, nucleic acid or small molecule, and leaves them already placed on it.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "protocol",
+     "label": "What to design",
+     "kind": "choice",
+     "default": "protein-anything",
+     "choices": [
+      "protein-anything",
+      "peptide-anything",
+      "nanobody-anything",
+      "antibody-anything",
+      "protein-small_molecule",
+      "protein-redesign"
+     ],
+     "why": "the model's own protocols; the binder kind is chosen here",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    },
+    {
+     "key": "designs",
+     "label": "Designs to generate",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 500,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "a100",
+     "choices": [
+      "a100",
+      "a40"
+     ],
+     "why": "BoltzGen needs 40 GB or more; the smaller cards run out",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "cyclic",
+     "label": "Cyclic peptide",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "peptide protocols only",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "sampling_steps",
+     "label": "Step scale",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "it scales the diffusion step, and is not a count of steps",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.1,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "fold",
+     "label": "Fold and score each design",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "the ranking comes from this; off leaves designs unranked",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "adcp",
+   "name": "ADCP docking",
+   "tagline": "dock peptides into the target",
+   "tool": "adcp",
+   "note": "Takes peptides of 30 residues or fewer.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "prepared receptor",
+     "kinds": [
+      "receptor"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "peptides to dock",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "poses",
+     "label": "docked poses",
+     "kinds": [
+      "poses"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "poses",
+     "label": "Poses to keep per peptide",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "replicas",
+     "label": "Replicas",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "how many independent searches per peptide",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 1000,
+     "step": 10
+    },
+    {
+     "key": "mmgbsa",
+     "label": "Score the best poses with MM-GBSA",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "slower, and the more considered estimate of binding",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "steps",
+     "label": "Steps per replica",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 100000,
+     "most": 50000000,
+     "step": 500000,
+     "placeholder": "the docking's own"
+    },
+    {
+     "key": "cpus",
+     "label": "Cores",
+     "kind": "number",
+     "default": 48,
+     "choices": [],
+     "why": "ADCP searches in parallel, one replica per core",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 96,
+     "step": 1
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "08:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the docking's own"
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "haddock",
+   "name": "HADDOCK docking",
+   "tagline": "dock proteins, DNA or RNA onto the target, by its interface",
+   "tool": "haddock",
+   "note": "Takes the target as the receptor and each folded structure as a partner.",
+   "ready": true,
+   "site": "use_site",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "prepared receptor",
+     "kinds": [
+      "receptor"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "partner",
+     "label": "prepared partners",
+     "kinds": [
+      "prepared"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "docked complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "mode",
+     "label": "Docking mode",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "protein-protein",
+      "protein-DNA",
+      "protein-RNA"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "auto": "protein-DNA or protein-RNA when a partner is DNA or RNA, protein-protein otherwise",
+      "protein-protein": "HADDOCK's standard settings",
+      "protein-DNA": "HADDOCK's protein-DNA protocol",
+      "protein-RNA": "the same nucleic acid settings, for RNA"
+     }
+    },
+    {
+     "key": "use_site",
+     "label": "Drive the docking by the target's hotspots",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "the hotspots named on the target card become the receptor's active residues, and each partner's whole surface is passive; untick to dock ab initio",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "partner_chains",
+     "label": "Partners' chains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as A,B; empty docks the whole of what was folded",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "every protein, DNA and RNA chain folded"
+    },
+    {
+     "key": "preset",
+     "label": "Sampling",
+     "kind": "choice",
+     "default": "standard",
+     "choices": [
+      "quick",
+      "standard",
+      "thorough"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "quick": "200 rigid-body models, 40 refined: for checking a flow",
+      "standard": "1000 rigid-body models, 200 refined: HADDOCK's own default",
+      "thorough": "2000 rigid-body models, 400 refined: for ab initio docking"
+     }
+    },
+    {
+     "key": "top",
+     "label": "Complexes to hand on",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "per partner: the best model of each of its best clusters. What leaves this card is then ranked across all of its partners together, best score first",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 50,
+     "step": 1
+    },
+    {
+     "key": "cpus",
+     "label": "Cores per partner",
+     "kind": "number",
+     "default": 24,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 96,
+     "step": 4
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "",
+     "choices": [],
+     "why": "left empty, the docking works one out from the size of the molecules and the sampling",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1800,
+     "most": 604800,
+     "step": 1800,
+     "placeholder": "from the estimate"
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "prepare",
+   "name": "Prepare",
+   "tagline": "prepare the receptor and the partner each on its own, then rejoin them",
+   "tool": "",
+   "note": "Put in by the canvas on every link that carries a structure into a docking card or the simulation, and part of that link rather than a card of its own: it splits what arrives into the receptor and the partner, prepares each on its own - protonation at the pH above, termini, disulfides, gaps - puts them back together and checks the net charge. A side of several chains is prepared whole, so the bonds between its chains are kept. Into a docking card the waters and hetero groups are dropped, except the ions that docking can use. What it decided is listed on the card when it has run.",
+   "ready": true,
+   "site": "",
+   "fixed": true,
+   "inputs": [
+    {
+     "key": "structure",
+     "label": "what to prepare",
+     "kinds": [
+      "structure",
+      "complexes",
+      "poses"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "prepared",
+     "label": "prepared structures",
+     "kinds": [
+      "prepared"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "ph",
+     "label": "pH",
+     "kind": "number",
+     "default": 7.4,
+     "choices": [],
+     "why": "every molecule is protonated at this pH, and one flow has one pH",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 14,
+     "step": 0.1
+    },
+    {
+     "key": "protonation",
+     "label": "How the hydrogens are decided",
+     "kind": "choice",
+     "default": "propka",
+     "choices": [
+      "propka",
+      "pdbfixer",
+      "none"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "propka": "pdb2pqr with propka at the pH above: each titratable residue gets the state its own surroundings call for",
+      "pdbfixer": "PDBFixer's rules at the pH above, which are the standard states and no more",
+      "none": "the hydrogens in the file, or the engine's own defaults where there are none"
+     }
+    },
+    {
+     "key": "model_loops_max",
+     "label": "Longest gap to model, residues",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "a gap inside a chain up to this long, found from the sequence the file records, is built, relaxed and its joins checked, as ADCP builds one; a longer one is left open and its two ends capped (Cap the breaks). 12 at most, 0 builds none, and a chain's missing ends are never built",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "drop_waters",
+     "label": "Crystal waters",
+     "kind": "choice",
+     "default": "all",
+     "choices": [
+      "all",
+      "far",
+      "none"
+     ],
+     "why": "for the simulation; into a docking card every water is dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "all": "drop every one",
+      "far": "keep those within 5 Å of the partner",
+      "none": "keep every one"
+     }
+    },
+    {
+     "key": "keep_cofactors",
+     "label": "Keep metals and cofactors",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "into the simulation they ride through at their own coordinates, and it decides which side of the interface each belongs to; into a docking card only the ions that docking can use are kept, and the rest are listed as dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "cap_breaks",
+     "label": "Cap the breaks",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a gap left open has its two ends capped, an NME on the residue before it and an ACE on the residue after it, so neither is a charged terminus the protein does not have; the chain's own termini stay charged. Off, each piece ends in charged termini, an OXT before the gap and NH3+ after it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise",
+     "label": "Minimise each molecule",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "restrained, in vacuum: it takes the clashes out and moves nothing else",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimisation steps",
+     "kind": "number",
+     "default": 500,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "02:00:00",
+     "choices": [],
+     "why": "one job prepares everything that arrives, a few minutes a molecule",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 86400,
+     "step": 600
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "prepare_receptor",
+   "name": "Prepare receptor",
+   "tagline": "prepare the target's receptor once, for the docking",
+   "tool": "",
+   "note": "Put in by the canvas between a target and every docking card it feeds, once per target: the target's chains alone, through HOPE-MD's Prepare - protonation at the flow's pH, AMBER names, termini and breaks, gaps up to the length above built back from the sequence the file records - with the waters and hetero groups dropped, except the ions the docking can use. The hotspots are checked against what comes out: one on a built residue is flagged on the card, and one that is missing stops the docking, by name.",
+   "ready": true,
+   "site": "",
+   "fixed": true,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "receptor",
+     "label": "prepared receptor",
+     "kinds": [
+      "receptor"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "ph",
+     "label": "pH",
+     "kind": "number",
+     "default": 7.4,
+     "choices": [],
+     "why": "the receptor is protonated at this pH, and one flow has one pH",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 14,
+     "step": 0.1
+    },
+    {
+     "key": "protonation",
+     "label": "How the hydrogens are decided",
+     "kind": "choice",
+     "default": "propka",
+     "choices": [
+      "propka",
+      "pdbfixer",
+      "none"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "propka": "pdb2pqr with propka at the pH above: each titratable residue gets the state its own surroundings call for",
+      "pdbfixer": "PDBFixer's rules at the pH above, which are the standard states and no more",
+      "none": "the hydrogens in the file, or the engine's own defaults where there are none"
+     }
+    },
+    {
+     "key": "model_loops_max",
+     "label": "Longest gap to model, residues",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "a gap inside a chain up to this long, found from the sequence the file records, is built, relaxed and its joins checked, as ADCP builds one; a longer one is left open and its two ends capped (Cap the breaks). 12 at most, 0 builds none, and a chain's missing ends are never built",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "cap_breaks",
+     "label": "Cap the breaks",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a gap left open has its two ends capped, an NME on the residue before it and an ACE on the residue after it, so neither is a charged terminus the protein does not have; the chain's own termini stay charged. Off, each piece ends in charged termini, an OXT before the gap and NH3+ after it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise",
+     "label": "Minimise each molecule",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "restrained, in vacuum: it takes the clashes out and moves nothing else",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimisation steps",
+     "kind": "number",
+     "default": 500,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "02:00:00",
+     "choices": [],
+     "why": "one job prepares the receptor once, for every docking below it",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 86400,
+     "step": 600
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "hopemd",
+   "name": "HOPE-MD",
+   "tagline": "simulate what arrives",
+   "tool": "hopemd",
+   "note": "",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "structures",
+     "label": "prepared structures",
+     "kinds": [
+      "prepared"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "trajectories",
+     "label": "trajectories",
+     "kinds": [
+      "trajectories"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "pick",
+     "label": "Which of what arrives to simulate",
+     "kind": "choice",
+     "default": "rank",
+     "choices": [
+      "rank",
+      "name"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "rank": "the best few, by the score the tool that made them gave them, ranked across all of its partners together",
+      "name": "the ones named below, whatever their rank"
+     }
+    },
+    {
+     "key": "top_n",
+     "label": "Simulate the best of what arrives",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "per track, best score first across all of that track's partners. Each one is a full simulation, so this is what the flow costs",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "pick",
+       "cases": {
+        "name": {
+         "why": "not read: the structures named below are the ones simulated"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "names",
+     "label": "Structures to simulate, by name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as the preparation named them, separated by commas",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "not read: the best few are taken by rank",
+     "varies": [
+      {
+       "on": "pick",
+       "cases": {
+        "name": {
+         "optional": false,
+         "placeholder": "",
+         "why": "the names as they arrive here, separated by commas: a docking's are <partner>_cluster<n>, a fold's <card>_model<n>, a peptide's <peptide>_pose<n>. A name nothing answers to is said before anything is queued"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "overrides",
+     "label": "Settings for one structure",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "a group per structure, as name: key=value, key=value, with a semicolon between groups. The keys are this card's own, so \"3cc1_cluster2: length_ns=200, engine=openmm\" runs that one structure for longer on another engine and leaves the rest alone",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "every run takes the settings on this card"
+    },
+    {
+     "key": "poses_each",
+     "label": "Poses per peptide",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "from a docking: the best few poses of each peptide, not only its first; the best of what arrives still caps the whole",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "engine",
+     "label": "Engine",
+     "kind": "choice",
+     "default": "amber",
+     "choices": [
+      "amber",
+      "openmm",
+      "gromacs",
+      "namd",
+      "desmond"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    },
+    {
+     "key": "length_ns",
+     "label": "Length, ns",
+     "kind": "number",
+     "default": 100,
+     "choices": [],
+     "why": "production, per replicate",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 5000,
+     "step": 10
+    },
+    {
+     "key": "frames",
+     "label": "Frames to keep",
+     "kind": "number",
+     "default": 500,
+     "choices": [],
+     "why": "over the whole production; the interval between them follows from this, and it has to be a whole number of steps and no longer than the 200 ps MM-GBSA takes its frames at",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 10,
+     "most": 100000,
+     "step": 50
+    },
+    {
+     "key": "replicates",
+     "label": "Replicates",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "independent repeats, each with its own seed; 5 is the most HOPE-MD runs",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 5,
+     "step": 1
+    },
+    {
+     "key": "mmgbsa",
+     "label": "Binding energy by MM-GBSA",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "report",
+     "label": "Write each run's report when it finishes",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "videos",
+     "label": "Make each run's videos when it finishes",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a job of its own per run, cut from the trajectory",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "temperature_K",
+     "label": "Temperature, K",
+     "kind": "number",
+     "default": 300,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 250.0,
+     "most": 400.0,
+     "step": 5
+    },
+    {
+     "key": "pressure_bar",
+     "label": "Pressure, bar",
+     "kind": "number",
+     "default": 1.0,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 1
+    },
+    {
+     "key": "timestep_fs",
+     "label": "Timestep, fs",
+     "kind": "number",
+     "default": 4.0,
+     "choices": [],
+     "why": "2 fs, or 4 fs with hydrogen mass repartitioning",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 2.0,
+     "most": 4.0,
+     "step": 2.0,
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "value": 2.0,
+         "why": "Desmond runs its RESPA scheme: the timestep is fixed at 2 fs and there is no hydrogen mass repartitioning"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "equil_ps",
+     "label": "Equilibration, ps",
+     "kind": "number",
+     "default": 1000,
+     "choices": [],
+     "why": "over the restraint ladder",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100
+    },
+    {
+     "key": "heat_ps",
+     "label": "Heating, ps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 10000,
+     "step": 50
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimisation steps",
+     "kind": "number",
+     "default": 5000,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000000,
+     "step": 500
+    },
+    {
+     "key": "seed",
+     "label": "Random seed",
+     "kind": "number",
+     "default": -1,
+     "choices": [],
+     "why": "-1 lets each replicate pick its own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": -1,
+     "most": 2000000000,
+     "step": 1
+    },
+    {
+     "key": "water",
+     "label": "Water",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "OPC",
+      "TIP3P",
+      "TIP4P-Ew",
+      "TIP4P",
+      "SPC"
+     ],
+     "why": "empty takes what the force field was fitted to",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the force field's own pairing: OPC with ff19SB, TIP3P with ff14SB, SPC with Desmond's OPLS",
+      "OPC": "ff19SB's own, and not for NAMD or Desmond",
+      "TIP3P": "every engine takes it",
+      "TIP4P-Ew": "not for NAMD, which cannot run a four-site water from the Amber topology",
+      "TIP4P": "Desmond's OPLS4 only",
+      "SPC": "Desmond"
+     }
+    },
+    {
+     "key": "protein",
+     "label": "Protein force field",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "ff19SB",
+      "ff14SB",
+      "OPLS_2005",
+      "OPLS4"
+     ],
+     "why": "empty takes the engine's own: ff19SB on the four Amber-topology engines, OPLS_2005 on Desmond",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the engine's own",
+      "ff19SB": "Amber, OpenMM, GROMACS, NAMD",
+      "ff14SB": "the same four, for comparison with older work",
+      "OPLS_2005": "Desmond, which types the whole system with its own OPLS",
+      "OPLS4": "Desmond, with the OPLS licence"
+     },
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "why": "Desmond types the whole system with its own OPLS: OPLS_2005 or OPLS4"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "nucleic",
+     "label": "DNA and RNA force field",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "OL21+OL3",
+      "OL15+OL3",
+      "bsc1+OL3"
+     ],
+     "why": "for a strand in the run; empty takes the engine's usual",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "OL21+OL3, or OL15+OL3 on OpenMM",
+      "OL21+OL3": "Amber, GROMACS and NAMD",
+      "OL15+OL3": "OpenMM",
+      "bsc1+OL3": "any engine but Desmond, which types DNA and RNA with its own OPLS and takes no choice"
+     }
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "",
+     "choices": [],
+     "why": "left empty, the simulation works one out from the length, the replicates and the size of the system, which is the number to beat",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 3600,
+     "most": 604800,
+     "step": 3600,
+     "placeholder": "from the estimate"
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  }
+ ]
+}

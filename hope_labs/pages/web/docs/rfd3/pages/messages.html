@@ -1,0 +1,66 @@
+<h1>What the messages mean</h1>
+<p class="lead">The failures this tool actually produces, and what each one is telling you.</p>
+
+<h2 id="no-hotspots">no hotspots on the target, so the binder may grow anywhere on it</h2>
+<p>Not an error. No hotspots were named, so the design is grown from the target's centre of mass
+rather than from a face. If that was not meant, name the residues the binder should reach and
+queue it again.</p>
+
+<h2 id="checkpoint-missing">RFdiffusion3's checkpoint is not in ...</h2>
+<p>The weights are missing from the HOPE Labs folder. They are 2.5 GB and are fetched on a login
+node, because a compute node has no outbound network. The run is refused rather than queued.</p>
+
+<h2 id="contig">Invalid contig format. Expected 'ChainIDStart-Stop' or 'ChainIDIdx'</h2>
+<p>The target's residue range could not be read from the structure, so the contig named a bare
+chain. Usually the named chain is not in the file: check the chain letters against what is
+actually there, remembering that a structure fetched by PDB id may not label them as a paper
+does.</p>
+
+<h2 id="unexpected-keyword">got an unexpected keyword argument 'p_reassign_modified_residue'</h2>
+<p>An install problem rather than a run problem. The model's configuration and the version of
+<code>atomworks</code> in the environment have drifted apart: the package pins 3.0.1 in its own
+constraints file, and a plain install resolves a later one in which that argument was renamed.
+The environment needs <code>atomworks==3.0.1</code>.</p>
+
+<h2 id="could-not-override">Could not override 'inference_engine...'</h2>
+<p>Also an install problem. The engine's configuration is declared at the global level, so its
+settings are named without a prefix. Nothing on the form produces this; it means the job script
+has been edited.</p>
+
+<h2 id="mpnn-did-not-run">ProteinMPNN did not run; it keeps RFdiffusion3's own sequence</h2>
+<p>The diffusion succeeded and the sequence step did not. The designs are real and usable, and
+each carries the model's own sequence instead of ProteinMPNN's. This is deliberate: losing a GPU
+hour of diffusion because the sequence step failed afterwards would be the worse outcome. The
+run's log says what ProteinMPNN reported.</p>
+
+<h2 id="out-of-memory">CUDA out of memory</h2>
+<p>Too many designs for the card. They are diffused in one batch, so the memory is set by
+<b>Designs to generate</b> and by how big the target is. Halve the designs, or ask for an
+A100 rather than an A40.</p>
+
+<h2 id="legacy-inference">Legacy inference for ...: more than three chains use the legacy
+randomized neighbor policy</h2>
+<p>A warning about speed, not about the designs. RFdiffusion3 diffuses several designs together
+only while the system has three chains or fewer; past that it falls back to running them one at a
+time. A target with gaps in its chain reaches that on its own, because each stretch of resolved
+residues is a chain of its own in the contig, so 7A3R's chain A arrives as six plus the binder.
+The designs are the same; there are just no savings from batching them, and a run of many designs
+takes correspondingly longer.</p>
+<p>Cropping the target to the site is the answer, and is worth doing anyway: it is what the
+model's authors ask for, it cuts the memory, and it removes whichever gaps fall outside the part
+you care about.</p>
+
+<h2 id="no-message-at-all">No message at all: the job reaches its walltime having written
+nothing</h2>
+<p>The one failure with nothing to read. RFdiffusion3 loads its inputs in two worker processes
+and takes their tensors back over a Unix socket opened in the job's temporary folder. The kernel
+allows that socket path 107 characters and Python's own names inside it take 32, so a temporary
+folder over 75 characters makes the socket fail to open, in a thread where nothing is watching.
+The run then waits for data that never arrives, for the whole booking.</p>
+<p>The job now uses the scheduler's own folder, <code>/tmp/job.&lt;id&gt;</code>, which is
+seventeen characters, and prints near the top of its log which folder it took and how long that
+path is:</p>
+<pre><code>temporary folder: /tmp/job.20198278 (17 characters)</code></pre>
+<p>If that line shows a path inside the run folder and a length over 75, the node gave the job
+nothing shorter and the job says so on the line after. A shorter runs root, set as the card's
+<code>runs</code> setting in a flow, is the way round it, and a shorter flow name helps too.</p>

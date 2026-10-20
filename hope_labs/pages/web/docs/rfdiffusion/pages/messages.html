@@ -1,0 +1,80 @@
+<h1>What the messages mean</h1>
+<p class="lead">The sentences the page and the job can produce, what each one is telling you, and
+what to do about it.</p>
+
+<h2 id="before-anything-is-queued">Before anything is queued</h2>
+<table>
+<tr><th>What it says</th><th>What to do</th></tr>
+<tr><td>the target needs hotspots: the residues a binder should touch</td><td>Name a few
+residues. A run is not queued without them, because a binder with no site to aim at will settle
+wherever the surface is most hydrophobic.</td></tr>
+<tr><td>the target has no residue A218</td><td>The number is not in the chain. The chips under
+the target show the range each chain actually uses, and plenty of entries do not start at 1.</td></tr>
+<tr><td>the target has no chain C</td><td>A chain was dropped, or the entry does not have it.
+The chips are the chains the file holds.</td></tr>
+<tr><td>the structure has to be a .pdb file</td><td>The job reads a target by PDB columns, so an
+mmCIF would be copied in and then found empty. Convert it, or give a PDB.</td></tr>
+<tr><td>no amino-acid chain was found in that file</td><td>The file has no <code>ATOM</code>
+records this run can read. A nucleic acid structure, or a file of ligands only, is not a target
+RFdiffusion can be aimed at.</td></tr>
+<tr><td>the RCSB would not give 9ZZZ</td><td>The id does not exist, or the RCSB is not answering.
+The message carries what it said.</td></tr>
+<tr><td>home is 10 GB and 10 000 files on Grace</td><td>Put the run folder in your scratch. One
+run writes more files than home will hold.</td></tr>
+<tr><td>the binder length should be a range, shortest first, of at least 4 residues</td><td>The
+two boxes are the wrong way round, or one of them is empty.</td></tr>
+<tr><td>a walltime Slurm takes: 12:00:00, or 2-00:00:00 for two days</td><td>Slurm's own forms
+only. The <code>gpu</code> partition allows four days at most.</td></tr>
+</table>
+
+<h2 id="when-the-run-is-queued">When the run will not queue</h2>
+<table>
+<tr><th>What it says</th><th>What it means</th></tr>
+<tr><td>ProteinMPNN is not unpacked at /scratch/.../dl_binder_design</td><td>The second half of
+the run has nothing to do the sequences with, so nothing is queued at all. The install needs
+putting back; this is not something the form can fix.</td></tr>
+<tr><td>sbatch refused the job</td><td>Slurm's own complaint, passed through. The usual causes are
+an account you are not a member of, a partition that has no such card, or a walltime over the
+partition's limit.</td></tr>
+<tr><td>there is no RFdiffusion on the cluster</td><td>From the launcher, not the page: the
+install is not where it is expected. Check the path on the Tools screen.</td></tr>
+</table>
+
+<h2 id="in-the-log">In the log</h2>
+<table>
+<tr><th>What it says</th><th>What it means</th></tr>
+<tr><td>none of the chains A,C are in &hellip; (it has A,B)</td><td>The job was told to keep a
+chain the file has not got. The page checks this, so seeing it here means the structure changed
+under the run.</td></tr>
+<tr><td>rfdiffusion: 10 backbone(s)</td><td>The diffusion is finished and ProteinMPNN is starting.
+Normal.</td></tr>
+<tr><td>design_2: skipped, cannot tell the binder from the target in A:98, B:150</td><td>One
+design could not be split into binder and target by sequence, so it was left out rather than
+handed on with the two the wrong way round. One or two of these in a run is not a problem; all of
+them means the target's chains are not coming through unchanged.</td></tr>
+<tr><td>design_4: ProteinMPNN left no sequences</td><td>ProteinMPNN ran and wrote nothing for
+that backbone. The design is skipped. Its own output under
+<code>proteinmpnn/design_4/</code> will say why.</td></tr>
+<tr><td>wrote designs.json: 9 design(s)</td><td>The run finished. Nine designs came through with
+both a structure and a sequence.</td></tr>
+<tr><td>no design came through with a sequence</td><td>The run finished and produced nothing
+usable. The lines above it say which designs were skipped and why.</td></tr>
+<tr><td>CUDA out of memory</td><td>The target and the binder together are too large for the card.
+A shorter binder, fewer chains, or an A100 instead of a smaller card.</td></tr>
+</table>
+
+<h2 id="slurm-states">Slurm states on the Runs screen</h2>
+<table>
+<tr><th>State</th><th>What it means</th></tr>
+<tr><td>PENDING</td><td>Waiting for a card. The reason beside it is Slurm's, and
+<code>Resources</code> or <code>Priority</code> both mean wait.</td></tr>
+<tr><td>RUNNING</td><td>On a node. The backbones tile is the one to watch.</td></tr>
+<tr><td>COMPLETED</td><td>The job exited cleanly. Check the designs tile: a run can complete
+having skipped every design.</td></tr>
+<tr><td>TIMEOUT</td><td>Out of walltime. There is no checkpoint, so the run is lost; ask for
+longer or for fewer backbones.</td></tr>
+<tr><td>OUT_OF_MEMORY</td><td>The host ran out, not the card. Unusual at 48 GB and worth
+reporting.</td></tr>
+<tr><td>DRY RUN</td><td>Not a Slurm state. The run folder and the job script were written and
+nothing was queued.</td></tr>
+</table>

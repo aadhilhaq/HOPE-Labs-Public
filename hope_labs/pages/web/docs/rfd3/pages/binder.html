@@ -1,0 +1,35 @@
+<h1>The binder</h1>
+<p class="lead">How long it is, how many you get, and the two knobs that change what the
+diffusion does rather than how it is run.</p>
+
+<h2 id="length">Length</h2>
+<p>A range, not a number: the model samples a length within it for each design. Seventy to a
+hundred is a reasonable miniprotein and is the default. A short binder has less surface to make
+contacts with and a long one is harder to fold; neither limit is enforced by anything but
+judgement.</p>
+
+<h2 id="how-many">How many designs</h2>
+<p><b>Designs to generate</b> is a batch size rather than a loop count. They come out of one
+diffusion pass together, so asking for more costs GPU memory rather than wall clock, and the
+failure when it is too high is an out-of-memory error rather than a slow run. Eight is the
+model's own default and sits comfortably on an A100.</p>
+
+<h2 id="sequences">Sequences</h2>
+<p>The model writes a sequence of its own, and for RNA that sequence is the answer. For proteins
+the authors redesign the backbone with ProteinMPNN before anything is ordered, and so does this
+page. <b>Sequences per design</b> is how many ProteinMPNN writes for each backbone; the best by
+its score is kept and the rest are left in the run folder.</p>
+<p>Both sequences are recorded. They are two different claims about the same backbone and they
+differ substantially in practice, which is worth being able to see rather than having one
+quietly chosen for you.</p>
+
+<h2 id="the-samplers-own-knobs">The sampler's own knobs</h2>
+<p>Under <b>More settings</b>, named as the model's own configuration names them, so that the
+upstream documentation and the paper describe the same things.</p>
+<p><b>Step scale</b> is the diversity knob, 1.5 by default. Higher gives less varied designs and
+more of them hold up; lower gives more varied designs and fewer. This is the trade the paper
+tunes when it reports designability against diversity.</p>
+<p><b>Diffusion steps</b> is 200 by default. Fewer is faster and rougher.</p>
+<p><b>Classifier-free guidance</b> holds a design closer to what was asked of it. Off is the
+model's own default; it is turned on for conditioning that has to be obeyed rather than
+preferred.</p>

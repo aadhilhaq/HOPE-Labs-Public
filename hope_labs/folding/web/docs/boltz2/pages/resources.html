@@ -1,0 +1,40 @@
+<h1>Resources and submitting</h1>
+<p class="lead">The card, the walltime, the account, and what the plan box is telling you.</p>
+
+<h2>The cards this cluster has</h2>
+<p>Grace has a100, rtx and t4 nodes in the <code>gpu</code> partition and a40 nodes in
+<code>gpu-a40</code>, and a job that asks for an a40 in <code>gpu</code> is refused outright, so
+the partition follows the card you choose. The menu offers the cards the site actually has,
+largest first, and the default is the largest.</p>
+<p>The card is usually what decides whether a folding run finishes. A t4 has 16 GB and an a100
+has 40, and both tools grow with the square of the residue count, so the page says plainly when
+the run looks too large for the card you have chosen.</p>
+<p>Boltz-2 holds a 2.2 GB checkpoint and the pair representation of the whole
+complex at once, so it is given 64 GB of host memory and eight cores.</p>
+
+<h2>Walltime</h2>
+<p>Four hours is the default. The first five minutes of it are spent importing the tool, which is
+measured rather than guessed: importing Boltz-2 took five and a half minutes on a compute node
+here. Grace allows four days on its GPU partitions, and the page refuses a walltime longer than
+the partition will take.</p>
+
+<h2>Account</h2>
+<p>Left empty, the job is charged to your default account. Fill it in when you have more than one
+and the run belongs to a particular project.</p>
+
+<h2>The plan box</h2>
+<p>It says what Slurm will be asked for and where the work will happen: the card, the partition,
+the cores, the memory, the walltime, and whether the alignments will be fetched on the login node
+before the job is queued. Read it before pressing Submit. It is the only place that tells you,
+without guessing, what the next few hours of a card will be spent on.</p>
+
+<h2>When the tool is not installed here</h2>
+<p>The page says so across the top, names the folder it looked in, and refuses to queue a run. It
+still shows you a YAML file a run would be written, which is worth having: the lab's two clusters do
+not hold the same tools, and knowing what a run would ask for is useful even where it cannot be
+asked.</p>
+
+<h2>Submit and Dry run</h2>
+<p>Submit fetches the alignments and queues the job. Dry run writes the run folder, a YAML file and
+the job script, fetches nothing and queues nothing. Both leave a folder the Runs screen can read,
+so a dry run is listed with the rest, marked as one.</p>

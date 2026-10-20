@@ -1,0 +1,61 @@
+<h1>Getting started</h1>
+<p class="lead">Open the page, give it a four-character PDB id, name a few residues, and press Dry
+run. That writes everything a real run writes, including the specification and the job script, and
+queues nothing.</p>
+
+<h2 id="opening-the-page">Opening the page</h2>
+<p>From HOPE Labs: sign in, go to <b>Tools</b>, find <b>BoltzGen</b> and press <b>Launch</b>. The
+launcher starts the page on a login node, forwards the port to your own computer and opens it in a
+tab. Nothing needs installing on your machine.</p>
+<p>From a terminal on the cluster, if you would rather, in the HOPE Labs folder:</p>
+<pre><code>cd &lt;folder&gt;/HOPE-labs
+PYTHONPATH=. ../envs/hopelabs/bin/python3 \
+    -m hope_labs.pages.serve boltzgen --port 0</code></pre>
+<p>It prints the address to tunnel to and then a line beginning <code>open</code> with a URL in
+it. That URL carries a token, and nothing but this documentation answers without it, so the page
+is yours even though the login node is shared with everybody else logged into it.</p>
+<div class="note"><b>A login node, not a compute node.</b> The page reads a structure, talks to
+the queue and waits. The design runs in a job on a GPU node, which is what the page queues.</div>
+
+<h2 id="where-runs-go">Where runs go</h2>
+<p>By default a run goes in <code>$SCRATCH/boltzgen_runs</code>, in your own scratch, which is
+also where a flow puts its BoltzGen runs. So the Runs screen shows both, and a run started one way
+can be read the other way.</p>
+<p>Your home folder on Grace holds 10 GB and 10 000 files, and one run writes more than that. The
+page refuses a run folder inside home for that reason.</p>
+
+<h2 id="the-weights">The weights, and why the job has no internet</h2>
+<p>BoltzGen's model weights are about 10 GB and live in a shared cache at
+<code>envs/boltzgen_cache</code> in the HOPE Labs folder, fetched once on a login node. A compute
+node on Grace has no internet, so the job is pointed at that copy and told not to reach for
+anything more. If the cache is missing the page refuses to queue anything and says so, rather than
+letting a job spend ten minutes discovering it.</p>
+
+<h2 id="a-first-run">A first run</h2>
+<ol class="steps">
+<li>In <b>Target</b>, type a four-character RCSB id and press <b>Fetch</b>. The page fetches the
+entry, reads it, and shows one chip per chain with the residue numbers that chain actually
+uses.</li>
+<li>Leave every chain selected, or click a chip to drop one.</li>
+<li>In <b>Where the binder should bind</b>, type the residues to aim at in the numbering the chips
+show: <code>54,56,66-70</code> for one chain, or <code>A54,B12-16</code> across chains. The box
+below fills in with the same residues as positions in the chain, which is what BoltzGen will
+actually be given. Read it: if the chain does not start at 1, the two sets of numbers will not
+match, and that is correct.</li>
+<li>In the rail, choose <b>What to design</b>. This is the protocol, and it is the whole of what
+BoltzGen is being asked: a peptide and a nanobody against the same target are two different runs
+of the same model, not two settings of one.</li>
+<li>Set the binder length and how many designs to generate. The defaults are ten designs of 70 to
+100 residues.</li>
+<li>Press <b>Dry run</b>. The run folder is written, the structure is copied into it, the
+specification and the job script are written, and nothing is queued.</li>
+<li>When it looks right, press <b>Submit</b>. The page moves to the Runs screen with the new run
+open.</li>
+</ol>
+
+<h2 id="how-long-it-takes">How long it takes</h2>
+<p>A run is generation, then inverse folding, then re-folding and scoring, then the analysis that
+produces the ranking. Ten designs against a small target is comfortably inside the default twelve
+hours. A hundred is not, and the analysis step is the part that grows: upstream reports it running
+out of card memory at a hundred designs. Ask for more time and fewer designs rather than the other
+way round.</p>

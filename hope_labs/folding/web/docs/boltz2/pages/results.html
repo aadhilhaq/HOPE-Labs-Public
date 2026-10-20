@@ -1,0 +1,43 @@
+<h1>What a run leaves</h1>
+<p class="lead">The folder, the files in it, the numbers beside each structure, and how to take any
+of it somewhere else.</p>
+
+<h2>The run folder</h2>
+<pre><code>demo_20261005-1830/
+  submission.json              what was asked for, and what Slurm was asked
+  entities.json                the rows exactly as they were given
+  inputs/demo.yaml             what the job read
+  msa/entity_1.csv             phase one's alignment, one per distinct protein sequence
+  out/boltz_results_demo/
+    predictions/demo/
+      demo_model_0.cif         the best structure
+      confidence_demo_model_0.json
+  job.sbatch                   the job, as it was queued
+  slurm_12345678.out           the log
+  cache/                       everything the tool wanted to write in your home folder</code></pre>
+<p>The alignments are the large part. Phase one leaves several megabytes per protein sequence, and
+a run with a few chains in it is a few hundred megabytes before a structure is written. That is why
+the run folder goes in your scratch and why the page refuses to put one in your home folder.</p>
+
+<h2>The numbers beside each structure</h2>
+<p>Boltz-2 writes a confidence file beside each structure. The page shows four
+of its numbers: the confidence score Boltz-2 ranks by, the complex pLDDT, and pTM and ipTM. The
+pLDDT is a fraction of one in the file and is shown as a percentage, so that the two folding pages
+read alike.</p>
+<p>The structures are named <code>&lt;name&gt;_model_0</code> upwards, best first. The page shows
+them ranked from one, because every other ranking on these pages starts at one.</p>
+<p>pLDDT is per residue confidence and is the one to look at first. pTM says how much of the fold
+is likely to be right overall, and ipTM says how much the interface between chains is likely to be
+right, which for a complex is usually the question you came with.</p>
+
+<h2>Taking the results somewhere</h2>
+<p>Two ways, because they answer different questions.</p>
+<p><b>To a folder on the cluster.</b> Give a path and press Copy the structures, or Copy the whole
+run. This is much faster than going through this page, and it is where the lab's work belongs. A
+path inside your home folder is refused, with the reason: home is 10 GB and 10,000 files, and one
+run is more than both.</p>
+<p><b>To your own computer.</b> The save button beside each structure, and Save the best model, ask
+your browser where to put the file. In Chrome you get a real folder and filename chooser; in
+Firefox and Safari the file goes to your downloads folder, because those browsers have no chooser
+to offer. A structure is a few hundred kilobytes, so this is the right way to take one model and
+the wrong way to take a whole run.</p>

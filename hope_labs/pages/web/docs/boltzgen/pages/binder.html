@@ -1,0 +1,63 @@
+<h1>The binder</h1>
+<p class="lead">What kind of binder to design, how long it should be, how many to make, and the
+three settings that change how the model generates them.</p>
+
+<h2 id="what-to-design">What to design</h2>
+<p><b>What to design</b> is BoltzGen's protocol, and it is the whole of what the model is being
+asked. It is the first thing to choose and the one setting a run cannot be queued without a
+decision on.</p>
+<table>
+<tr><th>Protocol</th><th>What it designs</th></tr>
+<tr><td><code>protein-anything</code></td><td>A protein binder against a target of any kind. The
+default, and the right answer for a protein receptor.</td></tr>
+<tr><td><code>peptide-anything</code></td><td>A peptide binder. Use a short length range with
+this, and see <b>Cyclic peptide</b> below.</td></tr>
+<tr><td><code>nanobody-anything</code></td><td>A nanobody, with the framework the model knows and
+the loops designed.</td></tr>
+<tr><td><code>antibody-anything</code></td><td>An antibody, in the same way.</td></tr>
+<tr><td><code>protein-small_molecule</code></td><td>A protein binder against a small molecule
+target rather than a protein one.</td></tr>
+<tr><td><code>protein-redesign</code></td><td>Redesign of a binder that is already there, rather
+than a new one.</td></tr>
+</table>
+<p>A peptide and a nanobody against the same target are two different runs. There is no setting
+that turns one into the other, which is why this is a protocol and not a tick box.</p>
+
+<h2 id="the-length-range">The length range</h2>
+<p><b>Shortest</b> and <b>Longest</b> are the binder's own length, and they go into the
+specification as a range the model samples inside, written <code>70..100</code>.</p>
+<div class="note"><b>This is the binder's length, not the complex's.</b> BoltzGen also has a
+setting for the length of the whole complex, target included, which it satisfies by resampling
+until something fits. That is not what this form sets, and it is deliberately left out: a number
+that includes the target is a number nobody can reason about, and the run leaves it to the model.</div>
+<p>The default 70 to 100 residues is a small folded miniprotein. For a peptide protocol, something
+like 12 to 20 is more appropriate.</p>
+
+<h2 id="how-many-designs">How many designs</h2>
+<p><b>Designs to generate</b> is the size of the run. Each design is generated, inverse folded,
+re-folded with the target and scored, so the cost per design is higher here than in a tool that
+only generates. Ten is the default.</p>
+<p>The ranking at the end comes from an analysis step over all of them, and that step is the part
+that has been reported running out of card memory at a hundred designs. Several runs of twenty are
+safer than one of a hundred, and they can be read together.</p>
+
+<h2 id="the-model-s-own-settings">The model's own settings</h2>
+<p>These sit behind <b>More settings</b>, because the protocol's own defaults are the considered
+answer for almost every run.</p>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td><b>Cyclic peptide</b></td><td>Asks for a cyclic binder, by adding one line to the
+specification. It applies to the peptide protocols; on a protein protocol it is ignored by the
+model rather than refused.</td></tr>
+<tr><td><b>Step scale</b></td><td>BoltzGen's <code>--step_scale</code>. It scales the diffusion
+step, and despite how it reads it is not a count of steps. 0 leaves the protocol's own value
+alone, which is what almost every run should do.</td></tr>
+<tr><td><b>Fold and score each design</b></td><td>On by default, and the ranking comes from it:
+the designs are re-folded with the target and scored, and that score is the order they come out
+in. Turning it off stops the run after generation and inverse folding, which is faster and leaves
+the designs unranked and <code>designs.json</code> in no meaningful order.</td></tr>
+</table>
+<div class="note"><b>Turning off folding turns off the only filter in the run.</b> Without it,
+what you get is whatever the model generated, with no check that it folds that way. It is useful
+for seeing quickly whether a target and a protocol produce anything at all, and it is not a
+shortcut to designs worth taking further.</div>

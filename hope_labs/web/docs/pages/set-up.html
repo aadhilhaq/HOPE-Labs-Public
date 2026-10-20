@@ -1,0 +1,117 @@
+<h1>Setting up on a cluster</h1>
+<p class="lead">On any cluster with Slurm, HOPE Labs sets itself up in one folder you choose and
+installs the tools you tick. A tool counts as installed once a real job has run with it.</p>
+
+<h2 id="what-a-cluster-needs">What a cluster needs</h2>
+<ul>
+  <li><b>Slurm</b>, and an account on it that can queue a GPU job.</li>
+  <li><b>A login node that reaches the internet.</b> Every download happens there. The compute
+    nodes need no internet at all: the tools are built to work without it.</li>
+  <li><b>A folder with room</b>, in scratch or in a group folder if others will use it too.
+    HOPE Labs itself takes about 125 MB and 7,000 files; Boltz-2 about 16 GB and 95,000 files;
+    ADCP docking about 5 GB and 60,000 files.
+    Most clusters cap the number of files as well as the space, and Set up checks both before it
+    starts.</li>
+</ul>
+<p>Nothing else. No administrator, no modules and no conda: Set up brings its own package manager
+(micromamba, a single file) and makes its own Python. Nothing is written to your home folder.</p>
+
+<h2 id="signing-in">Signing in to another cluster</h2>
+<p>In the HOPE Labs window choose <b>Other (SLURM)</b>, then type the cluster's address and your
+username on it. The password and any second step (a phone approval, a code) are asked in the
+cluster's own words, as on Grace. A key in your <code>.ssh</code> folder is tried without being
+named. A key kept anywhere else goes in the <b>SSH key</b> box, and a cluster reached through a
+gateway takes it in the <b>Gateway</b> box, as <code>host:port</code>.</p>
+
+<h2 id="the-first-time">The first time</h2>
+<p>On a cluster with no HOPE Labs on it, the Tools page says so and offers two things.</p>
+<ul>
+  <li><b>Set HOPE Labs up here.</b> Name a folder; the box suggests one in your scratch. HOPE Labs
+    copies its own code there, fetches the package manager and makes a Python for its pages. It
+    takes about a minute, and the page shows each step.</li>
+  <li><b>Use this one.</b> If you or your group have set it up already, name that folder
+    instead.</li>
+</ul>
+<p>Either way, your computer remembers the folder for this cluster, so it is asked once. Then
+<b>Choose the tools to install</b> opens the Set up page in a tab of its own. Later it is in the
+rail on the left, as <b>Set up this cluster</b>.</p>
+
+<h2 id="the-set-up-page">The Set up page</h2>
+<h3 id="this-cluster">1. This cluster</h3>
+<p><b>Read the cluster</b> asks Slurm which partitions there are, how long each will run a job,
+which cards are in each, and which of them you may use. That last answer comes from Slurm testing
+a job without queueing it, so a partition that would quietly send a job somewhere else, or refuse
+it, is marked as one you cannot use.</p>
+<p>The page then proposes where GPU jobs go, which card they ask for, and where short CPU steps
+go. Change any of them and press <b>Save these</b>. They are written to
+<code>cluster.json</code> in the HOPE Labs folder, and every page on this cluster reads them from
+then on: the Boltz-2 page's Card menu is the cards this page found.</p>
+<p><b>Ask a GPU node</b> queues a one-minute job that reports the cards, their driver and whether
+a compute node can reach the internet. The first install asks for itself, because the driver
+decides which build of PyTorch the GPU nodes can run.</p>
+
+<h3 id="tools">2. Tools</h3>
+<p>Tick the tools you want and press <b>Install the ticked tools</b>. Each row says how much room
+it takes, roughly how long, what it needs from the cluster and under what licence it comes. While
+it installs, the row shows each step as it is reached.</p>
+<p>The install runs on the login node in a process of its own. Closing the page, the launcher or
+the laptop does not stop it; sign in again later and the page shows how far it got. If it stops
+part way, after a failure, a press of <b>Stop</b> or a login node restarting, <b>Install</b>
+again carries on from the step it reached: nothing already downloaded is fetched twice.</p>
+<p>The last step is the check. Set up queues a real fold on the GPU partition, written by the
+same code the Boltz-2 page writes its jobs with, and looks at what comes back. <b>Installed and
+checked</b> means that fold finished and left a structure; the row says where it ran and how long
+it took. <b>Check again</b> repeats it, which is worth doing after a cluster changes its drivers.</p>
+<p>For ADCP docking the check is a docking on the CPU partition: the p53 peptide into MDM2, with
+a search far too small to mean anything and big enough to run every stage of a real run, the
+receptor's preparation, the docking and its MM-GBSA, and the report.</p>
+<div class="note"><b>Set up installs Boltz-2 and ADCP docking today.</b> The other tools are
+listed with whether they are there; their own instructions are in <a href="own-installs.html">Installing
+by hand</a>, and they join this page one at a time.</div>
+
+<h3 id="the-log">3. What the install is doing</h3>
+<p>Everything each step printed, as it happens. The same log is kept in the HOPE Labs folder, in
+<code>setup/logs</code>.</p>
+
+<h2 id="what-goes-where">What goes where</h2>
+<pre>&lt;folder&gt;/HOPE-labs        the code: the pages, the flows and Set up itself
+&lt;folder&gt;/cluster.json     what the cluster has, as read and confirmed
+&lt;folder&gt;/tools/           the package manager
+&lt;folder&gt;/envs/hopelabs    the Python the pages run on
+&lt;folder&gt;/envs/boltz       Boltz-2, with its weights in envs/boltz/cache
+&lt;folder&gt;/ADCP_docking      ADCP docking's code, with the activate.sh that names its tools
+&lt;folder&gt;/envs/adcp        its environment: RDKit, AmberTools, PDB2PQR, OpenMM
+&lt;folder&gt;/tools/docking     the ADCP 1.1 suite, from Scripps
+&lt;folder&gt;/setup/           each install's state, its log and its checks</pre>
+<p>It is the layout every HOPE Labs folder has, which is why the launcher finds every tool in it
+without being told where each one is.</p>
+
+<h2 id="pytorch">Which build of PyTorch</h2>
+<p>The GPU nodes' driver decides. The CUDA 13 build needs a driver from 580 up and no longer runs
+on cards older than Turing (a V100, say). The CUDA 12.6 build runs on any driver from 525 up. Set
+up reads the answer from the GPU check and chooses; the log says which and why.</p>
+
+<h2 id="when-an-install-stops">When an install stops</h2>
+<ul>
+  <li><b>Not enough room.</b> The first step says how much is needed and how much is free. Free
+    some, or set HOPE Labs up in a folder with more.</li>
+  <li><b>A download was cut off.</b> Press Install again: the download carries on from where it
+    stopped.</li>
+  <li><b>The check fold failed.</b> The row quotes the end of the job's log, and the whole run is
+    in <code>setup/checks</code>. The usual causes are a partition or card the account may not
+    use (change it under This cluster and press Check again) and a cluster that wants an account
+    named on every job (fill in <b>Account for the check jobs</b>).</li>
+  <li><b>Something is already there.</b> If <code>envs/boltz</code> holds an install Set up did
+    not make, Set up leaves it alone and says so. Move it aside to install here.</li>
+</ul>
+
+<h2 id="from-a-terminal">From a terminal</h2>
+<p>Everything the page does can be done on a login node by hand, which is also how to set HOPE
+Labs up without the launcher. With the code in the folder:</p>
+<pre>sh HOPE-labs/hope_labs/setup/bootstrap.sh /scratch/you/hope-labs
+cd /scratch/you/hope-labs/HOPE-labs
+../envs/hopelabs/bin/python3 -m hope_labs.setup probe --save
+../envs/hopelabs/bin/python3 -m hope_labs.setup install boltz2
+../envs/hopelabs/bin/python3 -m hope_labs.setup status</pre>
+<p><code>install</code> follows the log in the terminal until the check has passed; with
+<code>--detach</code> it carries on in the background, as it does from the page.</p>
