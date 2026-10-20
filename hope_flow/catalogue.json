@@ -63,12 +63,49 @@
      "advanced": false
     },
     {
+     "key": "assembly",
+     "label": "Which copy to fetch",
+     "kind": "choice",
+     "default": "asu",
+     "choices": [
+      "asu",
+      "1",
+      "2",
+      "3",
+      "4"
+     ],
+     "why": "an assembly is built from the deposited coordinates and the symmetry, and comes only as mmCIF, which is converted to PDB for the flow",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "asu": "the asymmetric unit, as deposited",
+      "1": "the first biological assembly, built from the symmetry",
+      "2": "the second, where the entry has one",
+      "3": "the third",
+      "4": "the fourth"
+     },
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "why": "the structure comes from a file, so this is left alone"
+        },
+        "folded": {
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
      "key": "pdb_id",
      "label": "PDB id",
      "kind": "text",
      "default": "",
      "choices": [],
-     "why": "fetched on a login node and copied into the flow",
+     "why": "fetched on a login node and copied into the flow. An entry too large for the PDB format is fetched as mmCIF and converted, and refused where it cannot be",
      "optional": false,
      "needed": false,
      "advanced": false,
@@ -237,6 +274,18 @@
      "step": 1
     },
     {
+     "key": "modifications",
+     "label": "Modified residues",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written"
+    },
+    {
      "key": "sequence_2",
      "label": "Sequence of the second chain",
      "kind": "text",
@@ -276,6 +325,18 @@
      "least": 1,
      "most": 20,
      "step": 1
+    },
+    {
+     "key": "modifications_2",
+     "label": "Modified residues of the second chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written"
     },
     {
      "key": "sequence_3",
@@ -319,6 +380,18 @@
      "step": 1
     },
     {
+     "key": "modifications_3",
+     "label": "Modified residues of the third chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written"
+    },
+    {
      "key": "alignments",
      "label": "Alignments",
      "kind": "choice",
@@ -359,6 +432,46 @@
      "least": 1,
      "most": 10,
      "step": 1
+    },
+    {
+     "key": "sampling_steps",
+     "label": "Sampling steps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "steps in the diffusion. 200 is Boltz-2's own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10,
+     "most": 1000,
+     "step": 10
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a number makes the sampling repeatable, so the same card folds the same structure twice",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 2147483647,
+     "step": 1,
+     "placeholder": "no seeding, which is Boltz-2's own"
+    },
+    {
+     "key": "use_potentials",
+     "label": "Steering potentials",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "off is Boltz-2's own. On is slower, and upstream reports structures that make better physical sense",
+     "optional": true,
+     "needed": false,
+     "advanced": true
     },
     {
      "key": "gpu",
@@ -495,6 +608,44 @@
      "least": 1,
      "most": 12,
      "step": 1
+    },
+    {
+     "key": "num_seeds",
+     "label": "Seeds",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more seeds is more samples per model, and more time in proportion",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "rank",
+     "label": "Rank by",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "plddt",
+      "ptm",
+      "iptm",
+      "multimer"
+     ],
+     "why": "which model is handed on as the best: auto is multimer for a complex and pLDDT for one chain",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "auto": "multimer for a complex, pLDDT for one chain",
+      "plddt": "the model's own confidence, per residue",
+      "ptm": "predicted TM-score for the whole structure",
+      "iptm": "predicted TM-score across the interface",
+      "multimer": "0.8 iptm and 0.2 ptm, which is AlphaFold-Multimer's own"
+     }
     },
     {
      "key": "gpu",
@@ -672,6 +823,17 @@
      "step": 100
     },
     {
+     "key": "archive",
+     "label": "Zip each trajectory folder",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "off keeps every trajectory file as it was written, which is thousands more of them",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
      "key": "gpus",
      "label": "Cards",
      "kind": "number",
@@ -841,7 +1003,265 @@
      "why": "empty takes the binder-design default",
      "optional": true,
      "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "Complex_base, which is what RFdiffusion picks itself once hotspots are given",
+      "Complex_base_ckpt.pt": "the same one, named outright",
+      "Complex_beta_ckpt.pt": "the beta complex model: more varied binders, and fewer of them hold up"
+     }
+    },
+    {
+     "key": "noise_schedule",
+     "label": "Noise schedule",
+     "kind": "choice",
+     "default": "constant",
+     "choices": [
+      "constant",
+      "linear"
+     ],
+     "why": "constant holds the noise where it is set; linear walks it to the figure below over the run",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "constant": "the one scale, every step. RFdiffusion's own default",
+      "linear": "from the scale above at the first step to the one below at the last"
+     }
+    },
+    {
+     "key": "final_noise_scale",
+     "label": "Noise scale at the last step",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "where the linear schedule ends up",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "noise_schedule",
+       "cases": {
+        "constant": {
+         "why": "not read on a constant schedule, which holds the noise scale above all the way through"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "potential",
+     "label": "Pull on the design",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "binder_ROG",
+      "binder_ncontacts",
+      "interface_ncontacts"
+     ],
+     "why": "a force on the binder while it diffuses. Empty is what the binder-design example uses, and RFdiffusion's own notes say these sit badly with hotspots: start without one",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "none, as RFdiffusion's own default is",
+      "binder_ROG": "pulls the binder compact, by its radius of gyration",
+      "binder_ncontacts": "more contacts inside the binder",
+      "interface_ncontacts": "more contacts between the binder and the target"
+     }
+    },
+    {
+     "key": "potential_weight",
+     "label": "How hard it pulls",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "1 is each potential's own weight",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "guide_scale",
+     "label": "Guide scale",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "how much of the pull reaches the diffusion; 10 is RFdiffusion's own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "guide_decay",
+     "label": "Guide decay",
+     "kind": "choice",
+     "default": "constant",
+     "choices": [
+      "constant",
+      "linear",
+      "quadratic",
+      "cubic"
+     ],
+     "why": "how the pull fades as the structure settles",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "constant": "the same at every step. RFdiffusion's own default",
+      "linear": "fades with the step count",
+      "quadratic": "fades faster, so late steps are nearly free",
+      "cubic": "faster still"
+     },
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "write_trajectory",
+     "label": "Keep the diffusion trajectories",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "two files per design showing every step, for looking at the diffusion itself",
+     "optional": true,
+     "needed": false,
      "advanced": true
+    },
+    {
+     "key": "deterministic",
+     "label": "Repeat the same designs",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "seeds each design from its own number, so the same card run twice gives the same backbones",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "mpnn_model",
+     "label": "ProteinMPNN model",
+     "kind": "choice",
+     "default": "v_48_020",
+     "choices": [
+      "v_48_002",
+      "v_48_010",
+      "v_48_020",
+      "v_48_030"
+     ],
+     "why": "the figure is the backbone noise it was trained with, in hundredths of an angstrom",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "v_48_002": "0.02 A: closest to the backbone it is given",
+      "v_48_010": "0.10 A",
+      "v_48_020": "0.20 A. ProteinMPNN's own default",
+      "v_48_030": "0.30 A: most forgiving of a rough backbone"
+     }
+    },
+    {
+     "key": "mpnn_soluble",
+     "label": "Soluble ProteinMPNN",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "weights trained on soluble proteins only, which is what a binder has to be",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "mpnn_temperature",
+     "label": "Sequence temperature",
+     "kind": "number",
+     "default": 0.1,
+     "choices": [],
+     "why": "higher is more varied; ProteinMPNN suggests 0.1 to 0.3",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 1.0,
+     "step": 0.05
+    },
+    {
+     "key": "mpnn_seed",
+     "label": "Sequence seed",
+     "kind": "number",
+     "default": 37,
+     "choices": [],
+     "why": "0 picks a new one each run; any other number gives the same sequences again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2000000000,
+     "step": 1
+    },
+    {
+     "key": "mpnn_omit",
+     "label": "Amino acids to leave out",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "letters the designed sequence may not use, as C to keep cysteines out",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none"
+    },
+    {
+     "key": "mpnn_backbone_noise",
+     "label": "Backbone noise",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "noise on the backbone while the sequence is designed; the released models were trained at up to 0.30 A",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 0.3,
+     "step": 0.05
     },
     {
      "key": "partition",
@@ -1009,6 +1429,109 @@
      "advanced": true
     },
     {
+     "key": "cfg_strength",
+     "label": "How closely it is held",
+     "kind": "number",
+     "default": 1.5,
+     "choices": [],
+     "why": "1.5 is the model's own; 1 is no guidance at all",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 5,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "cfg",
+       "cases": {
+        "false": {
+         "why": "not read until the guidance above is on"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "batches",
+     "label": "Passes",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "the run makes this many passes, so a campaign is the designs above times this",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the same number gives the same designs again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2000000000,
+     "step": 1,
+     "placeholder": "a new one each run"
+    },
+    {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": 1.003,
+     "choices": [],
+     "why": "the noise put back at each step; 0 takes it out altogether",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.001
+    },
+    {
+     "key": "gamma_0",
+     "label": "Churn",
+     "kind": "number",
+     "default": 0.6,
+     "choices": [],
+     "why": "how much each step is re-noised before it is denoised again; 0 samples the diffusion as a plain equation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1,
+     "step": 0.1
+    },
+    {
+     "key": "cyclic",
+     "label": "Cyclic peptide",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "joins the binder's ends, which RFdiffusion3 takes for one designed chain",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "non_loopy",
+     "label": "Fewer loops",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "asks for a binder with less loop in it, which is the one that folds",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
      "key": "partition",
      "label": "Partition",
      "kind": "text",
@@ -1037,7 +1560,7 @@
    "name": "BoltzGen",
    "tagline": "generate a binder against the target",
    "tool": "boltzgen",
-   "note": "Generates binders against a target of any kind, protein, peptide, nucleic acid or small molecule, and leaves them already placed on it.",
+   "note": "Generates binders against a protein target and leaves them already placed on it. The small-molecule protocol needs a ligand a flow does not carry, and is refused.",
    "ready": true,
    "site": "always",
    "fixed": false,
@@ -1092,7 +1615,15 @@
      "why": "the model's own protocols; the binder kind is chosen here",
      "optional": false,
      "needed": true,
-     "advanced": false
+     "advanced": false,
+     "notes": {
+      "protein-anything": "a miniprotein against the target",
+      "peptide-anything": "a short peptide, cysteine-free by default",
+      "nanobody-anything": "a VHH",
+      "antibody-anything": "a paired Fv",
+      "protein-small_molecule": "needs the target's ligand, which a flow has taken out of the receptor before this card; it is refused rather than run without it",
+      "protein-redesign": "the binder already on the target, designed again"
+     }
     },
     {
      "key": "designs",
@@ -1100,13 +1631,28 @@
      "kind": "number",
      "default": 10,
      "choices": [],
-     "why": "",
+     "why": "BoltzGen is built to generate many and keep the best few, which is the box below",
      "optional": false,
      "needed": true,
      "advanced": false,
      "least": 1,
-     "most": 500,
+     "most": 10000,
      "step": 1
+    },
+    {
+     "key": "budget",
+     "label": "Designs to keep",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the filtering stage picks this many out of the designs above, spread for variety rather than taking the top of one list",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 10000,
+     "step": 1,
+     "placeholder": "every one that passes"
     },
     {
      "key": "gpu",
@@ -1163,6 +1709,21 @@
      "placeholder": "the protocol's own"
     },
     {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a fixed noise scale instead of the schedule BoltzGen would use",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.01,
+     "placeholder": "the protocol's own"
+    },
+    {
      "key": "fold",
      "label": "Fold and score each design",
      "kind": "yesno",
@@ -1172,6 +1733,89 @@
      "optional": true,
      "needed": false,
      "advanced": true
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per design",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "BoltzGen's inverse folding writes this many for each backbone",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "avoid",
+     "label": "Amino acids to leave out",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "letters the sequences may not use. This replaces the protocol's own list, and the peptide, nanobody and antibody protocols leave cysteine out: keep the C in",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "coldspots",
+     "label": "Coldspots",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues the binder should keep clear of; BoltzGen is told they are not binding, the opposite of a hotspot",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "alpha",
+     "label": "Quality against variety",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "0 picks the best designs, 1 the most different ones",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1,
+     "step": 0.01,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "filter_biased",
+     "label": "Drop lopsided sequences",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "takes out designs made mostly of alanine, glycine, glutamate, leucine or valine. On is BoltzGen's own default",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "checkpoints",
+     "label": "Model",
+     "kind": "choice",
+     "default": "both",
+     "choices": [
+      "both",
+      "diverse",
+      "adherence"
+     ],
+     "why": "BoltzGen ships two design models and uses both by default, half the designs each",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "both": "half the designs from each. BoltzGen's own default",
+      "diverse": "more varied designs",
+      "adherence": "designs that stick closer to what was asked"
+     }
     },
     {
      "key": "partition",
@@ -2079,6 +2723,43 @@
        "cases": {
         "false": {
          "why": "read only while the rescoring is on"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_model",
+     "label": "Endpoint model",
+     "kind": "choice",
+     "default": "gbn2",
+     "choices": [
+      "gbn2",
+      "obc2"
+     ],
+     "why": "the force field, the radii and the implicit solvent are one choice; values on one model are not comparable with values on another",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "gbn2": "ff14SB / OL15 / OL3, mbondi3 radii, GBn2 (igb 8), minimised by sander: the tool's own, and what every earlier run used",
+      "obc2": "ff19SB / OL24, mbondi2 radii, OBC2, which is AMBER's igb 5; tleap builds the topology, OpenMM relaxes it, MMPBSA.py scores one frame of it. DNA only"
+     },
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "read only while the rescoring is on"
+        }
+       }
+      },
+      {
+       "on": "mode",
+       "cases": {
+        "protein-RNA": {
+         "value": "gbn2",
+         "why": "ff19SB / OL24 / OBC2 names no RNA force field, so an RNA partner is scored on the tool's own model"
         }
        }
       }

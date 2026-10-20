@@ -56,6 +56,32 @@ def _amino(name):
 #: what it writes, so which chain is the binder is read back from each design rather than assumed.
 BINDER_CHAIN = "Zz"
 
+#: BoltzGen's two design models, as its own --design_checkpoints takes them (cli/boltzgen.py,
+#: ARTIFACTS). Both are in the group's cache. "both" is the tool's own default - half the
+#: designs from each - and is an empty tuple here because the flag is then not passed at all.
+CHECKPOINTS = {
+    "both": (),
+    "diverse": ("huggingface:boltzgen/boltzgen-1:boltzgen1_diverse.ckpt",),
+    "adherence": ("huggingface:boltzgen/boltzgen-1:boltzgen1_adherence.ckpt",),
+}
+
+
+#: The protocols BoltzGen leaves cysteine out of by itself (cli/boltzgen.py, the default for
+#: --inverse_fold_avoid: "none for protein design, 'C' for peptide and antibody/nanobody
+#: design"). Naming any letters at all replaces that default, so these are the protocols where
+#: a list without a C quietly allows cysteine back in.
+CYSTEINE_FREE = ("peptide-anything", "nanobody-anything", "antibody-anything")
+
+
+def avoid_letters(text):
+    """The letters BoltzGen's --inverse_fold_avoid is given: one-letter amino acid codes.
+
+    Its own option takes them as a bare string, "KEC". A comma or a space between them is how a
+    person writes a list, so anything that is not one of the twenty is dropped rather than sent
+    on to be refused by the inverse-folding step at the end of a long run.
+    """
+    return "".join(sorted({c for c in str(text or "").upper() if c in set(AMINO.values())}))
+
 
 def say(*what):
     print(*what)
@@ -215,8 +241,9 @@ def refuse_missing(asked, keep):
                          + "\n  ".join(told))
 
 
-def spec_yaml(plan, keep, binding):
+def spec_yaml(plan, keep, binding, not_binding=None):
     """The design specification, written by hand: it is five keys and a list."""
+    not_binding = not_binding or {}
     lines = ["# Written by HOPE Labs for a flow. Residue numbers below are positions in the",
              "# chain, converted from the structure's own numbering.",
              "entities:",
@@ -226,12 +253,20 @@ def spec_yaml(plan, keep, binding):
     for chain in sorted(keep):
         lines.append("        - chain:")
         lines.append("            id: %s" % chain)
-    if binding:
+    if binding or not_binding:
+        # One entry per chain carrying either kind, because BoltzGen reads binding and
+        # not_binding off the same chain entry (data/parse/schema.py) and two entries for one
+        # chain would leave the second overwriting the first.
         lines.append("      binding_types:")
-        for chain in sorted(binding):
+        for chain in sorted(set(binding) | set(not_binding)):
             lines.append("        - chain:")
             lines.append("            id: %s" % chain)
-            lines.append('            binding: "%s"' % ",".join(str(p) for p in binding[chain]))
+            if binding.get(chain):
+                lines.append('            binding: "%s"'
+                             % ",".join(str(p) for p in binding[chain]))
+            if not_binding.get(chain):
+                lines.append('            not_binding: "%s"'
+                             % ",".join(str(p) for p in not_binding[chain]))
     lines.append("  - protein:")
     lines.append("      id: %s" % BINDER_CHAIN)
     lines.append('      sequence: "%d..%d"' % (plan["binder_min"], plan["binder_max"]))
@@ -347,12 +382,35 @@ def main():
             % (chain, ",".join(str(n) for n in sorted(set(asked.get(chain, [])))[:8]),
                ",".join(str(p) for p in got[:8]), first, last))
 
+    # The coldspots, the same way round. BoltzGen has a NOT_BINDING type beside its BINDING one,
+    # which is a residue the binder is asked to keep off rather than one it is told nothing
+    # about, so this is the opposite of a hotspot rather than the absence of one. Refused on the
+    # same grounds and converted by the same code, so the two boxes behave alike.
+    refuse_coded(plan.get("coldspots"))
+    cold_asked = wanted(plan.get("coldspots"), keep[0])
+    refuse_missing(cold_asked, {c: present[c] for c in keep})
+    not_binding = {}
+    for chain, numbers in cold_asked.items():
+        got = positions(present[chain], numbers)[0]
+        if got:
+            not_binding[chain] = got
+    if cold_asked and not not_binding:
+        raise SystemExit("none of the coldspots given are in the target")
+    for chain, got in sorted(not_binding.items()):
+        say("coldspots: chain %s -> positions %s, sent as not binding"
+            % (chain, ",".join(str(p) for p in got[:8])))
+    both = sorted("%s%d" % (c, p) for c in set(binding) & set(not_binding)
+                  for p in set(binding[c]) & set(not_binding[c]))
+    if both:
+        raise SystemExit("these residues are given as hotspots and as coldspots, so what the "
+                         "binder is to do with them has not been said: %s" % ", ".join(both))
+
     # No underscore in the name: BoltzGen takes everything before the first one as the target's
     # name, and every design it writes is named after it.
     stem = re.sub(r"[^A-Za-z0-9]", "", os.path.splitext(os.path.basename(plan["target"]))[0]) or "target"
     spec = os.path.join(out, stem + ".yaml")
     with open(spec, "w") as fh:
-        fh.write(spec_yaml(plan, keep, binding))
+        fh.write(spec_yaml(plan, keep, binding, not_binding))
     say("wrote %s" % spec)
 
     # ---- check before anything expensive, and prove the conversion ------------------------
@@ -368,10 +426,62 @@ def main():
         say("hotspots: %d residue(s) confirmed in the spec" % len(want))
 
     # ---- the design run ---------------------------------------------------------------------
+    designs = int(plan["designs"])
+    # --devices stays at 1 because the job has one card: the design jobs ask Slurm for
+    # gpu:<kind>:1 (drivers.JOB), so a larger number would have BoltzGen look for cards that
+    # were never booked.
     args = [boltzgen, "run", spec, "--protocol", plan["protocol"], "--output", out,
-            "--num_designs", str(plan["designs"]), "--cache", cache, "--devices", "1"]
+            "--num_designs", str(designs), "--cache", cache, "--devices", "1"]
+
+    # THE FILTERING STAGE, WHICH USED TO DO NOTHING
+    # BoltzGen generates many designs and its filtering stage then picks a diverse set of
+    # --budget out of them. --budget was never passed, so it kept its own default of 30 while
+    # the runs here asked for ten or fifty designs: the stage was being told to choose thirty out
+    # of ten, which is every one of them. Passing the number of designs where the card names none
+    # keeps that - every design that passed - but says so, and a card that names one gets the
+    # selection it asked for.
+    budget = plan.get("budget")
+    # Never above what was generated, because the names of two output folders carry it and
+    # BoltzGen would select everything anyway; never below one, because a flow edited by hand
+    # can carry a zero the card's own bounds would not have allowed, and --budget 0 selects
+    # nothing at all after a full run.
+    budget = designs if budget in (None, "") else max(1, min(int(budget), designs))
+    args += ["--budget", str(budget)]
+    if plan.get("alpha") not in (None, ""):
+        args += ["--alpha", "%g" % float(plan["alpha"])]
+    if plan.get("filter_biased") is False:
+        args += ["--filter_biased", "false"]
+
     if plan.get("sampling_steps"):
         args += ["--step_scale", str(plan["sampling_steps"])]
+    if plan.get("noise_scale") not in (None, ""):
+        args += ["--noise_scale", "%g" % float(plan["noise_scale"])]
+    # One of the two design models rather than half the designs from each.
+    picked = CHECKPOINTS.get(str(plan.get("checkpoints") or "both"))
+    if picked is None:
+        raise SystemExit("the model must be one of %s, not %r"
+                         % (", ".join(sorted(CHECKPOINTS)), plan.get("checkpoints")))
+    if picked:
+        args += ["--design_checkpoints"] + list(picked)
+    # The sequence step. BoltzGen's own default is one sequence per backbone; the sister cards
+    # have always offered the number, and this one did not pass it at all.
+    seqs = int(plan.get("seqs_per_backbone") or 1)
+    if seqs > 1:
+        args += ["--inverse_fold_num_sequences", str(seqs)]
+    if plan.get("avoid"):
+        letters = avoid_letters(plan["avoid"])
+        if not letters:
+            raise SystemExit("%r names no amino acid to leave out; it takes letters, as KEC"
+                             % plan["avoid"])
+        # This REPLACES the protocol's own list rather than adding to it, and three protocols
+        # leave cysteine out by themselves. So a list that does not name C puts cysteines back
+        # into peptides and nanobodies, which is not what anybody typing a letter in that box
+        # meant to ask for. Said rather than corrected: the box is the person's to set.
+        if "C" not in letters and plan.get("protocol") in CYSTEINE_FREE:
+            say("  the %s protocol leaves cysteine out by itself, and these letters replace "
+                "that list rather than adding to it: this run may design cysteines. Add C to "
+                "keep them out." % plan.get("protocol"))
+        args += ["--inverse_fold_avoid", letters]
     if not plan.get("fold", True):
         args += ["--steps", "design", "inverse_folding"]
     run(args)
@@ -379,7 +489,16 @@ def main():
     # ---- what came out ----------------------------------------------------------------------
     ranked = os.path.join(out, "final_ranked_designs")
     rows = []
-    for name in ("final_designs_metrics_%d.csv" % 30, "all_designs_metrics.csv"):
+    # BOTH OF THESE NAMES CARRY THE BUDGET, AND 30 WAS IT ONLY BY ACCIDENT
+    # BoltzGen names the selected set after the figure it selected: final_{budget}_designs and
+    # final_designs_metrics_{budget}.csv (task/filter/filter.py). The 30 written in here was
+    # BoltzGen's own default budget, which held while nothing passed --budget; the moment one is
+    # passed these names move with it, and a helper looking for 30 would read the fallback CSV
+    # of every design and hand on an unselected list as though it had been chosen.
+    #
+    # The intermediate folder keeps its 10: top_budget is not a command-line option, only a
+    # --config override, and nothing here sets one.
+    for name in ("final_designs_metrics_%d.csv" % budget, "all_designs_metrics.csv"):
         path = os.path.join(ranked, name)
         if os.path.isfile(path):
             with open(path, newline="", errors="replace") as fh:
@@ -391,9 +510,9 @@ def main():
         raise SystemExit("BoltzGen left no metrics CSV in %s" % ranked)
 
     # The selected set first: the same design appears under both folders, and the one in
-    # final_30_designs is the re-folded structure the tool recommends.
+    # final_<budget>_designs is the re-folded structure the tool recommends.
     structures = {}
-    for folder in ("final_30_designs", "intermediate_ranked_10_designs"):
+    for folder in ("final_%d_designs" % budget, "intermediate_ranked_10_designs"):
         here = os.path.join(ranked, folder)
         for f in sorted(os.listdir(here) if os.path.isdir(here) else []):
             if f.endswith(".cif"):

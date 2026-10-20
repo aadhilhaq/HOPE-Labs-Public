@@ -21,6 +21,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import urllib.error
 import urllib.request
 
 from . import cards
@@ -84,6 +85,23 @@ RUNS = {
 AT_LAUNCH = ("target", "boltz2", "colabfold")
 
 RCSB = "https://files.rcsb.org/download/%s.pdb"
+
+#: The same entry as mmCIF, and one of its biological assemblies, in the names the file server
+#: uses. Written the way HOPE-MD's own importer writes them (hopemd/importers/complex.py,
+#: fetch_rcsb), because a flow and a simulation imported by hand should be fetching the same file.
+RCSB_CIF = "https://files.rcsb.org/download/%s.cif"
+RCSB_ASSEMBLY = "https://files.rcsb.org/download/%s-assembly%s.cif"
+
+#: What a PDB file can hold, which is why a structure is sometimes fetched as mmCIF and converted
+#: rather than fetched as a PDB. The atom serial is five columns and the chain id is one, and both
+#: overflow silently: gemmi writes a hybrid-36 serial past 99,999 ("A000G"), which the tools below
+#: this card read as nothing, and a 27th chain has no letter left. 4V60's 241,956 atoms and 39
+#: chains converted into exactly that, and 8GLV has 1,177 chains.
+#:
+#: Sixty-two rather than twenty-six: a PDB chain id is one character and the readers here take
+#: upper case, lower case and digits, which is what gemmi hands out in that order.
+PDB_MAX_ATOMS = 99999
+PDB_MAX_CHAINS = 62
 
 #: What a Slurm job id looks like coming back from any of them.
 JOBID = re.compile(r"\b(\d{4,})\b")
@@ -222,13 +240,8 @@ def _target_card(node, flow, carried, flow_dir, record, say=print):
         if not re.match(r"^[0-9A-Z]{4}$", code):
             raise NotWired("%r is not a four-character PDB id" % code)
         got = os.path.join(where, "target.pdb")
-        try:
-            with urllib.request.urlopen(RCSB % code, timeout=120) as answer, \
-                    open(got, "wb") as out:
-                shutil.copyfileobj(answer, out)
-        except Exception as why:                                # noqa: BLE001
-            raise NotWired("the RCSB would not give %s: %s" % (code, why))
-        say("%s was fetched into the flow" % code)
+        _fetch_rcsb(code, str(s.get("assembly") or "asu").strip(), got,
+                    chains=_chains(s.get("chains")), say=say)
 
     if os.path.getsize(got) < 200:
         raise NotWired("the target structure came back empty")
@@ -243,6 +256,118 @@ def _target_card(node, flow, carried, flow_dir, record, say=print):
         say("   for the design tools: %s" % said)
     record.set(node.id, path=got, cleaned=cleaned)
     return where, []
+
+
+def _get(url, where, timeout=120):
+    """Fetch one file, or raise urllib's own error. Returns the bytes written."""
+    with urllib.request.urlopen(url, timeout=timeout) as answer, open(where, "wb") as out:
+        shutil.copyfileobj(answer, out)
+    return os.path.getsize(where)
+
+
+def _fetch_rcsb(code, assembly, dst, chains=(), say=print):
+    """Fetch an entry into `dst` as a PDB file, whatever format the RCSB has it in.
+
+    The flow asked for `<code>.pdb` and nothing else, so an entry with no PDB file could not be
+    fetched by its id at all: 4V60, 5J7V, 7A01, 6QZ9 and 8GLV each answer 404 for the PDB and 200
+    for the mmCIF, and the card's only way round it was for somebody to download the mmCIF by
+    hand and point the file box at it. A biological assembly is mmCIF-only for every entry.
+
+    Converted where the structure fits the format, and refused with the reason where it does not,
+    which is better than the hybrid-36 serials gemmi writes past 99,999 atoms: those are a PDB no
+    reader here understands, and nothing would have said so.
+    """
+    if assembly and assembly != "asu":
+        # No PDB to try: the assembly files are mmCIF only.
+        _cif_to_pdb(RCSB_ASSEMBLY % (code, assembly), dst,
+                    "assembly %s of %s" % (assembly, code), chains, say)
+        return
+    try:
+        if _get(RCSB % code, dst) > 200:
+            say("%s was fetched into the flow" % code)
+            return
+    except urllib.error.HTTPError as why:
+        if why.code != 404:
+            raise NotWired("the RCSB would not give %s: %s" % (code, why))
+    except Exception as why:                                    # noqa: BLE001
+        raise NotWired("the RCSB would not give %s: %s" % (code, why))
+    # Said as "no PDB file" rather than "fetching the mmCIF", because a mistyped id answers 404
+    # for both and this line is read before the refusal that follows it.
+    say("   %s has no PDB file; trying the mmCIF" % code)
+    _cif_to_pdb(RCSB_CIF % code, dst, code, chains, say)
+
+
+def _cif_to_pdb(url, dst, what, chains=(), say=print):
+    """Fetch an mmCIF and write it to `dst` as PDB, or refuse with the reason.
+
+    The chains the target card names are taken here as well as in the cleaned copy, and that is
+    what makes the refusal below actionable: a ribosome is past the format whole, and the two
+    chains of it somebody is aiming at are not.
+
+    The mmCIF itself is not kept. It is the download and not the structure the flow reads, the
+    entry and the assembly are both written down beside the flow, so it is reproducible without
+    it, and these files are large: 8GLV's is 337 MB. A copy of that in every flow folder is the
+    quota going, and it is the file count rather than the gigabytes that runs out first here.
+    """
+    cif = os.path.splitext(dst)[0] + "_original.cif"
+    try:
+        try:
+            if _get(url, cif) < 200:
+                raise NotWired("%s came back empty" % what)
+        except NotWired:
+            raise
+        except Exception as why:                                # noqa: BLE001
+            raise NotWired("the RCSB would not give %s: %s" % (what, why))
+        _cif_to_pdb_file(cif, dst, what, chains, say)
+    finally:
+        try:
+            os.unlink(cif)
+        except OSError:
+            pass
+
+
+def _cif_to_pdb_file(cif, dst, what, chains=(), say=print):
+    """Write one mmCIF already on disk to `dst` as PDB, or refuse with the reason."""
+    try:
+        import gemmi
+    except ImportError:
+        raise NotWired("%s came as mmCIF and gemmi is not installed here, so it cannot be "
+                       "turned into the PDB file the tools below this card read" % what)
+    try:
+        structure = gemmi.read_structure(cif)
+        structure.setup_entities()
+    except Exception as why:                                    # noqa: BLE001
+        raise NotWired("%s could not be read: %s" % (what, str(why)[:200]))
+    want = [c for c in chains if c]
+    if want:
+        try:
+            structure = gemmi.Selection("/1/" + ",".join(want)).copy_structure_selection(
+                structure)
+        except Exception as why:                                # noqa: BLE001
+            raise NotWired("%s: chains %s could not be taken out of it: %s"
+                           % (what, ",".join(want), str(why)[:160]))
+        if not len(structure) or not len(structure[0]):
+            raise NotWired("%s has no chain called %s in it"
+                           % (what, " or ".join(want)))
+        say("   chains %s taken out of it, as this card names them" % ",".join(want))
+    model = structure[0] if len(structure) else None
+    n_chains = len(model) if model is not None else 0
+    atoms = sum(len(residue) for chain in (model or ()) for residue in chain)
+    if atoms > PDB_MAX_ATOMS or n_chains > PDB_MAX_CHAINS:
+        raise NotWired(
+            "%s has %s atoms in %d chain(s), and a PDB file holds %s atoms in %d chains - the "
+            "tools below this card all read PDB, so there is no honest way to hand this on. Name "
+            "the chains you want on this card, or prepare a smaller file yourself and read it "
+            "with the file source"
+            % (what, "{:,}".format(atoms), n_chains, "{:,}".format(PDB_MAX_ATOMS),
+               PDB_MAX_CHAINS))
+    try:
+        with open(dst, "w", encoding="utf-8") as out:
+            out.write(structure.make_pdb_string())
+    except Exception as why:                                    # noqa: BLE001
+        raise NotWired("%s could not be written as PDB: %s" % (what, str(why)[:200]))
+    say("%s was fetched as mmCIF and converted: %s atoms in %d chain(s)"
+        % (what, "{:,}".format(atoms), n_chains))
 
 
 # --- the target, cleaned for the design tools ---------------------------------------------------
@@ -420,9 +545,22 @@ def _folding(node, flow, carried, flow_dir, record, say=print):
     # boxes as they were filled in, uncorrected - the page cleans a sequence and clamps a number
     # of copies itself, and reports what it was asked for where the two differ, so tidying either
     # here would only hide a sentence somebody needs.
-    rows = [{"kind": row["kind"], "sequence": row["sequence"], "copies": row["copies"],
-             "name": node.id if not row["index"] else "%s_%d" % (node.id, row["index"] + 1)}
-            for row in cards.fold_entities(node.card, s)]
+    rows = []
+    for row in cards.fold_entities(node.card, s):
+        # The modified residues of this chain, read the way the card's own reader reads them so
+        # that what the canvas shows and what the fold is given cannot come apart. A list the
+        # page cannot make sense of is refused here, by the box it was typed into, rather than
+        # arriving as a traceback out of the page's own checker.
+        try:
+            mods = cards.read_modifications(s.get("modifications" + row["suffix"]))
+        except ValueError as why:
+            raise NotWired("the modified residues of %s: %s"
+                           % ("this card" if not row["index"] else
+                              "the %s chain" % ("second", "third")[row["index"] - 1], why))
+        rows.append({"kind": row["kind"], "sequence": row["sequence"], "copies": row["copies"],
+                     "modifications": mods,
+                     "name": node.id if not row["index"] else "%s_%d" % (node.id,
+                                                                         row["index"] + 1)})
     body = {
         "name": "%s_%s" % (flow.name, node.id),
         "out": where,
@@ -431,22 +569,26 @@ def _folding(node, flow, carried, flow_dir, record, say=print):
         "gpu": _folding_gpu(s, site),
     }
     if tool == "boltz2":
-        # PDB, not the mmCIF the page defaults to, and this card does not offer the choice. What
-        # leaves here becomes the target, and every tool that is given a target reads a PDB: the
-        # docking's receptor preparation and the design tools both do. Within
-        # this page's own limits - five thousand residues and twenty-six chains - a PDB carries a
-        # model of this size without losing anything, which is the only reason mmCIF is the page's
-        # default for a person who is going to look at the structure rather than feed it onwards.
         body["output_format"] = "pdb"
     # Only what the card was given. A key left out falls through to the page's own default, which
     # is where the considered answer lives and where it should stay; a zero or an empty box is
     # "keep yours" rather than a number to pass on.
     for key in ("recycling_steps", "diffusion_samples", "num_models", "num_recycle", "walltime",
-                "account"):
+                "account",
+                # The rest of each page's own rail, which the card could not reach. Every one is
+                # read back out of the body by the page's own _asked(), against the same table
+                # the page draws, so a key left out here keeps the page's default exactly as it
+                # did before any of them existed.
+                "sampling_steps", "seed", "num_seeds", "rank"):
         value = s.get(key)
         if value in (None, "") or str(value) in ("0", "0.0"):
             continue
         body[key] = value
+    # A tick, which is false by default on both pages, so it cannot go through the loop above: a
+    # False there would be passed and a 0 would not, and neither reads as a question answered.
+    # Sent only when the card holds an answer.
+    if s.get("use_potentials") is not None:
+        body["use_potentials"] = bool(s.get("use_potentials"))
 
     try:
         got = submitmod.queue(tool, body, [root], site=site, dry_run=DRY_RUN, say=say)
@@ -668,8 +810,27 @@ def _rfdiffusion(node, flow, carried, flow_dir, record, say=print):
         "designs": int(s.get("designs") or 10),
         "seqs_per_backbone": int(s.get("seqs_per_backbone") or 8),
         "noise_scale": float(s.get("noise_scale") or 0),
+        # _number rather than `or`, because 0 is a real answer to each of these and `or` would
+        # read it as "not given" and send the tool's own figure instead.
+        "final_noise_scale": _number(s.get("final_noise_scale"), 1),
+        "noise_schedule": str(s.get("noise_schedule") or "constant"),
         "diffuser_T": int(s.get("diffuser_T") or 0),
         "ckpt": str(s.get("ckpt") or ""),
+        "potential": str(s.get("potential") or ""),
+        "potential_weight": _number(s.get("potential_weight"), 1),
+        "guide_scale": _number(s.get("guide_scale"), 10),
+        "guide_decay": str(s.get("guide_decay") or "constant"),
+        "write_trajectory": bool(s.get("write_trajectory")),
+        "deterministic": bool(s.get("deterministic")),
+        # ProteinMPNN's half of the job. Each is the tool's own default except the seed, which
+        # is the 37 this helper has always frozen it at, kept so that a card drawn before these
+        # existed designs the same sequences it did.
+        "mpnn_model": str(s.get("mpnn_model") or "v_48_020"),
+        "mpnn_soluble": bool(s.get("mpnn_soluble")),
+        "mpnn_temperature": _number(s.get("mpnn_temperature"), 0.1),
+        "mpnn_seed": int(_number(s.get("mpnn_seed"), 37)),
+        "mpnn_omit": str(s.get("mpnn_omit") or ""),
+        "mpnn_backbone_noise": _number(s.get("mpnn_backbone_noise"), 0),
         "rfdiffusion": INSTALLS["rfdiffusion"],
         "dl_binder_design": DL_BINDER_DESIGN,
         "se3nv_python": os.path.join(SE3NV, "bin", "python"),
@@ -716,6 +877,16 @@ def _rfd3(node, flow, carried, flow_dir, record, say=print):
         # 1.5 into 1 - the same trap BoltzGen's sampling_steps fell into.
         "step_scale": float(s.get("step_scale") or 1.5),
         "cfg": bool(s.get("cfg")),
+        # Each of these is the sampler's own figure where the card is left alone, and 0 is a
+        # real answer to the last two, so _number rather than `or`.
+        "cfg_strength": _number(s.get("cfg_strength"), 1.5),
+        "batches": int(_number(s.get("batches"), 1)),
+        "seed": "" if s.get("seed") in (None, "") else int(_number(s.get("seed"), 0)),
+        "noise_scale": _number(s.get("noise_scale"), 1.003),
+        "gamma_0": _number(s.get("gamma_0"), 0.6),
+        "cyclic": bool(s.get("cyclic")),
+        # On, as this card has always run it. The model's own default says nothing either way.
+        "non_loopy": s.get("non_loopy") is not False,
         "rfd3": os.path.join(INSTALLS["rfd3"], "bin", "rfd3"),
         # The sequences come from the lab's ProteinMPNN in SE3nv, the one the RFdiffusion
         # helper uses, rather than the MPNN inside this package: that one is a
@@ -748,6 +919,16 @@ def _boltzgen(node, flow, carried, flow_dir, record, say=print):
     if not os.path.isdir(BOLTZGEN_CACHE):
         raise NotWired("BoltzGen's weights are not in %s; they are fetched on a login node"
                        % BOLTZGEN_CACHE)
+    # The one protocol a flow cannot feed. It designs a binder against the target's own ligand,
+    # and every design card is given the receptor cleaned to its polymer residues
+    # (clean_receptor), so by the time a target reaches this card the ligand is not in the file.
+    # Said here, before anything is queued, rather than by a GPU job that reads a specification
+    # naming a molecule that is not there. The card's note and its menu say so too.
+    if str(s.get("protocol") or "") == "protein-small_molecule":
+        raise NotWired("the small-molecule protocol designs against the target's ligand, and a "
+                       "flow hands the design cards a receptor cleaned to its polymer residues, "
+                       "so there is no ligand left to design against. Run it from BoltzGen's own "
+                       "specification, or choose another protocol")
     helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "helpers",
                           "boltzgen_design.py")
     plan = {
@@ -759,6 +940,17 @@ def _boltzgen(node, flow, carried, flow_dir, record, say=print):
         "designs": int(s.get("designs") or 10),
         "protocol": str(s.get("protocol") or "protein-anything"),
         "cyclic": bool(s.get("cyclic")),
+        "coldspots": str(s.get("coldspots") or ""),
+        # Empty is a real answer to each of these and means BoltzGen's own, so they go over as
+        # empty rather than as a number this card made up.
+        "budget": "" if s.get("budget") in (None, "") else int(_number(s.get("budget"), 0)),
+        "seqs_per_backbone": int(_number(s.get("seqs_per_backbone"), 1)),
+        "avoid": str(s.get("avoid") or ""),
+        "noise_scale": "" if s.get("noise_scale") in (None, "") else _number(
+            s.get("noise_scale"), 0),
+        "alpha": "" if s.get("alpha") in (None, "") else _number(s.get("alpha"), 0),
+        "filter_biased": s.get("filter_biased") is not False,
+        "checkpoints": str(s.get("checkpoints") or "both"),
         # A scale, not a count: BoltzGen's own --step_scale takes a fraction, and int() here was
         # quietly turning 1.5 into 1. The key keeps its old name because saved flows carry it.
         "sampling_steps": float(s.get("sampling_steps") or 0),
@@ -866,6 +1058,9 @@ def _bindcraft(node, flow, carried, flow_dir, record, say=print):
         args.append("--no-focus")
     if s.get("max_trajectories") not in (None, ""):
         args += ["--max-trajectories", str(int(s["max_trajectories"]))]
+    # The wrapper archives by default, so only the off case has a flag to write.
+    if s.get("archive") is False:
+        args.append("--no-archive")
     for flag, key in (("--gpu", "gpu"), ("--gpus", "gpus"), ("--time", "walltime"),
                       ("--account", "account")):
         if s.get(key) not in (None, ""):
@@ -976,6 +1171,28 @@ def _adcp_new(where, target, peptides_file, s, say=print):
     if s.get("mmgbsa", True):
         args.append("--mmgbsa")
     return args
+
+
+def _heavy_atoms(path, chains=()):
+    """Heavy atoms in these chains of a PDB file, or 0 if it cannot be counted."""
+    want = {c for c in chains}
+    n = 0
+    try:
+        with open(path, errors="replace") as fh:
+            for line in fh:
+                if line.startswith("ENDMDL"):
+                    break                       # the first model is the receptor
+                if not line.startswith(("ATOM  ", "HETATM")):
+                    continue
+                if want and (len(line) < 22 or line[21] not in want):
+                    continue
+                element, name = line[76:78].strip().upper(), line[12:16].strip()
+                if element == "H" or (not element and name.startswith("H")):
+                    continue
+                n += 1
+    except OSError:
+        return 0
+    return n
 
 
 def _chains(text):
@@ -1824,6 +2041,11 @@ def _haddock_options(s):
         out["mmgbsa_engines"] = ["amber"] + [e for e in asked if e != "amber"]
         if str(s.get("mmgbsa_poses") or "").strip():
             out["mmgbsa_poses"] = str(s["mmgbsa_poses"]).strip()
+        # The endpoint model, which is which quantity the rescoring returns and not how it is
+        # done. Sent only when the card names one, so a flow saved before this field existed
+        # still asks for the tool's own default and its numbers still mean what they did.
+        if str(s.get("mmgbsa_model") or "").strip():
+            out["mmgbsa_model"] = str(s["mmgbsa_model"]).strip()
     if str(s.get("restraints_file") or "").strip():
         out["restraints_file"] = str(s["restraints_file"]).strip()
     return out

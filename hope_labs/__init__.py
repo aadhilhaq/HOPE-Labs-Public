@@ -8,7 +8,7 @@ a person approves Duo once instead of once a tool.
 import os
 import sys
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 #: What this build's server offers the page: the routes and the shapes they answer with. The page
 #: files say which of these they need, and the two numbers are how a launcher decides whether it

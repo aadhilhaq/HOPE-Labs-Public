@@ -67,3 +67,17 @@ rather than assume it.</div>
 <p>Three to six exposed residues on one face is the usual choice. A residue buried in the core
 cannot be bound and asking for it wastes the run; a set spread over two faces asks for a binder
 that cannot exist.</p>
+
+<h2 id="coldspots">Coldspots</h2>
+<p><b>Coldspots</b> are the opposite of hotspots, not the absence of them. BoltzGen has a
+not-binding type beside its binding one, so a residue named here is one the binder is asked to
+keep off, while a residue named in neither box is one the model is told nothing about at all.</p>
+<p>They are typed the same way as hotspots, in the structure's own numbering, and they go through
+the same checks: a residue the target has not got is refused by name, and an insertion code is
+refused for the same reason it is in the hotspots box. They are converted to positions in the
+chain in the same line of the log.</p>
+<p>What they are for is a second site on the same face. A target with a known interface beside the
+one you want is the case: naming it as a coldspot asks for a binder that reaches one and not the
+other, which is a harder question than naming only the hotspots and hoping.</p>
+<div class="note"><b>A residue cannot be both.</b> Given in both boxes it is refused, because
+what the binder is meant to do with it has not been said.</div>

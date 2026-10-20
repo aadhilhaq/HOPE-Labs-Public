@@ -162,6 +162,50 @@ poses minimised with OpenMM afterwards, the AutoSite version, the receptor gradi
 replica's trajectory, and the limit on how many peptides are docked at once. ADCP names no
 partition of its own, so an empty <b>Partition</b> leaves the choice to the scheduler.</p>
 
+<h2 id="target-card">The target, and where its structure comes from</h2>
+<p>A PDB id is fetched on a login node when the flow is queued, so a wrong one is refused while
+you are still looking at the page. <b>Which copy to fetch</b> is the asymmetric unit, as
+deposited, or a biological assembly built from the coordinates and the symmetry: the assembly is
+the right answer wherever the biological unit is not the deposited one, a dimer deposited as one
+chain and a symmetry mate. The asymmetric unit stays the default, because it is what the card has
+always fetched.</p>
+<p>An entry with no PDB file is fetched as mmCIF and converted, which is the only way such an
+entry can be used by its id at all: 4V60, 5J7V, 7A01, 6QZ9 and 8GLV have no PDB file, and an
+assembly comes only as mmCIF for every entry. One format leaves this card, and it is PDB, because
+everything under it reads PDB. A structure past what that format holds, 99,999 atoms or 62
+chains, is refused with its size named rather than written out with atom numbers no reader
+here understands. <b>Chains</b> is the way through: the chains named on the card are taken out of
+the mmCIF before it is converted, so two chains of a ribosome can be the target even though the
+whole of it cannot.</p>
+<p><b>Hotspots</b> are written once, as <code>54,56,66-70</code> or <code>A54,B12-16</code>, and
+each card is given them in the form its own tool reads: a colon between the chain and the number
+where the tool wants one, every residue of a range written out, and an insertion code kept for the
+tools that read one and dropped with a word said for the tools that key a residue by its number
+alone. <b>Chains</b> and the binder length are written once as well and reach every card below.</p>
+
+
+<h2 id="fold-cards">What the folding cards can be told</h2>
+<p>Both folding cards offer their own page's rail, with that page's bounds and that page's
+defaults. <b>Boltz-2</b> has <b>Structures to fold</b>, which hands every sample on, best first;
+<b>Recycling steps</b> and <b>Sampling steps</b>, which cost time roughly in proportion; and a
+<b>Seed</b>, which is what makes a fold repeatable: without one a structure cannot be produced
+twice, and a model nobody can reproduce is a model nobody can argue about. <b>Steering
+potentials</b> is off, as Boltz-2 has it, and on is slower and reported upstream to give
+structures that make better physical sense.</p>
+<p><b>Modified residues</b> takes a list as <code>12 SEP, 40 TPO</code>: the residue's position in
+the sequence above it and the code it becomes. Each chain of a co-fold has its own box. A code
+that is not a modification of the residue it is put on is refused as the flow is queued, with the
+residue and the code named, because Boltz-2 itself would put a phosphoserine wherever it was told.
+ColabFold has no box of this kind, and that is not an omission: its input is a FASTA, which has
+nowhere to carry one.</p>
+<p><b>ColabFold</b> has <b>Models</b> and <b>Recycling steps</b>, and under More settings
+<b>Seeds</b>, which is more samples per model and more time in proportion, and <b>Rank by</b>,
+which decides which model is handed on as the best: auto is AlphaFold-Multimer's own measure for a
+complex and pLDDT for a single chain. There is no seed box, because ColabFold takes a number of
+seeds rather than a seed.</p>
+<p>A fold leaves PDB, not the mmCIF the Boltz-2 page prefers, and neither card offers the choice.
+What leaves a folding card becomes a target, and every tool a target reaches reads PDB.</p>
+
 <h2 id="one-run-each">One run per structure, and which structures</h2>
 <p>Everything that reaches <b>HOPE-MD</b> is one run per structure, and the card says which. What
 arrives is ranked across all of a track's partners together, by the score the tool that made them

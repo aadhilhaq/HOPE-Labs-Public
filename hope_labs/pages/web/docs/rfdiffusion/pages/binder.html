@@ -1,6 +1,6 @@
 <h1>The binder</h1>
-<p class="lead">How long the binder should be, how many to make, and the two knobs that change
-what the diffusion does rather than how it is run.</p>
+<p class="lead">How long the binder should be, how many to make, the knobs that change what the
+diffusion does rather than how it is run, and the sequence step that follows it.</p>
 
 <h2 id="the-length-range">The length range</h2>
 <p><b>Shortest</b> and <b>Longest</b> are a range, and a length is sampled inside it for every
@@ -38,16 +38,91 @@ fold.</td></tr>
 default. Fewer is faster and rougher, and fifteen is the least the box takes: RFdiffusion asserts
 on anything lower while it builds its schedule, so a smaller number spends a card and writes
 nothing.</td></tr>
+<tr><td><b>Noise schedule</b></td><td>Whether the noise scale above holds for the whole run
+(<code>constant</code>, RFdiffusion's own) or walks from it to the figure below over the steps
+(<code>linear</code>).</td></tr>
+<tr><td><b>Noise scale at the last step</b></td><td>Where a linear schedule ends up. It is read
+only on that schedule: a constant one returns the starting scale at every step and never looks at
+this, and the box says so when the schedule is constant.</td></tr>
 <tr><td><b>Checkpoint</b></td><td>Which model weights to use. Empty takes the binder-design
-default, which is the right answer unless you have a reason. The complex checkpoints are the two
-the install ships.</td></tr>
+default, which is the right answer unless you have a reason. The two on the menu are the complex
+checkpoints; see below for why the rest of the install's weights are not offered.</td></tr>
+<tr><td><b>Keep the diffusion trajectories</b></td><td>Off. RFdiffusion's own default writes two
+files per design holding every step of it, which nothing downstream reads. Turn it on to look at
+the diffusion itself, and expect thousands of files.</td></tr>
+<tr><td><b>Repeat the same designs</b></td><td>Seeds each design from its own number, so the same
+card run twice gives the same backbones. There is no seed box: this is the whole of
+RFdiffusion's reproducibility, and the number it uses is the design's index.</td></tr>
+</table>
+
+<h2 id="pulling-on-the-design">Pulling on the design</h2>
+<p><b>Pull on the design</b> adds one of RFdiffusion's potentials: a force applied to the binder
+at every step, beside the model's own prediction. Empty is the default and is what the
+binder-design example uses.</p>
+<table>
+<tr><th>Pull</th><th>What it asks for</th></tr>
+<tr><td><code>binder_ROG</code></td><td>A compact binder, by its radius of gyration. The one to
+reach for when designs come back stringy.</td></tr>
+<tr><td><code>binder_ncontacts</code></td><td>More contacts inside the binder, which is the same
+wish from the other side.</td></tr>
+<tr><td><code>interface_ncontacts</code></td><td>More contacts between the binder and the target:
+a larger interface rather than a better binder.</td></tr>
+</table>
+<p>Three of RFdiffusion's eight potentials, and they are the three written for a binder beside a
+target. The others describe a monomer or a symmetric oligomer and have no binder to act on in a
+run shaped like this one, so they are not offered and the job refuses them by name.</p>
+<div class="note"><b>Start without one.</b> RFdiffusion's own notes say the potentials "seem to
+interact weirdly with hotspot residues" in binder design, that its authors know why and mean to
+write better ones for it, and that good practice is to begin with none and raise the strength
+slowly. This card is always aimed at hotspots, so that is advice about this exact run. A
+baseline with no pull at all is the thing to compare against.</div>
+<p><b>How hard it pulls</b> is the potential's own weight, 1 by default. <b>Guide scale</b> is how
+much of the pull reaches the diffusion, 10 by default, and <b>Guide decay</b> is how it fades as
+the structure settles: constant, linear, quadratic or cubic. All three are read only once a pull
+is chosen, and say so until it is.</p>
+
+<h2 id="the-sequence-step">The sequence step</h2>
+<p>ProteinMPNN is half of what this card does: its temperature, its seed and its model are
+boxes under <b>More settings</b>, each at ProteinMPNN's own default.</p>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td><b>ProteinMPNN model</b></td><td><code>v_48_020</code> by default. The figure is the
+backbone noise the model was trained with, in hundredths of an angstrom: <code>v_48_002</code>
+stays closest to the backbone it is given and <code>v_48_030</code> is the most forgiving of a
+rough one.</td></tr>
+<tr><td><b>Soluble ProteinMPNN</b></td><td>Weights trained on soluble proteins only, which is
+what a binder has to be. The install carries both sets, so this is a choice rather than a
+download.</td></tr>
+<tr><td><b>Sequence temperature</b></td><td>0.1, which is both ProteinMPNN's default and what
+this job always used. Higher is more varied; ProteinMPNN suggests 0.1 to 0.3.</td></tr>
+<tr><td><b>Sequence seed</b></td><td>37, which is the number that was frozen in, so a card drawn
+before any of this designs the sequences it always did. 0 picks a new one each run.</td></tr>
+<tr><td><b>Amino acids to leave out</b></td><td>Letters the designed sequence may not use.
+<code>C</code> keeps cysteines out, which is usual for something to be expressed. X is always
+among them whatever you type.</td></tr>
+<tr><td><b>Backbone noise</b></td><td>0 by default. Noise added to the backbone while the
+sequence is designed, up to the 0.30 A the released models were trained at.</td></tr>
 </table>
 
 <h2 id="what-the-form-does-not-offer">What the form does not offer</h2>
-<p>The card this form is built from also carries a <b>Relax each design before scoring</b> tick.
-The page leaves it out, and so does a flow, because nothing reads it: relaxing a design before
-ProteinMPNN scores it needs the interface script from
-<code>dl_binder_design</code>, and that needs a PyRosetta licence this install has not got.
-Rather than show a control that changes nothing, the page does not show it.</p>
-<p>What the run does instead is call ProteinMPNN's own script directly on the diffused backbone.
-That needs no PyRosetta and is what has been proven here end to end.</p>
+<p><b>Relaxing a design before it is scored.</b> It was on this card and it did nothing: relaxing
+needs the interface script from <code>dl_binder_design</code>, and that needs a PyRosetta licence
+this install has not got. It has been taken off rather than hidden, because a control that
+changes nothing is worse than no control. What the run does instead is call ProteinMPNN's own
+script directly on the diffused backbone, which needs no PyRosetta and is what has been proven
+here end to end.</p>
+<p><b>Six of the nine checkpoint files.</b> The install holds nine, and eight of those are
+diffusion checkpoints. RFdiffusion picks the complex model by itself once hotspots are given, and
+that is what this card always asks for; the others are for jobs this card does not do, which is
+fold-guided scaffolding, sequence inpainting and unconditional or active-site design. The ninth
+file is the structure prediction weights and is not a diffusion checkpoint at all.</p>
+<p><b>A contig of your own.</b> The contig is built from the target: every resolved stretch of
+every chain kept, a chain break, then the binder's length range. A fixed motif, several designed
+segments or inpainting would each need a contig written by hand, and the job's own way of telling
+the binder from the target afterwards is built on there being exactly one designed chain of the
+length that was asked for. That is a change to the job, not a box on the form.</p>
+<p><b>Partial diffusion, symmetry, and ProteinMPNN's per-position files.</b> Partial diffusion
+re-noises a design that already exists, and what this card is given is a target with no binder on
+it. Symmetry is for a symmetric assembly rather than a binder against one face. ProteinMPNN's
+fixed-position, bias and tied-position options each want a file of per-position dictionaries,
+which is not something a one-line box on a card can carry.</p>

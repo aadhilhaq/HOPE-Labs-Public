@@ -53,6 +53,14 @@ import subprocess
 import sys
 
 
+#: The chain the binder comes back as. RFdiffusion3 letters the chains it assembles from A in
+#: contig order and the contig puts the designed segment first, so the binder is A whatever the
+#: target's own chains were called - measured on 1YCR, where chain A is 61 residues of design and
+#: chain B is MDM2's 85, which went in as A25-109. The same letter is what cyclic_chains has to
+#: name, since that field names a chain of the assembly rather than of the input file.
+BINDER_CHAIN = "A"
+
+
 def say(*bits):
     print(*bits, flush=True)
 
@@ -268,9 +276,16 @@ def write_input(plan, where, target_chains, spans):
         "input": plan["target"],
         "contig": contig_of(plan, target_chains, spans),
         # Fewer loops. The authors expose this as the anti-loop flag and their own binder
-        # examples set it; a loopier binder is the one that fails to fold.
-        "is_non_loopy": True,
+        # examples set it; a loopier binder is the one that fails to fold. On unless the card
+        # turns it off, which is how it was hardcoded here.
+        "is_non_loopy": plan.get("non_loopy") is not False,
     }
+    # A cyclic binder: the ends of the designed chain joined, by cyclic positional encoding.
+    # RFD3 takes this for one complete de novo canonical peptide in dialect 2, and the binder is
+    # that chain - it is the first block of the contig, and RFD3 letters the assembled chains
+    # from A in contig order, so the binder is A whatever the target's own chains are called.
+    if plan.get("cyclic"):
+        spec["cyclic_chains"] = [BINDER_CHAIN]
     hot = hotspots_of(plan)
     if hot:
         refuse_missing(hot, spans)
@@ -284,6 +299,41 @@ def write_input(plan, where, target_chains, spans):
     with open(path, "w") as fh:
         json.dump({"design": spec}, fh, indent=1)
     return path
+
+
+def design_command(plan, designs_dir, spec):
+    """The command line RFdiffusion3 is given, as a list.
+
+    Its own function so it can be read back without a structure to parse: the rest of this
+    helper reads one through biotite, which lives in RFdiffusion3's environment and nowhere
+    else, and the command line is the part a test has to be able to check anywhere.
+    """
+    cmd = [plan["rfd3"], "design",
+           "out_dir=%s" % designs_dir,
+           "inputs=%s" % spec,
+           # The engine's config carries "# @package _global_", so its keys sit at the top
+           # level and an "inference_engine." prefix is refused outright by hydra.
+           "diffusion_batch_size=%d" % int(plan["designs"]),
+           "inference_sampler.num_timesteps=%d" % int(plan["num_timesteps"]),
+           "inference_sampler.step_scale=%s" % plan["step_scale"],
+           # The rest of the sampler's own knobs, each at its configured figure unless the card
+           # moved it. noise_scale is the noise put back at each step and gamma_0 is how much of
+           # the step is re-noised before being denoised again; the engine's own config names
+           # 0.0 for gamma as plain-equation sampling.
+           "inference_sampler.noise_scale=%s" % plan.get("noise_scale", 1.003),
+           "inference_sampler.gamma_0=%s" % plan.get("gamma_0", 0.6),
+           # A campaign larger than one pass. diffusion_batch_size is what a card holds at once
+           # and n_batches is how many times round, so the run writes the product of the two.
+           "n_batches=%d" % max(1, int(plan.get("batches") or 1)),
+           "skip_existing=False", "prevalidate_inputs=True"]
+    if plan.get("cfg"):
+        cmd += ["inference_sampler.use_classifier_free_guidance=True",
+                # Left at 1 the sampler skips the guidance altogether, so the strength is sent
+                # beside the switch rather than being a second thing to remember.
+                "inference_sampler.cfg_scale=%s" % plan.get("cfg_strength", 1.5)]
+    if plan.get("seed") not in (None, ""):
+        cmd.append("seed=%d" % int(plan["seed"]))
+    return cmd
 
 
 def unpack(path):
@@ -346,17 +396,7 @@ def main(plan_path):
     designs_dir = os.path.join(out, "rfd3")
     say("RFdiffusion3: %d design(s), contig %s"
         % (plan["designs"], contig_of(plan, target_chains, spans)))
-    cmd = [plan["rfd3"], "design",
-           "out_dir=%s" % designs_dir,
-           "inputs=%s" % spec,
-           # The engine's config carries "# @package _global_", so its keys sit at the top
-           # level and an "inference_engine." prefix is refused outright by hydra.
-           "diffusion_batch_size=%d" % int(plan["designs"]),
-           "inference_sampler.num_timesteps=%d" % int(plan["num_timesteps"]),
-           "inference_sampler.step_scale=%s" % plan["step_scale"],
-           "skip_existing=False", "prevalidate_inputs=True"]
-    if plan.get("cfg"):
-        cmd.append("inference_sampler.use_classifier_free_guidance=True")
+    cmd = design_command(plan, designs_dir, spec)
     run(cmd, where=plan["foundry"], env=env)
 
     made = sorted(glob.glob(os.path.join(designs_dir, "*.cif.gz")))

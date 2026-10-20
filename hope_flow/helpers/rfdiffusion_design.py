@@ -33,10 +33,71 @@ STATE_NAMES = {"HID": "HIS", "HIE": "HIS", "HIP": "HIS", "HSD": "HIS", "HSE": "H
                "CYX": "CYS", "CYM": "CYS", "ASH": "ASP", "GLH": "GLU", "LYN": "LYS"}
 
 
+#: The potentials RFdiffusion has written for a binder beside a target: its own
+#: potentials.require_binderlen set, intersected with the ones it has implemented. The other
+#: five describe a monomer or an oligomer and have no binder to act on in a job shaped like this
+#: one, so the card does not offer them and this refuses them by name rather than letting the
+#: run fail inside the potential manager.
+BINDER_POTENTIALS = ("binder_ROG", "binder_ncontacts", "interface_ncontacts")
+
+#: How a potential fades over the run (potentials/manager.py, implemented_decay_types).
+GUIDE_DECAYS = ("constant", "linear", "quadratic", "cubic")
+
+#: ProteinMPNN's own models, by the names its --model_name takes. The figure is the backbone
+#: noise each was trained with; the weights for all four are on disk, in both the vanilla and
+#: the soluble set.
+MPNN_MODELS = ("v_48_002", "v_48_010", "v_48_020", "v_48_030")
+
+
 def _amino(name):
     """The standard residue a three-letter name is, or "" for one that is not an amino acid."""
     name = STATE_NAMES.get(name, name)
     return name if name in AMINO else ""
+
+
+def omit_letters(text):
+    """The letters ProteinMPNN's --omit_AAs is given, or "" to leave it alone.
+
+    X is always among them. It is ProteinMPNN's own default and it is what keeps the unknown
+    residue out of a designed sequence; passing only the letters somebody typed would quietly
+    allow an X in every design the moment anybody asked for cysteine to be left out.
+
+    argparse reads this option with type=list, so the string becomes one character per letter.
+    Anything that is not one of the twenty is dropped rather than refused: the box takes letters
+    and a comma or a space between them is how a person writes a list.
+    """
+    want = {c for c in str(text or "").upper() if c in set(AMINO.values())}
+    return "X" + "".join(sorted(want)) if want else ""
+
+
+def mpnn_settings(plan):
+    """The ProteinMPNN flags a plan asks for, beyond the backbone and the chain to design.
+
+    The sequence half of this job ran at one temperature, one seed and one model whatever the
+    card said, because the card said nothing: these were three string literals here. Each
+    default below is ProteinMPNN's own, except the seed, which is the 37 that was frozen in and
+    stays so that a card drawn before any of this designs the sequences it always did.
+    """
+    out = []
+    model = str(plan.get("mpnn_model") or "v_48_020")
+    if model not in MPNN_MODELS:
+        raise SystemExit("%s is not a ProteinMPNN model; the ones there are weights for: %s"
+                         % (model, ", ".join(MPNN_MODELS)))
+    out += ["--model_name", model]
+    if plan.get("mpnn_soluble"):
+        out.append("--use_soluble_model")
+    # A string, as ProteinMPNN's own option is: it takes a list of temperatures and reads this
+    # one by splitting it, so a float would be refused.
+    out += ["--sampling_temp", "%g" % float(plan.get("mpnn_temperature") or 0.1)]
+    seed = plan.get("mpnn_seed")
+    out += ["--seed", str(int(seed) if seed not in (None, "") else 37)]
+    omit = omit_letters(plan.get("mpnn_omit"))
+    if omit:
+        out += ["--omit_AAs", omit]
+    noise = float(plan.get("mpnn_backbone_noise") or 0)
+    if noise:
+        out += ["--backbone_noise", "%g" % noise]
+    return out
 
 
 def say(*what):
@@ -342,9 +403,48 @@ def main():
     args += ["denoiser.noise_scale_ca=%g" % noise, "denoiser.noise_scale_frame=%g" % noise,
              # Hydra writes its log and config under the folder it was invoked in, which is the
              # shared install; told where to put them, it leaves nothing there.
-             "hydra.run.dir=" + os.path.join(rf_dir, "hydra"),
-             # Two fifty-model trajectory files per design, which nothing downstream reads.
-             "inference.write_trajectory=False"]
+             "hydra.run.dir=" + os.path.join(rf_dir, "hydra")]
+    # The schedule, and the scale it ends on. Both of the denoiser's schedule keys and both of
+    # its final scales, for the same reason the two starting scales move together: RFdiffusion
+    # keeps one pair for the Ca positions and one for the frames, and a card that moved one of
+    # each pair would give a diffusion nobody asked for. The final scale is only read on the
+    # linear schedule (inference/utils.py, get_noise_schedule, returns the starting scale at
+    # every step for a constant one), so it is sent only there and the card says so too.
+    schedule = str(plan.get("noise_schedule") or "constant")
+    if schedule not in ("constant", "linear"):
+        raise SystemExit("the noise schedule must be constant or linear, not %r" % schedule)
+    args += ["denoiser.ca_noise_schedule_type=" + schedule,
+             "denoiser.frame_noise_schedule_type=" + schedule]
+    if schedule == "linear":
+        final = float(plan.get("final_noise_scale") if plan.get("final_noise_scale") is not None
+                      else 1)
+        args += ["denoiser.final_noise_scale_ca=%g" % final,
+                 "denoiser.final_noise_scale_frame=%g" % final]
+    # A pull on the binder while it diffuses. RFdiffusion reads the list as one string per
+    # potential, "type:binder_ROG,weight:1", and the scale and the decay govern how much of it
+    # reaches the diffusion.
+    potential = str(plan.get("potential") or "")
+    if potential:
+        if potential not in BINDER_POTENTIALS:
+            raise SystemExit("%s is not a potential written for a binder beside a target; the "
+                             "ones that are: %s" % (potential, ", ".join(BINDER_POTENTIALS)))
+        decay = str(plan.get("guide_decay") or "constant")
+        if decay not in GUIDE_DECAYS:
+            raise SystemExit("the guide decay must be one of %s, not %r"
+                             % (", ".join(GUIDE_DECAYS), decay))
+        args += ["potentials.guiding_potentials=[\"type:%s,weight:%g\"]"
+                 % (potential, float(plan.get("potential_weight") or 1)),
+                 "potentials.guide_scale=%g" % float(plan.get("guide_scale") or 10),
+                 "potentials.guide_decay=" + decay]
+    # Two fifty-model trajectory files per design, which nothing downstream reads, so this is
+    # off unless it is asked for. RFdiffusion's own default is on.
+    args.append("inference.write_trajectory=%s"
+                % ("True" if plan.get("write_trajectory") else "False"))
+    if plan.get("deterministic"):
+        # Each design is seeded from its own number (scripts/run_inference.py,
+        # make_deterministic(i_des)), so there is no seed of its own to set: this is the whole
+        # of RFdiffusion's reproducibility.
+        args.append("inference.deterministic=True")
     # The environment's own egg-link resolves rfdiffusion to a personal scratch folder that only
     # its owner can read, so the group tree is put on the path explicitly. Without this the card
     # works for one person and fails for everybody else with an ImportError.
@@ -367,6 +467,7 @@ def main():
     # target's own sequence - the whole of it, however many chains it went in as, because what
     # comes back is one chain - and what is left over is the binder.
     mpnn = os.path.join(plan["dl_binder_design"], "mpnn_fr", "ProteinMPNN")
+    mpnn_args = mpnn_settings(plan)
     designs = []
     for name in backbones:
         path = os.path.join(rf_dir, name)
@@ -385,9 +486,7 @@ def main():
              "--pdb_path_chains", binder,
              "--out_folder", folder,
              "--num_seq_per_target", str(plan["seqs_per_backbone"]),
-             "--sampling_temp", "0.1",
-             "--seed", "37",
-             "--batch_size", "1"], where=mpnn, env=env)
+             "--batch_size", "1"] + mpnn_args, where=mpnn, env=env)
         # ProteinMPNN writes seqs/<name>.fa: the native sequence first, then its designs, each
         # with its score in the header. The best design is the one with the lowest score.
         fasta = os.path.join(folder, "seqs", os.path.splitext(name)[0] + ".fa")

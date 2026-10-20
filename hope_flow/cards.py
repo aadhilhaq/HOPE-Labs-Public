@@ -388,8 +388,28 @@ TARGET = Card(
         # it the card asks for a PDB id with no "optional" against it while the source is set to
         # a file, and marks the file - the one box that has to be filled in - as optional: the
         # panel told a person the opposite of what the flow would be refused for.
+        # Which copy of the entry is fetched. HOPE-MD's own importer has had this for as long as
+        # it has fetched anything (spec.Source.assembly, "1" or "asu"), and the flow had only the
+        # asymmetric unit, which is what the plain PDB file is. The asymmetric unit stays the
+        # default, because it is what every flow drawn before this fetched and changing that would
+        # change what they mean; an assembly is the right answer wherever the biological unit is
+        # not the deposited one - a dimer deposited as one chain and a symmetry mate.
+        Setting("assembly", "Which copy to fetch", "choice", "asu",
+                choices=["asu", "1", "2", "3", "4"], optional=True,
+                notes={"asu": "the asymmetric unit, as deposited",
+                       "1": "the first biological assembly, built from the symmetry",
+                       "2": "the second, where the entry has one",
+                       "3": "the third", "4": "the fourth"},
+                why="an assembly is built from the deposited coordinates and the symmetry, and "
+                    "comes only as mmCIF, which is converted to PDB for the flow",
+                varies=[("source", {
+                    "file": {"why": "the structure comes from a file, so this is left alone"},
+                    "folded": {"why": "the structure arrives from a folding card, so this is "
+                                      "left alone"}})]),
         Setting("pdb_id", "PDB id", "text", "",
-                why="fetched on a login node and copied into the flow",
+                why="fetched on a login node and copied into the flow. An entry too large for "
+                    "the PDB format is fetched as mmCIF and converted, and refused where it "
+                    "cannot be",
                 varies=[("source", {
                     "file": {"optional": True, "placeholder": "not read: the structure comes "
                                                               "from the file below",
@@ -456,14 +476,62 @@ TARGET = Card(
 # different chains stays a job for the tool's own page. Each card says so.
 
 
-def _fold_settings(kinds, own, entities=1):
+#: How a modified residue is written on a card: the residue's position, and the Chemical
+#: Component Dictionary code it becomes. The folding page draws a table with a row per
+#: modification; a card's settings are single-line boxes, so one box holds the list.
+#:
+#: Checked by the page rather than here, when the flow is launched - which for a folding card is
+#: on the login node, while the person is still at the keyboard, so a code that is not a
+#: modification of that residue comes back as a sentence on the card rather than in a job.
+#: A code must hold a letter. Without that, "12" on its own matched as residue 1 becoming the
+#: component "2": a position typed with its code forgotten was read as a modification nobody
+#: asked for, and no component in the dictionary is all digits anyway.
+MODIFICATION = re.compile(r"^(\d+)[\s:=]*([A-Za-z0-9]{1,5})$")
+
+
+def read_modifications(text):
+    """[{"position": n, "ccd": CODE}] from "12 SEP, 40 TPO", or raise ValueError.
+
+    One reading, used by the driver that sends them on. The separator is forgiving - a space, a
+    colon or an equals sign - because the one thing that matters is which residue becomes what,
+    and three spellings of it are not three questions.
+    """
+    out = []
+    for part in re.split(r"[,;]+", str(text or "")):
+        part = part.strip()
+        if not part:
+            continue
+        found = MODIFICATION.match(part)
+        if not found or not any(c.isalpha() for c in found.group(2)):
+            raise ValueError("%r is not a residue and a code, as 12 SEP" % part)
+        out.append({"position": int(found.group(1)), "ccd": found.group(2).upper()})
+    return out
+
+
+def _fold_settings(kinds, own, entities=1, mods=False):
     """The settings both folding cards share, with each tool's own in the middle.
 
     `entities` is how many chains this card can be given. One is a fold: a sequence, what it is,
     and copies of it. More than one is a co-fold, and the further chains are the same three boxes
     again, numbered - which is what lets a receptor and the strand or peptide that binds it
     be folded together as one complex.
+
+    `mods` is whether this tool can carry a modified residue. Only Boltz-2 can: a modification is
+    written into its YAML as a position and a code, and ColabFold's input is a FASTA, which has
+    nowhere to put one.
     """
+    # Under More settings on every chain, the first included. A phosphoserine is a real thing to
+    # ask for and a rare one, and a box above the fold that most people never fill in is a box
+    # everybody has to read past to get to the one they came for.
+    def modification(suffix="", which=""):
+        return Setting("modifications" + suffix,
+                       "Modified residues" + (" of the %s chain" % which if which else ""),
+                       "text", "", optional=True, advanced=True,
+                       placeholder="none: every residue as written",
+                       why="as 12 SEP, 40 TPO: the residue's position in the sequence above and "
+                           "the code it becomes. A code that is not a modification of that "
+                           "residue is refused as the flow is queued")
+
     out = [
         Setting("sequence", "Sequence", "text", "", needed=True,
                 why="one chain, in one-letter codes. Case does not matter - neither tool makes "
@@ -480,6 +548,8 @@ def _fold_settings(kinds, own, entities=1):
                 why="more than one folds a homo-oligomer: the same sequence again as chains A, "
                     "B, C"),
     ]
+    if mods:
+        out.append(modification())
     #: The further chains, in the words of the first three. Ordinals rather than numbers in the
     #: labels, because "Sequence 2" beside "Copies 2" reads as two of something.
     ordinals = ("", "second", "third")
@@ -497,6 +567,8 @@ def _fold_settings(kinds, own, entities=1):
             Setting("copies" + suffix, "Copies of the %s chain" % which, "number", 1,
                     optional=True, advanced=(n > 2), least=1, most=20, step=1),
         ]
+        if mods:
+            out.append(modification(suffix, which))
     out += [
         # The one setting that decides what happens where, and it is the same question on both
         # pages, asked in the same words. Fetching costs the Launch press a minute or two per
@@ -543,8 +615,24 @@ BOLTZ2 = Card(
                      "best few of them"),
          Setting("recycling_steps", "Recycling steps", "number", 3, optional=True, advanced=True,
                  least=1, most=10, step=1,
-                 why="Boltz-2's own default. More costs time roughly in proportion")],
-        entities=3),
+                 why="Boltz-2's own default. More costs time roughly in proportion"),
+         # The three the page has and the card had not, each with the page's own bounds and the
+         # page's own default. The seed is the one that matters most: without it a fold could not
+         # be repeated at all, and a structure nobody can reproduce is a structure nobody can
+         # argue about.
+         Setting("sampling_steps", "Sampling steps", "number", 200, optional=True, advanced=True,
+                 least=10, most=1000, step=10,
+                 why="steps in the diffusion. 200 is Boltz-2's own"),
+         Setting("seed", "Seed", "number", None, optional=True, advanced=True,
+                 least=1, most=2 ** 31 - 1, step=1, placeholder="no seeding, which is Boltz-2's "
+                                                                "own",
+                 why="a number makes the sampling repeatable, so the same card folds the same "
+                     "structure twice"),
+         Setting("use_potentials", "Steering potentials", "yesno", False, optional=True,
+                 advanced=True,
+                 why="off is Boltz-2's own. On is slower, and upstream reports structures that "
+                     "make better physical sense")],
+        entities=3, mods=True),
     note="One sequence folds one structure, for a target card to take. Fill in a second sequence "
          "and the two are folded together as a complex - a receptor with the DNA, RNA or "
          "peptide that binds it - which goes on to be prepared and simulated. A structure of more chains "
@@ -564,7 +652,24 @@ COLABFOLD = Card(
                      "one handed on"),
          Setting("num_recycle", "Recycling steps", "number", 3, optional=True, advanced=True,
                  least=1, most=12, step=1,
-                 why="what the lab's co-folding has always asked for")]),
+                 why="what the lab's co-folding has always asked for"),
+         # ColabFold's own two, with its own defaults. There is no seed box: ColabFold takes a
+         # number of seeds and not a seed, so what makes a run repeatable there is asking for the
+         # same count of them, and a box called Seed would be a different setting wearing the
+         # name of the Boltz-2 one.
+         Setting("num_seeds", "Seeds", "number", 1, optional=True, advanced=True,
+                 least=1, most=20, step=1,
+                 why="more seeds is more samples per model, and more time in proportion"),
+         Setting("rank", "Rank by", "choice", "auto",
+                 choices=["auto", "plddt", "ptm", "iptm", "multimer"], optional=True,
+                 advanced=True,
+                 notes={"auto": "multimer for a complex, pLDDT for one chain",
+                        "plddt": "the model's own confidence, per residue",
+                        "ptm": "predicted TM-score for the whole structure",
+                        "iptm": "predicted TM-score across the interface",
+                        "multimer": "0.8 iptm and 0.2 ptm, which is AlphaFold-Multimer's own"},
+                 why="which model is handed on as the best: auto is multimer for a complex and "
+                     "pLDDT for one chain")]),
     note="Folds the sequence on the card with AlphaFold 2 and hands the best-ranked model to a "
          "target card, which is where the chains and the hotspots are named.")
 
@@ -596,6 +701,13 @@ BINDCRAFT = Card(
         Setting("max_trajectories", "Give up after this many attempts", "number", "",
                 optional=True, advanced=True, least=1, most=100000, step=100,
                 why="a campaign that will never find its designs otherwise runs to its walltime"),
+        # The wrapper zips each trajectory folder as the campaign goes; --no-archive leaves them
+        # as they are. Left on, because a campaign writes a folder of them per trajectory and
+        # what runs out on Grace is the file count rather than the space.
+        Setting("archive", "Zip each trajectory folder", "yesno", True,
+                optional=True, advanced=True,
+                why="off keeps every trajectory file as it was written, which is thousands more "
+                    "of them"),
         Setting("gpus", "Cards", "number", 1, optional=True, advanced=True,
                 least=1, most=4, step=1,
                 why="one campaign over this many cards on the one node"),
@@ -644,7 +756,109 @@ RFDIFFUSION = Card(
                 why="fewer is faster and rougher, and RFdiffusion itself asserts at least 15"),
         Setting("ckpt", "Checkpoint", "choice", "",
                 choices=["", "Complex_base_ckpt.pt", "Complex_beta_ckpt.pt"],
-                optional=True, advanced=True, why="empty takes the binder-design default"),
+                optional=True, advanced=True, why="empty takes the binder-design default",
+                notes={"": "Complex_base, which is what RFdiffusion picks itself once hotspots "
+                           "are given",
+                       "Complex_base_ckpt.pt": "the same one, named outright",
+                       "Complex_beta_ckpt.pt": "the beta complex model: more varied binders, "
+                                               "and fewer of them hold up"}),
+        # The noise schedule, which is the rest of RFdiffusion's denoiser block. The two scales
+        # above and below each set both of the tool's keys - one for the Ca positions and one for
+        # the frames - because the binder-design example moves them together and a card that
+        # moved one would be a trap.
+        Setting("noise_schedule", "Noise schedule", "choice", "constant",
+                choices=["constant", "linear"], optional=True, advanced=True,
+                why="constant holds the noise where it is set; linear walks it to the figure "
+                    "below over the run",
+                notes={"constant": "the one scale, every step. RFdiffusion's own default",
+                       "linear": "from the scale above at the first step to the one below at "
+                                 "the last"}),
+        # Read only on the linear schedule: with a constant one RFdiffusion returns the starting
+        # scale at every step and never looks at this (inference/utils.py, get_noise_schedule),
+        # so the field says so rather than sitting there looking as though it did something.
+        Setting("final_noise_scale", "Noise scale at the last step", "number", 1,
+                optional=True, advanced=True, least=0, most=2, step=0.1,
+                why="where the linear schedule ends up",
+                varies=[("noise_schedule", {
+                    "constant": {"why": "not read on a constant schedule, which holds the "
+                                        "noise scale above all the way through"}})]),
+        # The potentials block. Three of RFdiffusion's eight potentials are the ones written for
+        # a binder beside a target (its potentials.require_binderlen); the rest describe a
+        # monomer or an oligomer and have no binder to act on here.
+        #
+        # Empty by default, and the line under the field says why rather than leaving it to be
+        # found out: RFdiffusion's own README says these "seem to interact weirdly with hotspot
+        # residues in PPI", that it knows why and means to write better ones, and that good
+        # practice is to start with none. This card is always aimed at hotspots, so that caveat
+        # is about exactly this job and belongs on the card rather than in a paper.
+        Setting("potential", "Pull on the design", "choice", "",
+                choices=["", "binder_ROG", "binder_ncontacts", "interface_ncontacts"],
+                optional=True, advanced=True,
+                why="a force on the binder while it diffuses. Empty is what the binder-design "
+                    "example uses, and RFdiffusion's own notes say these sit badly with "
+                    "hotspots: start without one",
+                notes={"": "none, as RFdiffusion's own default is",
+                       "binder_ROG": "pulls the binder compact, by its radius of gyration",
+                       "binder_ncontacts": "more contacts inside the binder",
+                       "interface_ncontacts": "more contacts between the binder and the target"}),
+        Setting("potential_weight", "How hard it pulls", "number", 1,
+                optional=True, advanced=True, least=0.1, most=10, step=0.1,
+                why="1 is each potential's own weight",
+                varies=[("potential", {"": {"why": "not read until a pull is chosen above"}})]),
+        Setting("guide_scale", "Guide scale", "number", 10,
+                optional=True, advanced=True, least=0.1, most=100, step=1,
+                why="how much of the pull reaches the diffusion; 10 is RFdiffusion's own",
+                varies=[("potential", {"": {"why": "not read until a pull is chosen above"}})]),
+        Setting("guide_decay", "Guide decay", "choice", "constant",
+                choices=["constant", "linear", "quadratic", "cubic"],
+                optional=True, advanced=True,
+                why="how the pull fades as the structure settles",
+                notes={"constant": "the same at every step. RFdiffusion's own default",
+                       "linear": "fades with the step count",
+                       "quadratic": "fades faster, so late steps are nearly free",
+                       "cubic": "faster still"},
+                varies=[("potential", {"": {"why": "not read until a pull is chosen above"}})]),
+        # Off, as this card has always run it. RFdiffusion's own default writes two fifty-model
+        # trajectory files per design, which nothing downstream reads and which is the file count
+        # rather than the space that runs out on Grace.
+        Setting("write_trajectory", "Keep the diffusion trajectories", "yesno", False,
+                optional=True, advanced=True,
+                why="two files per design showing every step, for looking at the diffusion "
+                    "itself"),
+        Setting("deterministic", "Repeat the same designs", "yesno", False,
+                optional=True, advanced=True,
+                why="seeds each design from its own number, so the same card run twice gives "
+                    "the same backbones"),
+        # ProteinMPNN's own settings. Everything above is RFdiffusion's; these are the second
+        # half of the job, and the card offered none of them: the sequence step ran at one
+        # temperature with one seed on one model whatever was asked of it.
+        Setting("mpnn_model", "ProteinMPNN model", "choice", "v_48_020",
+                choices=["v_48_002", "v_48_010", "v_48_020", "v_48_030"],
+                optional=True, advanced=True,
+                why="the figure is the backbone noise it was trained with, in hundredths of an "
+                    "angstrom",
+                notes={"v_48_002": "0.02 A: closest to the backbone it is given",
+                       "v_48_010": "0.10 A",
+                       "v_48_020": "0.20 A. ProteinMPNN's own default",
+                       "v_48_030": "0.30 A: most forgiving of a rough backbone"}),
+        # The weights are both on disk (soluble_model_weights beside vanilla_model_weights), so
+        # this is a choice rather than a download.
+        Setting("mpnn_soluble", "Soluble ProteinMPNN", "yesno", False,
+                optional=True, advanced=True,
+                why="weights trained on soluble proteins only, which is what a binder has to be"),
+        Setting("mpnn_temperature", "Sequence temperature", "number", 0.1,
+                optional=True, advanced=True, least=0.1, most=1.0, step=0.05,
+                why="higher is more varied; ProteinMPNN suggests 0.1 to 0.3"),
+        Setting("mpnn_seed", "Sequence seed", "number", 37,
+                optional=True, advanced=True, least=0, most=MD_SEED_MAX, step=1,
+                why="0 picks a new one each run; any other number gives the same sequences again"),
+        Setting("mpnn_omit", "Amino acids to leave out", "text", "",
+                optional=True, advanced=True, placeholder="none",
+                why="letters the designed sequence may not use, as C to keep cysteines out"),
+        Setting("mpnn_backbone_noise", "Backbone noise", "number", 0,
+                optional=True, advanced=True, least=0, most=0.3, step=0.05,
+                why="noise on the backbone while the sequence is designed; the released models "
+                    "were trained at up to 0.30 A"),
         # There is no "relax each design before scoring" here, and that is deliberate. It was
         # offered and did nothing: relaxing needs dl_binder_design's own interface script, which
         # needs a PyRosetta licence this install has not got. Somebody would have set it, watched
@@ -691,6 +905,40 @@ RFD3 = Card(
         Setting("cfg", "Classifier-free guidance", "yesno", False, optional=True, advanced=True,
                 why="holds a design closer to what was asked of it. Off is the model's own "
                     "default, and it is turned on for conditioning that must be obeyed"),
+        # How hard it is held. The sampler leaves the guidance alone at 1 and does nothing at
+        # all with it (batched_sampler.py checks cfg_scale != 1), so 1 is the floor and it means
+        # off; 1.5 is the model's own figure. The ceiling is this card's.
+        Setting("cfg_strength", "How closely it is held", "number", 1.5,
+                optional=True, advanced=True, least=1, most=5, step=0.1,
+                why="1.5 is the model's own; 1 is no guidance at all",
+                varies=[("cfg", {False: {"why": "not read until the guidance above is on"}})]),
+        # Designs come out of one pass, so a campaign larger than a card will hold is this many
+        # passes of it: the run generates designs x batches in all. RFdiffusion3 bounds this
+        # only at one or more, so the ceiling here is the card's own; what a run can actually
+        # reach is the walltime, and the page says the total the two boxes come to.
+        Setting("batches", "Passes", "number", 1, optional=True, advanced=True,
+                least=1, most=100, step=1,
+                why="the run makes this many passes, so a campaign is the designs above times "
+                    "this"),
+        Setting("seed", "Seed", "number", None, optional=True, advanced=True,
+                least=0, most=MD_SEED_MAX, step=1, placeholder="a new one each run",
+                why="the same number gives the same designs again"),
+        # The rest of the sampler's own knobs, under the names its configuration uses. Its
+        # comments name 0.0 and 1.0 for gamma, so those are the bounds; the noise scale is a
+        # multiplier around 1 and its ceiling is the card's.
+        Setting("noise_scale", "Noise scale", "number", 1.003,
+                optional=True, advanced=True, least=0, most=2, step=0.001,
+                why="the noise put back at each step; 0 takes it out altogether"),
+        Setting("gamma_0", "Churn", "number", 0.6,
+                optional=True, advanced=True, least=0, most=1, step=0.1,
+                why="how much each step is re-noised before it is denoised again; 0 samples "
+                    "the diffusion as a plain equation"),
+        Setting("cyclic", "Cyclic peptide", "yesno", False, optional=True, advanced=True,
+                why="joins the binder's ends, which RFdiffusion3 takes for one designed chain"),
+        # On, as this card has always run it, and the authors' own binder examples set it. The
+        # model's own default is to say nothing either way.
+        Setting("non_loopy", "Fewer loops", "yesno", True, optional=True, advanced=True,
+                why="asks for a binder with less loop in it, which is the one that folds"),
         Setting("partition", "Partition", "text", "", optional=True, advanced=True),
         Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
     ],
@@ -708,9 +956,26 @@ BOLTZGEN = Card(
         Setting("protocol", "What to design", "choice", "protein-anything",
                 choices=["protein-anything", "peptide-anything", "nanobody-anything",
                          "antibody-anything", "protein-small_molecule", "protein-redesign"],
-                needed=True, why="the model's own protocols; the binder kind is chosen here"),
+                needed=True, why="the model's own protocols; the binder kind is chosen here",
+                notes={"protein-anything": "a miniprotein against the target",
+                       "peptide-anything": "a short peptide, cysteine-free by default",
+                       "nanobody-anything": "a VHH",
+                       "antibody-anything": "a paired Fv",
+                       "protein-small_molecule": "needs the target's ligand, which a flow has "
+                                                 "taken out of the receptor before this card; "
+                                                 "it is refused rather than run without it",
+                       "protein-redesign": "the binder already on the target, designed again"}),
+        # BoltzGen's own default is ten thousand, and its pipeline is built around that figure:
+        # generate many, then let the filtering stage pick the set below out of them. The
+        # ceiling here is the tool's default; what a run can actually reach is the walltime.
         Setting("designs", "Designs to generate", "number", 10, needed=True,
-                least=1, most=500, step=1),
+                least=1, most=10000, step=1,
+                why="BoltzGen is built to generate many and keep the best few, which is the "
+                    "box below"),
+        Setting("budget", "Designs to keep", "number", None, optional=True,
+                least=1, most=10000, step=1, placeholder="every one that passes",
+                why="the filtering stage picks this many out of the designs above, spread for "
+                    "variety rather than taking the top of one list"),
         # 16 GB is not enough: upstream reports running out of memory on a modest target, and on
         # the analysis step at a hundred designs. So the small cards are not offered here.
         Setting("gpu", "Card", "choice", "a100", choices=["a100", "a40"], optional=True,
@@ -726,13 +991,63 @@ BOLTZGEN = Card(
         Setting("sampling_steps", "Step scale", "number", None, optional=True, advanced=True,
                 least=0.1, most=10, step=0.1, placeholder="the protocol's own",
                 why="it scales the diffusion step, and is not a count of steps"),
+        # The companion to the step scale above, and the same shape: BoltzGen takes a schedule
+        # for both unless it is given a fixed figure. Its own example is 0.98.
+        Setting("noise_scale", "Noise scale", "number", None, optional=True, advanced=True,
+                least=0.1, most=10, step=0.01, placeholder="the protocol's own",
+                why="a fixed noise scale instead of the schedule BoltzGen would use"),
         Setting("fold", "Fold and score each design", "yesno", True, optional=True, advanced=True,
                 why="the ranking comes from this; off leaves designs unranked"),
+        # The sequence step, which ran at BoltzGen's own default of one sequence per backbone
+        # whatever the sister cards were asked for.
+        Setting("seqs_per_backbone", "Sequences per design", "number", 1,
+                optional=True, advanced=True, least=1, most=64, step=1,
+                why="BoltzGen's inverse folding writes this many for each backbone"),
+        # It REPLACES the protocol's own list rather than adding to it, so typing KE on a
+        # peptide protocol lets cysteine back in. The line under the field says so, and the job
+        # says it again in its log, because the cost of not knowing is a batch of peptides with
+        # free cysteines in them.
+        Setting("avoid", "Amino acids to leave out", "text", "", optional=True, advanced=True,
+                placeholder="the protocol's own",
+                why="letters the sequences may not use. This replaces the protocol's own list, "
+                    "and the peptide, nanobody and antibody protocols leave cysteine out: "
+                    "keep the C in"),
+        Setting("coldspots", "Coldspots", "residues", "", optional=True, advanced=True,
+                why="residues the binder should keep clear of; BoltzGen is told they are not "
+                    "binding, the opposite of a hotspot"),
+        Setting("alpha", "Quality against variety", "number", None,
+                optional=True, advanced=True, least=0, most=1, step=0.01,
+                placeholder="the protocol's own",
+                why="0 picks the best designs, 1 the most different ones"),
+        Setting("filter_biased", "Drop lopsided sequences", "yesno", True,
+                optional=True, advanced=True,
+                why="takes out designs made mostly of alanine, glycine, glutamate, leucine or "
+                    "valine. On is BoltzGen's own default"),
+        Setting("checkpoints", "Model", "choice", "both",
+                choices=["both", "diverse", "adherence"], optional=True, advanced=True,
+                why="BoltzGen ships two design models and uses both by default, half the "
+                    "designs each",
+                notes={"both": "half the designs from each. BoltzGen's own default",
+                       "diverse": "more varied designs",
+                       "adherence": "designs that stick closer to what was asked"}),
         Setting("partition", "Partition", "text", "", optional=True, advanced=True),
         Setting("account", "Account to charge", "text", "", optional=True, advanced=True),
     ],
-    note="Generates binders against a target of any kind, protein, peptide, nucleic acid or "
-         "small molecule, and leaves them already placed on it.")
+    # What it takes is what a flow can hand it, and that is a protein target. The note claimed
+    # four kinds and the card could only ever do the one:
+    #
+    #   a small molecule   the receptor is cleaned to its polymer residues before any design
+    #                      card sees it (drivers.clean_receptor), so the ligand the
+    #                      small-molecule protocol is about is not in the file by then. Refused
+    #                      in the driver now, rather than queued for a GPU to find out
+    #   DNA or RNA         the cleaned copy keeps nucleic residues, so the target reaches the
+    #                      card - but the helper reads a structure's chains by their amino acids
+    #                      (boltzgen_design.chains_of), so a DNA chain is no chain of the target
+    #                      and the job stops with "none of the chains are in". Teaching the
+    #                      helper to read them is a change to the helper, not a setting
+    note="Generates binders against a protein target and leaves them already placed on it. The "
+         "small-molecule protocol needs a ligand a flow does not carry, and is refused.")
+
 
 ADCP = Card(
     "adcp", "ADCP docking", "dock peptides into the target",
@@ -1009,6 +1324,25 @@ HADDOCK = Card(
                        "12": "the best 4 of each of the top 3 clusters",
                        "20": "the best 4 of each of the top 5 clusters"},
                 varies=[("mmgbsa", {False: {"why": "read only while the rescoring is on"}})]),
+        # The endpoint model, verbatim from the tool's own table (mmgbsa.MODELS, DEFAULT_MODEL),
+        # which a test holds this against. Not a detail of how the rescoring is done but which
+        # quantity it returns: the two disagree by tens of kcal/mol on a charged nucleic acid and
+        # can reorder poses, so a flow that could not say which model it wanted could not put its
+        # numbers beside a report's.
+        Setting("mmgbsa_model", "Endpoint model", "choice", "gbn2", optional=True, advanced=True,
+                choices=["gbn2", "obc2"],
+                notes={"gbn2": "ff14SB / OL15 / OL3, mbondi3 radii, GBn2 (igb 8), minimised by "
+                               "sander: the tool's own, and what every earlier run used",
+                       "obc2": "ff19SB / OL24, mbondi2 radii, OBC2, which is AMBER's igb 5; "
+                               "tleap builds the topology, OpenMM relaxes it, MMPBSA.py scores "
+                               "one frame of it. DNA only"},
+                why="the force field, the radii and the implicit solvent are one choice; values "
+                    "on one model are not comparable with values on another",
+                varies=[("mmgbsa", {False: {"why": "read only while the rescoring is on"}}),
+                        ("mode", {"protein-RNA": {
+                            "value": "gbn2",
+                            "why": "ff19SB / OL24 / OBC2 names no RNA force field, so an RNA "
+                                   "partner is scored on the tool's own model"}})]),
         Setting("cofold", "Co-fold each pair with Boltz-2 and compare it", "yesno", False,
                 optional=True, advanced=True,
                 why="a second, independent answer to where the partner sits, beside the docking"),

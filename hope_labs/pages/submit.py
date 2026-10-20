@@ -427,6 +427,17 @@ def check(tool, body, roots=()):
     if tool == "boltzgen" and gpu == "a40":
         notes.append("BoltzGen wants 40 GB of card and an a40 has 48, so it fits, but its "
                      "analysis step has been reported running out at a hundred designs")
+    # The driver refuses this too, which is what stops a flow; said here as well so that it is
+    # said against the menu it was chosen from rather than after the target has been fetched.
+    if tool == "boltzgen" and str(body.get("protocol") or "") == "protein-small_molecule":
+        bad["protocol"] = ("this protocol designs against the target's own ligand, and a design "
+                           "run is given the receptor cleaned to its polymer residues, so there "
+                           "is no ligand left to design against")
+    if tool == "rfd3":
+        passes = _int(body.get("batches"), 1)
+        if passes > 1:
+            notes.append("%d designs in all: %d in each pass, over %d passes"
+                         % (plan["designs"] * passes, plan["designs"], passes))
     if tool == "rfdiffusion":
         sequences = plan["designs"] * _int(body.get("seqs_per_backbone"), 8)
         if sequences > 400:
