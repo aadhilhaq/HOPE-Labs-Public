@@ -16,7 +16,7 @@ import sys
 __version__ = "0.1.0"
 APP = "HOPE-flow"
 LAB = "HOPE Lab"
-AUTHORS = ("Aadhil Haq",)
+AUTHORS = ("Aadhil Haq", "Samavath Mallawarachchi", "Lasan Manujitha")
 PI = "Dr. Sandun Fernando"
 
 #: The fallback for a bundle built without the LICENSE beside it.

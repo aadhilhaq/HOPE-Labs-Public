@@ -39,7 +39,7 @@ APP = "HOPE Labs"
 TAGLINE = "design, docking, folding and simulation, in one place"
 BLURB = "Docking, design, folding and simulation on a cluster, from one sign-in."
 LAB = "HOPE Lab"
-AUTHORS = ("Aadhil Haq",)
+AUTHORS = ("Aadhil Haq", "Samavath Mallawarachchi", "Lasan Manujitha")
 PI = "Dr. Sandun Fernando"
 POWERED_BY = "Powered by HOPE Lab"
 
