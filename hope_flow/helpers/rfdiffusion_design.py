@@ -99,6 +99,107 @@ def mpnn_settings(plan):
         out += ["--backbone_noise", "%g" % noise]
     return out
 
+def confidence_of(trb_path, binder_chain=""):
+    """What RFdiffusion recorded about one design, as plain JSON the report can read.
+
+    Everything here is already in <design>.trb, and nothing can read it but this helper: the .trb
+    is a pickle of numpy arrays, and the design page is one stdlib-only process on a login node.
+    So the summary is written into designs.json as the run goes - the final mean and minimum
+    pLDDT over the designed residues, the per-step mean, the designed length, the seconds - along
+    with the settings RFdiffusion resolved for itself, which are otherwise only in this pickle and
+    in the Hydra log.
+
+    The diffuser_T trap is the reason the resolved block matters: plan.json records 0 for "do not
+    pass the flag", so the real number is RFdiffusion's own default and anything written from the
+    plan alone would say "0 timesteps".
+
+    Never fatal: a design whose .trb cannot be read keeps its score and loses only these extras.
+    """
+    try:
+        import pickle
+
+        import numpy
+    except ImportError:
+        return {}, {}
+    try:
+        with open(trb_path, "rb") as fh:
+            got = pickle.load(fh)
+    except Exception:                                      # noqa: BLE001
+        return {}, {}
+
+    def plain(value):
+        if isinstance(value, numpy.integer):
+            return int(value)
+        if isinstance(value, numpy.floating):
+            return round(float(value), 4)
+        if isinstance(value, numpy.ndarray):
+            return [plain(v) for v in value.tolist()]
+        if isinstance(value, (list, tuple)):
+            return [plain(v) for v in value]
+        return value
+
+    out, resolved = {}, {}
+    # The designed length is the sampled mask's own second entry ("61-61"), not the width of the
+    # pLDDT array, which covers the target as well.
+    designed = None
+    for part in (got.get("sampled_mask") or []):
+        head = str(part).split("-")[0]
+        if head.isdigit():
+            designed = int(head)
+    plddt = got.get("plddt")
+    if plddt is not None and len(plddt):
+        rows = [[float(v) for v in row] for row in plddt]
+        width = designed or len(rows[0])
+        last = rows[-1][:width]
+        out["designed_length"] = width
+        out["steps"] = [round(sum(r[:width]) / float(width), 4) for r in rows]
+        out["final_mean"] = round(sum(last) / float(width), 4)
+        out["final_min"] = round(min(last), 4)
+        out["residues"] = [round(v, 4) for v in last]
+    if got.get("time") is not None:
+        out["seconds"] = round(float(got["time"]), 1)
+    # The target's own numbering against the output's, which is the one thing a reader of the
+    # pose figure cannot work out for themselves and which nothing else records.
+    pairs = list(zip(got.get("complex_con_ref_pdb_idx") or [],
+                     got.get("complex_con_hal_pdb_idx") or []))
+    if pairs:
+        out["hotspot_map"] = {"%s%s" % (a[0], a[1]): "%s%s" % (b[0], b[1]) for a, b in pairs}
+    config = got.get("config") or {}
+    for key, where in (("contig", ("contigmap", "contigs")),
+                       ("timesteps", ("diffuser", "T")),
+                       ("noise_ca", ("denoiser", "noise_scale_ca")),
+                       ("hotspots", ("ppi", "hotspot_res")),
+                       ("checkpoint", ("inference", "ckpt_override_path"))):
+        block = config.get(where[0]) or {}
+        value = plain(block.get(where[1])) if hasattr(block, "get") else None
+        if value not in (None, [], ""):
+            resolved[key] = value[0] if key == "contig" and isinstance(value, list) else value
+    if resolved.get("checkpoint"):
+        resolved["checkpoint"] = os.path.basename(str(resolved["checkpoint"]))
+    card = (config.get("inference") or {}).get("device") or config.get("device")
+    if card:
+        resolved["card"] = str(card)
+    if binder_chain:
+        out["binder_chain"] = binder_chain
+    return out, resolved
+
+
+def _upstream_version(install):
+    """RFdiffusion's own version, from the install this job ran with.
+
+    Read here rather than when a report is opened: pages/docs.py reads whatever is installed at
+    that moment, so a run read next year would be labelled with next year's install.
+    """
+    for name in ("setup.py", "pyproject.toml"):
+        try:
+            with open(os.path.join(install, name), errors="replace") as fh:
+                got = re.search(r'version\s*=\s*[\'"]([^\'"]+)', fh.read())
+        except OSError:
+            continue
+        if got:
+            return got.group(1)
+    return ""
+
 
 def say(*what):
     print(*what)
@@ -468,7 +569,7 @@ def main():
     # comes back is one chain - and what is left over is the binder.
     mpnn = os.path.join(plan["dl_binder_design"], "mpnn_fr", "ProteinMPNN")
     mpnn_args = mpnn_settings(plan)
-    designs = []
+    designs, resolved = [], {}
     for name in backbones:
         path = os.path.join(rf_dir, name)
         here = chains_of(path)
@@ -522,15 +623,34 @@ def main():
         if not best:
             say("  %s: no designed sequence" % name)
             continue
-        designs.append({"name": os.path.splitext(name)[0], "path": path,
-                        "binder_chains": [binder], "target_chains": target_chains,
-                        "sequence": best, "score": best_score})
+        one = {"name": os.path.splitext(name)[0], "path": path,
+               "binder_chains": [binder], "target_chains": target_chains,
+               "sequence": best, "score": best_score}
+        # What RFdiffusion knows about the design and only this helper can read: the pLDDT
+        # trajectory, the seconds, and the output's numbering against the target's.
+        got, settled = confidence_of(
+            os.path.join(rf_dir, os.path.splitext(name)[0] + ".trb"), binder)
+        if got:
+            one["confidence"] = got
+            resolved.update(settled)
+            say("  %s: pLDDT %.3f over %d designed residues"
+                % (name, got.get("final_mean", 0.0), got.get("designed_length", 0)))
+        else:
+            say("  %s: no .trb to read a confidence from" % name)
+        designs.append(one)
         say("  %s: %d residues, score %.3f" % (name, len(best), best_score))
 
     # Best first, so the next card can take the top few without knowing what the number means.
     designs.sort(key=lambda d: d["score"])
+    # Stamped into the run rather than read from the install when somebody opens the report: an
+    # install moves on, and a run read a year from now should still say what made it.
+    record = {"tool": "rfdiffusion", "designs": designs,
+              "resolved": resolved,
+              "versions": {"tool": _upstream_version(plan.get("rfdiffusion") or ""),
+                           "checkpoint": resolved.get("checkpoint") or "",
+                           "hope_labs": os.environ.get("HOPE_LABS_VERSION", "")}}
     with open(os.path.join(out, "designs.json"), "w") as fh:
-        json.dump({"tool": "rfdiffusion", "designs": designs}, fh, indent=1)
+        json.dump(record, fh, indent=1)
         fh.write("\n")
     say("wrote designs.json: %d design(s)" % len(designs))
     if not designs:

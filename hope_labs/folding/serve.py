@@ -48,10 +48,12 @@ from . import SERVES
 from . import browse as browsemod
 from . import docs as pagedocs
 from . import job as jobmod
+from . import runreport as reportmod
 from . import runs as runsmod
 from . import sites as sitesmod
 from . import submit as submitmod
 from .. import docskit
+from .. import reporting as rk
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 #: The shell and the palette are the design page's, so the four pages read as one family and
@@ -191,6 +193,18 @@ def api_run(query):
     return {"run": runsmod.detail(inside_roots(query.get("path", [""])[0]))}
 
 
+def api_report(query):
+    """The document the report page lays out, written from the run and nothing else.
+
+    A run it cannot read answers with an error the page shows rather than a traceback.
+    """
+    options = {key[4:]: value[0] for key, value in query.items()
+               if key.startswith("opt.") and value}
+    return reportmod.document(S.tool,
+                              inside_roots(query.get("rundir", query.get("path", [""]))[0]),
+                              options, install=S.install)
+
+
 def api_submit(body):
     dry = S.dry_run or bool(body.get("dry_run"))
     if not S.installed and not dry:
@@ -319,8 +333,30 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         if url.path in ("/", "/index.html"):
             return self._send(200, "text/html; charset=utf-8", index_page().encode("utf-8"))
+        # reportkit, the lab's report module: the one copy in this checkout, served by name so
+        # that no path arrives from the browser at all. Before the general /static/ route,
+        # because the module lives beside the package rather than in this page's web folder.
+        if url.path in ("/static/reportkit.js", "/static/reportkit.css"):
+            body, kind = rk.static_file(os.path.basename(url.path))
+            if body is None:
+                return self._send(404, "text/plain", b"this checkout has no reportkit")
+            return self._send(200, kind, body, {"X-Content-Type-Options": "nosniff"})
         if url.path.startswith("/static/"):
             return self._static(url.path[len("/static/"):])
+        # THE REPORT OF A RUN: a page to read and to save as a PDF. Answered before the token
+        # guard below, so a request without the token gets a sentence a person can act on
+        # rather than a JSON error in an empty tab.
+        if url.path == "/report":
+            if not self._allowed(query):
+                return self._send(403, "text/plain",
+                                  b"open the report from the run's page, which carries the token")
+            try:
+                run = inside_roots(query.get("rundir", query.get("path", [""]))[0])
+            except jobmod.Refused as refusal:
+                return self._send(400, "text/plain", str(refusal).encode("utf-8"))
+            return self._send(200, "text/html; charset=utf-8", reportmod.page_for(
+                S.token, run, S.tool,
+                autoprint=query.get("print", [""])[0] == "1").encode("utf-8"))
         # The tool's mark, for a browser that asks for the old favicon address. The form says
         # which icon it wants and never asks for this, but the documentation is laid out by the
         # shared kit, which carries no icon link, so every documentation page asks. Answered
@@ -342,6 +378,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(api_runs(query))
             if url.path == "/api/run":
                 return self._json(api_run(query))
+            if url.path == "/api/report":
+                return self._json(api_report(query))
             if url.path == "/api/download":
                 return self._download(query)
             if url.path == "/api/roots":

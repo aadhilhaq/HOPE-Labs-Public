@@ -1324,6 +1324,22 @@ function download(run, file, label) {
   return a;
 }
 
+/* THE REPORT OF A RUN: the write-up of what was folded, in a tab of its own, with the print
+   window opened for it. Offered for a run that stopped as well as for one that finished: a run
+   that ran out of walltime with two samples on disk is exactly the one somebody needs the
+   numbers of, and the report says in its first line that the job did not finish. */
+function reportButton(run) {
+  const a = el("a", "btn sm pri", "Report (PDF)");
+  a.href = "/report?t=" + encodeURIComponent(TOKEN) + "&rundir=" + encodeURIComponent(run.path)
+    + "&print=1";
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.title = "The write-up of this run: the chains, the samples, the confidence along them and "
+    + "what it was folded from. Opens in a new tab, ready to save as a PDF.";
+  a.style.textDecoration = "none";
+  return a;
+}
+
 /* Saved where the person chooses, where the browser can do that. showSaveFilePicker is Chrome's
    and needs a secure context, which 127.0.0.1 is; everywhere else this falls back to an ordinary
    download, which is what Firefox and Safari have. Neither path is allowed to break the other. */
@@ -1455,6 +1471,7 @@ async function openRun(path, quiet) {
   what.appendChild(kv);
 
   const actions = el("div", "btns");
+  if ((run.table && run.table.rows.length) || run.over) actions.appendChild(reportButton(run));
   (run.files || []).forEach((name) => {
     if (/\.(yaml|fasta)$/.test(name)) actions.appendChild(download(run, name, "The input"));
     else if (/job\.sbatch$/.test(name)) actions.appendChild(download(run, name, "Job script"));
@@ -1557,7 +1574,7 @@ function structuresBox(run) {
   const wrap = el("div", "tblbox");
   const table = el("table", "t");
   const head = el("tr");
-  ["", "rank", "confidence", "pLDDT", "pTM", "ipTM", "file", ""].forEach((c) => head.appendChild(el("th", null, c)));
+  ["", "rank", "confidence", "pLDDT", "pTM", "ipTM", "chains", "file", ""].forEach((c) => head.appendChild(el("th", null, c)));
   table.appendChild(el("thead")).appendChild(head);
   const body = el("tbody");
   run.table.rows.forEach((row, i) => {
@@ -1577,6 +1594,7 @@ function structuresBox(run) {
     tr.appendChild(el("td", null, fmt(row.plddt)));
     tr.appendChild(el("td", null, fmt(row.ptm)));
     tr.appendChild(el("td", null, fmt(row.iptm)));
+    tr.appendChild(el("td", null, row.chains || "—"));
     tr.appendChild(el("td", "wrap", row.name));
     const save = el("td");
     const one = el("button", "pill", "save");

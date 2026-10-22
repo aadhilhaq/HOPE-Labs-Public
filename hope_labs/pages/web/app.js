@@ -559,6 +559,18 @@ async function openRun(path, quiet) {
   what.appendChild(kv);
 
   const actions = el("div", "btns");
+  /* THE RUN WRITTEN UP: its report, a page of its own to read and save as a PDF (/report, laid
+     out by reportkit.js). Offered for a run that stopped as well as a finished one: the report
+     of a run that stopped says where it stopped and what would fill the gap, which is the thing
+     somebody most wants to read. print=1 opens the print window once everything is drawn. */
+  const report = el("button", "btn sm primary", "Report (PDF)");
+  report.type = "button";
+  report.title = "The whole run written up: the ranking, how the designs converged, the "
+    + "sequences, the best design on the target, and the methods with their references, in a "
+    + "new tab ready to save as a PDF";
+  report.onclick = () => window.open("/report?t=" + encodeURIComponent(TOKEN) + "&rundir="
+    + encodeURIComponent(run.path) + "&print=1", "_blank", "noopener");
+  actions.appendChild(report);
   (run.files || []).forEach((name) => {
     if (/designs\.json$/.test(name)) actions.appendChild(download(run, name, "designs.json"));
     else if (/plan\.json$/.test(name)) actions.appendChild(download(run, name, "The plan"));

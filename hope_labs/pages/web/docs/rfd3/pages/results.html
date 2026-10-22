@@ -37,3 +37,24 @@ needed no change to accept these designs: a sequence can go to ADCP and a comple
 backbone. They differ substantially. Neither is obviously right, so both are kept and the
 ProteinMPNN one is what is handed on, because it is the one the authors' own pipeline orders
 from and it comes with a score to rank by.</p>
+
+<h2 id="report">The report</h2>
+<p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,
+in a new tab, ready to save as a PDF. It is the run as you would describe it to somebody else:
+the ranking, the model's whole geometry block with the scope of every column, ProteinMPNN's sequences beside the model's own, the best design on the target with its hotspots mapped through the run's own index map, and the specification as the model resolved it; then the methods with their references, and an appendix holding the settings as asked beside
+the settings as the tool ran them, where the target came from, the versions, the job and the
+files.</p>
+<p>The bar along the top is the report's own. Tick the sections you want and set how many designs
+the tables show; zoom with the minus, the percentage and the plus, or fit the width. <b>Copy the
+methods and references</b> puts the methods on the clipboard. <b>Save as PDF</b> opens the
+browser's print window, where the printer to choose is "Save as PDF". The zoom is yours and is
+kept in this browser; it never reaches the PDF, which always prints at full size.</p>
+<p>Every caption states the result from the run's own numbers and then only what is needed to read
+it, rather than naming the table. So a ranking reads <i>"Both designs are helical bundles with no chain break and no clash: one is 90 per cent helix in 2 elements, the other 79 per cent in 4"</i>, rather than "the designs
+ranked by score". Where a run has nothing to say, the caption says what is missing and what would fill
+it: a run made before the design helper recorded its confidence figures is told so, in the report,
+rather than shown an empty column.</p>
+<p>Two things the report will not do. It writes nothing into the run folder: it only reads. And it
+shows no number the run did not write, so it and the Runs screen cannot disagree. There is no
+<b>Add to report</b> yet: this page has no viewer that can write into a run, so the structure
+figure is drawn by the report itself from the run's own file.</p>

@@ -23,6 +23,7 @@ from __future__ import annotations
 import html
 import json
 import os
+import re
 import sys
 import time
 
@@ -152,9 +153,28 @@ def _runs_side_by_side(record, nid):
     structure, the score it arrived with, anything it was told to differ in) and each run's own
     summary.json, which is where its binding energy and its interface RMSD are.
     """
+    head, rows = _runs_rows(record, nid)
+    if not rows:
+        return ""
+    # Every run, not the first twelve: this is the comparison the flow was drawn to make, and a
+    # table that stops halfway down a batch of twenty is the wrong half.
+    cells = "".join("<th>%s</th>" % _esc(c) for c in head)
+    body = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % _esc(c) for c in row) for row in rows)
+    return ("<h3>its %d run%s, side by side</h3><table><thead><tr>%s</tr></thead>"
+            "<tbody>%s</tbody></table>"
+            % (len(rows), "" if len(rows) == 1 else "s", cells, body))
+
+
+def _runs_rows(record, nid):
+    """(the headings, the rows) of the simulation card's runs.
+
+    Separated from the HTML above so the flow's report can lay the same numbers out as a proper
+    table, with a caption, while `python3 -m hope_flow.report` keeps writing the page it always
+    has.
+    """
     runs = [r for r in (record.card(nid).get("runs") or []) if isinstance(r, dict)]
     if not runs:
-        return ""
+        return [], []
     head = ["structure", "rank", "arrived with", "its own settings", "MM-GBSA kcal/mol",
             "interface RMSD Å", "run"]
     rows = []
@@ -181,13 +201,7 @@ def _runs_side_by_side(record, nid):
             _mean_of(energies), _mean_of(rmsd),
             os.path.basename(str(one.get("path") or "")),
         ])
-    # Every run, not the first twelve: this is the comparison the flow was drawn to make, and a
-    # table that stops halfway down a batch of twenty is the wrong half.
-    cells = "".join("<th>%s</th>" % _esc(c) for c in head)
-    body = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % _esc(c) for c in row) for row in rows)
-    return ("<h3>its %d run%s, side by side</h3><table><thead><tr>%s</tr></thead>"
-            "<tbody>%s</tbody></table>"
-            % (len(rows), "" if len(rows) == 1 else "s", cells, body))
+    return head, rows
 
 
 def _mean_of(values):
@@ -198,79 +212,234 @@ def _mean_of(values):
     return "%.1f (%d rep%s)" % (mean, len(values), "" if len(values) == 1 else "s")
 
 
-def build(where):
-    """The page, as text. `where` is a flow's own folder."""
-    where = os.path.abspath(str(where))
-    with open(os.path.join(where, "flow.json"), encoding="utf-8") as fh:
-        flow = Flow.from_json(fh.read(), started=st.with_state(where))
-    record = st.State.read(where)
-    summary = record.summary(flow)
-    rows = summary["cards"] if isinstance(summary, dict) else summary
+#: The states' own colours, which the page this replaces carried and a reader reads before any
+#: word on the page. reportkit's stylesheet knows nothing of a flow's states, so they are added
+#: after it rather than by editing the shared module, which is copied and never edited.
+STATE_CSS = """
+.sp{display:inline-block;padding:0 .45em;border-radius:3px;font-size:.92em;
+    border:1px solid currentColor}
+.sp.done{color:#1d6b4b}
+.sp.failed{color:#9b2c20}
+.sp.stopped{color:#9a5b23}
+.sp.running{color:#14459e}
+.sp.queued{color:#5b6777}
+.sp.ready{color:#5b6777}
+.sp.waiting{color:#7a838f}
+@media print{.sp{border-color:#888}}
+"""
+
+
+def render(doc, css):
+    """The contract's document as one self-contained page, laid out as reportkit lays it out.
+
+    A flow's report cannot be served the way every other report in the lab is. The pages that
+    serve a report run on a login node beside the run folder they read; the launcher that draws a
+    flow runs on the person's own computer and reaches the cluster over SSH, so there is no server
+    next to a flow's folder to answer /api/report. And the one property this page has always had
+    and must keep is that it can be sent to somebody with no account on the cluster at all.
+
+    So the document is laid out here, on the cluster, into static HTML that carries reportkit's own
+    stylesheet inline. That buys the numbering, the captions, the print rules, the A4 page breaks
+    and the tables held whole on a page - everything reportkit does to a document that does not
+    need a server. What it cannot buy is the bar: the zoom and the section tick boxes change the
+    document, and changing it needs the server that is not there. The options are therefore fixed
+    when the page is written, and Save as PDF is the browser's own print.
+
+    If a flow page is ever served from a login node, this should become a thin wrapper around
+    reportkit proper, exactly as the tools' own reports are.
+    """
+    nums = {"table": {}, "figure": {}}
+
+    def number_blocks(blocks):
+        for block in blocks or []:
+            if not isinstance(block, dict):
+                continue
+            kind = block.get("kind")
+            if kind in ("table", "figure") and block.get("id"):
+                nums[kind][block["id"]] = len(nums[kind]) + 1
+
+    def walk(sections):
+        for one in sections or []:
+            number_blocks(one.get("blocks"))
+            walk(one.get("sections"))
+
+    walk(doc.get("sections"))
+    number_blocks(doc.get("notes"))
+    for one in doc.get("appendix") or []:
+        number_blocks(one.get("blocks"))
+
+    def refs(html):
+        """{{table:id}} and {{figure:id}} become that block's number, as reportkit resolves them."""
+        def swap(found):
+            kind, name = found.group(1), found.group(2)
+            got = nums.get(kind, {}).get(name)
+            return ("%s %d" % (kind.capitalize(), got) if got
+                    else "a %s not in this report" % kind)
+        return re.sub(r"\{\{(table|figure):([^}]+)\}\}", swap, str(html or ""))
+
+    def cell(column, row):
+        value = row.get(column["key"])
+        if isinstance(value, dict) and "html" in value:
+            return refs(value["html"])
+        if value is None or value == "":
+            return _esc(column.get("empty") or row.get("_empty") or "")
+        if column.get("num"):
+            try:
+                digits = int(column.get("digits", 1))
+                out = "%.*f" % (digits, float(value))
+                if abs(float(value)) >= 10000:
+                    whole, _, part = out.lstrip("-").partition(".")
+                    out = (("-" if float(value) < 0 else "") + "{:,}".format(int(whole))
+                           + ("." + part if part else ""))
+                return _esc(out.replace("-", "\u2212"))
+            except (TypeError, ValueError):
+                pass
+        return _esc(value)
+
+    def table(block):
+        columns = block.get("columns") or []
+        rows = block.get("rows") or []
+        keep = " rk-keep" if len(rows) <= 40 else ""
+        head = "".join('<th class="%s"%s>%s</th>'
+                       % ("rk-num" if c.get("num") else "",
+                          ' title="%s"' % _esc(c["help"]) if c.get("help") else "",
+                          _esc(c.get("label") or c.get("key")))
+                       for c in columns)
+        body = []
+        for row in rows:
+            body.append('<tr class="%s">%s</tr>'
+                        % (_esc(row.get("_class") or ""),
+                           "".join('<td class="%s">%s</td>'
+                                   % ("rk-num" if c.get("num") else "", cell(c, row))
+                                   for c in columns)))
+        if not body:
+            body.append('<tr><td colspan=%d class=rk-why>%s</td></tr>'
+                        % (max(1, len(columns)), _esc(block.get("empty")
+                                                      or "Nothing to show.")))
+        got = nums["table"].get(block.get("id"))
+        caption = ('<caption><b>Table %d.</b> %s</caption>' % (got, refs(block.get("caption")))
+                   if got and block.get("caption") else "")
+        return ('<div class=rk-tablebox><table class="rk-table%s">%s<thead><tr>%s</tr></thead>'
+                '<tbody>%s</tbody></table>%s</div>'
+                % (keep, caption, head, "".join(body),
+                   '<p class=rk-note>%s</p>' % refs(block["note"]) if block.get("note") else ""))
+
+    def figure(block):
+        body = ""
+        if block.get("svg"):
+            body = '<div class=rk-svg>%s</div>' % block["svg"]
+        elif block.get("png"):
+            body = '<img class=rk-png alt="" src="%s">' % _esc(block["png"])
+        got = nums["figure"].get(block.get("id"))
+        caption = ('<figcaption><b>Figure %d.</b> %s</figcaption>'
+                   % (got, refs(block.get("caption")))
+                   if got and block.get("caption") else "")
+        return '<figure class="rk-figure rk-keep">%s%s</figure>' % (body, caption)
+
+    def block_html(block):
+        if not isinstance(block, dict):
+            return "<p>%s</p>" % refs(block)
+        kind = block.get("kind")
+        if kind == "p":
+            return '<p class="%s">%s</p>' % ("rk-" + _esc(block["tone"]) if block.get("tone")
+                                             else "", refs(block.get("html")))
+        if kind == "heading":
+            return "<h4 class=rk-h4>%s</h4>" % _esc(block.get("text"))
+        if kind == "list":
+            tag = "ol" if block.get("ordered") else "ul"
+            return "<%s class=rk-list>%s</%s>" % (
+                tag, "".join("<li>%s</li>" % refs(i) for i in block.get("items") or []), tag)
+        if kind == "pre":
+            return "<pre class=rk-pre>%s</pre>" % _esc(block.get("text"))
+        if kind == "facts":
+            return ('<table class="rk-facts rk-keep">%s</table>'
+                    % "".join("<tr><th>%s</th><td>%s</td></tr>" % (_esc(k), refs(v))
+                              for k, v in block.get("rows") or []))
+        if kind == "table":
+            return table(block)
+        if kind == "figure":
+            return figure(block)
+        return ""
+
+    def section_html(one, number, level):
+        kids = one.get("sections") or []
+        tag = "h2" if level == 2 else "h3"
+        return ('<section class="rk-section%s" id="rk-s-%s"><%s>%s %s</%s>%s%s</section>'
+                % (" rk-newpage" if one.get("newpage") else "", _esc(one.get("id")), tag,
+                   number, _esc(one.get("heading")), tag,
+                   "".join(block_html(b) for b in one.get("blocks") or []),
+                   "".join(section_html(k, "%s.%d" % (number, i + 1), 3)
+                           for i, k in enumerate(kids))))
 
     out = ["<!doctype html><html lang='en'><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
-           "<title>%s</title><style>%s</style></head><body><main>" % (_esc(flow.name or "flow"),
-                                                                      CSS)]
-    done = sum(1 for r in rows if r["state"] == "done")
-    out.append("<h1>%s</h1>" % _esc(flow.name or "a flow"))
-    out.append("<p class='lead'>%d of %d cards finished. Written %s from %s</p>"
-               % (done, len(rows), time.strftime("%Y-%m-%d %H:%M"), _esc(where)))
-
-    out.append("<h2>The chain</h2><div class='card'><p>")
-    out.append(" &rarr; ".join("%s <span class='sp %s'>%s</span>"
-                               % (_esc(r["name"]), _esc(r["state"]), _esc(r["state"]))
-                               for r in rows))
-    out.append("</p></div>")
-
-    for row in rows:
-        out.append("<h2>%s <span class='sp %s'>%s</span></h2>"
-                   % (_esc(row["name"]), _esc(row["state"]), _esc(row["state"])))
-        out.append("<div class='card'>")
-        # A card that has not started has nothing of its own to say, and an empty box under its
-        # name read as something missing from the page.
-        if not (row.get("note") or row.get("jobs") or row.get("rundir")):
-            out.append("<p class='files'>%s</p>" % {
-                "waiting": "Not started: it waits for the cards before it.",
-                "ready": "Not started: its turn comes when the cards before it finish.",
-                "stopped": "Stopped before it started."}.get(row["state"], "Nothing yet."))
-        if row.get("note"):
-            out.append("<p>%s</p>" % _esc(row["note"]))
-        bits = []
-        if row.get("jobs"):
-            bits.append("job%s %s" % ("s" if len(row["jobs"]) > 1 else "",
-                                      " ".join(_esc(j) for j in row["jobs"])))
-        if row.get("rundir"):
-            bits.append("<code>%s</code>" % _esc(row["rundir"]))
-        if bits:
-            out.append("<p class='files'>%s</p>" % " &middot; ".join(bits))
-
-        if row["card"] == "hopemd":
-            out.append(_runs_side_by_side(record, row["id"]))
-        where_run = row.get("rundir") or ""
-        if where_run and os.path.isdir(where_run):
-            for name, head, table in _tables(where_run)[:2]:
-                out.append(_table_html(name, head, table))
-            got = _files(where_run)
-            if got:
-                out.append("<h3>Files worth keeping</h3><p class='files'>")
-                out.append("<br>".join("<b>%s</b> &nbsp; %s" % (_esc(n), _size(s))
-                                       for n, s in got))
-                out.append("</p>")
-            own = os.path.join(where_run, "export", "report.html")
-            if os.path.isfile(own):
-                out.append("<p class='files'>This tool writes its own report, which is fuller "
-                           "than anything here: <b>export/report.html</b> in the folder above.</p>")
-        elif where_run:
-            out.append("<p class='files'>Its folder is not readable from here.</p>")
-        out.append("</div>")
-
-    out.append("<div class='foot'>Written by HOPE-flow from the flow's own record. Each tool's "
-               "own documentation says how to cite it; this page is not citable. A figure made "
-               "in HOPE Labs' structure viewer cites 3Dmol.js (Rego and Koes, Bioinformatics "
-               "2015), and one that shows a surface cites MSMS as well (Sanner, Olson and "
-               "Spehner, Biopolymers 1996).</div>")
+           "<title>%s</title>" % _esc(doc.get("title") or "flow"),
+           "<style>%s%s</style>" % (css, STATE_CSS),
+           "</head><body><main id=rk-doc>"]
+    out.append('<section class=rk-title>%s<h1>%s</h1>%s%s%s</section>'
+               % ('<div class=rk-kicker>%s</div>' % _esc(doc["kicker"]) if doc.get("kicker")
+                  else "", _esc(doc.get("title") or "Report"),
+                  '<p class=rk-subtitle>%s</p>' % doc["subtitle"] if doc.get("subtitle") else "",
+                  '<p class=rk-meta>%s</p>' % _esc(doc["byline"]) if doc.get("byline") else "",
+                  '<p class=rk-meta><code>%s</code></p>' % _esc(doc["path"]) if doc.get("path")
+                  else ""))
+    for block in doc.get("notes") or []:
+        out.append(block_html(block))
+    count = 0
+    for one in doc.get("sections") or []:
+        count += 1
+        out.append(section_html(one, str(count), 2))
+    if doc.get("methods"):
+        count += 1
+        out.append('<section class=rk-section><h2>%d Methods</h2><div class=rk-methods>%s</div>'
+                   % (count, refs(doc["methods"])))
+        if doc.get("references"):
+            out.append('<ol class=rk-refs>%s</ol>'
+                       % "".join("<li>%s</li>" % _esc(r.get("text"))
+                                 for r in doc["references"]))
+        out.append("</section>")
+    for i, one in enumerate(doc.get("appendix") or []):
+        out.append('<section class="rk-section rk-newpage"><h2>Appendix %s %s</h2>%s</section>'
+                   % (chr(ord("A") + i), _esc(one.get("heading")),
+                      "".join(block_html(b) for b in one.get("blocks") or [])))
+    # A figure somebody takes out of this page and puts in their own writing has to be citable,
+    # and the viewer's own page is not where they will look for it. Said here, as the flow's
+    # page said it before this document replaced it.
+    out.append("<div class='rk-foot'>Written by HOPE-flow from the flow's own record. Each "
+               "tool's own documentation says how to cite it; this page is not citable. A "
+               "figure made in HOPE Labs' structure viewer cites 3Dmol.js (Rego and Koes, "
+               "Bioinformatics 2015), and one that shows a surface cites MSMS as well "
+               "(Sanner, Olson and Spehner, Biopolymers 1996).</div>")
     out.append("</main></body></html>")
     return "\n".join(out)
+
+
+def build(where):
+    """The page, as text. `where` is a flow's own folder.
+
+    The document is reportdata's; the layout is reportkit's stylesheet and render() above. Kept as
+    build() because the launcher's POST /api/flow/report and `python3 -m hope_flow.report` both
+    call write(), and both must keep working.
+    """
+    from hope_labs import reporting as _rk
+
+    from . import reportdata
+    where = os.path.abspath(str(where))
+    # Raised, not rendered: a folder with no flow.json in it is a tool's own run folder or a
+    # mistyped path, and `python3 -m hope_flow.report` and the launcher both report that to the
+    # person rather than writing them a page about it.
+    with open(os.path.join(where, "flow.json"), encoding="utf-8") as fh:
+        fh.read(1)
+    doc = reportdata.document(where)
+    if doc.get("error"):
+        return ("<!doctype html><meta charset='utf-8'><title>flow</title>"
+                "<p>%s</p>" % _esc(doc["error"]))
+    try:
+        with open(os.path.join(_rk.STATIC, "reportkit.css"), encoding="ascii") as fh:
+            css = fh.read()
+    except OSError:
+        css = CSS
+    return render(doc, css)
 
 
 def write(where):

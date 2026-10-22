@@ -91,8 +91,14 @@ def _boltz_scores(path):
     got = read_json(os.path.join(folder, "confidence_%s.json" % os.path.splitext(name)[0]),
                     {}) or {}
     plddt = got.get("complex_plddt")
+    # Boltz-2 writes iptm: 0.0 for a one-chain prediction, which has no interface to score at
+    # all. Passed through, the table shows 0.000, which reads as a hopeless interface rather
+    # than as no interface; the cell is left empty instead, and the page draws a dash.
+    iptm = got.get("iptm")
+    if not iptm and len(got.get("chains_ptm") or {}) < 2:
+        iptm = None
     return {"confidence": got.get("confidence_score"), "ptm": got.get("ptm"),
-            "iptm": got.get("iptm"),
+            "iptm": iptm,
             # Boltz-2's pLDDT is already a fraction of one, and ColabFold's is a percentage.
             # Shown the same way, as a percentage, so the two pages read alike.
             "plddt": round(plddt * 100, 1) if isinstance(plddt, (int, float)) else None}
@@ -175,6 +181,27 @@ def summarise(run, states=None):
     }
 
 
+def _chains_of(structure, run):
+    """The chains in one structure, named as the tool that wrote it named them.
+
+    The column was always empty, which left a heading with nothing under it. Boltz-2 writes the
+    chain names into the record beside each prediction, which is the exact answer for a folder
+    holding more than one; ColabFold writes no such file, so the chains come from what the run
+    was asked to fold.
+    """
+    if structure.get("kind") == "boltz2":
+        # .../boltz_results_<name>/predictions/<name>/<file>
+        root = os.path.dirname(os.path.dirname(os.path.dirname(structure["path"])))
+        name = os.path.basename(os.path.dirname(structure["path"]))
+        record = read_json(os.path.join(root, "processed", "records", "%s.json" % name), {}) or {}
+        found = [str(one.get("chain_name") or "") for one in record.get("chains") or []]
+        if found:
+            return ", ".join(one for one in found if one)
+    record = read_json(os.path.join(run, "submission.json"), {}) or {}
+    return ", ".join(str(chain) for row in (record.get("rows") or [])
+                     for chain in (row.get("chains") or []))
+
+
 def detail(run, log_lines=240, rows=20):
     """One run in full: its summary, the structures it has written, the files, and the log."""
     info = summarise(run)
@@ -183,7 +210,7 @@ def detail(run, log_lines=240, rows=20):
         table.append({"rank": one["rank"], "name": one["name"],
                       "confidence": one.get("confidence"), "plddt": one.get("plddt"),
                       "ptm": one.get("ptm"), "iptm": one.get("iptm"),
-                      "chains": "",
+                      "chains": _chains_of(one, run),
                       "file": os.path.relpath(one["path"], run)})
     info["table"] = {"columns": list(SHOWN), "rows": table, "total": len(structures(run))}
     info["told"] = _told(run)

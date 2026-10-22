@@ -1,0 +1,105 @@
+/* reportkit: the lab's report page. By Aadhil Haq.
+   The same file in every tool. A sheet of A4 on a grey desk on screen; black
+   on white at full size in print, whatever the zoom or the theme. */
+:root{--rk-ink:#1b2333;--rk-dim:#5c667a;--rk-line:#d9dee8;--rk-accent:#1a56db;--rk-paper:#ffffff;--rk-desk:#eef1f6;
+  --rk-warn-bg:#fff6e5;--rk-warn-line:#e0a24a;--rk-good:#1a7f5a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--rk-desk);color:var(--rk-ink);font:14px/1.5 "Helvetica Neue",Helvetica,Arial,sans-serif}
+#rk-bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--rk-line);padding:8px 16px}
+.rk-barrow{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px}
+.rk-barrow label{display:inline-flex;align-items:center;gap:6px;color:var(--rk-dim)}
+.rk-barrow select,.rk-barrow input[type=number]{font:inherit;padding:3px 6px;border:1px solid var(--rk-line);border-radius:6px;
+  background:#fff;max-width:100%}
+.rk-barrow input[type=number]{width:4.5em}
+.rk-barrow .rk-chk input{margin:0}
+.rk-secs{display:inline-flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.rk-lb{color:var(--rk-dim)}
+.rk-barrow button,.rk-mini{font:inherit;cursor:pointer;border:1px solid var(--rk-accent);background:#fff;color:var(--rk-accent);
+  border-radius:7px;padding:5px 12px}
+.rk-barrow button.rk-primary{background:var(--rk-accent);color:#fff}
+.rk-mini{padding:2px 9px;font-size:12px;margin-left:6px}
+.rk-mini[disabled]{opacity:.4;cursor:default}
+.rk-zoom{display:inline-flex;align-items:center;gap:4px}
+.rk-barrow .rk-zoom button{padding:3px 10px;min-width:34px}
+.rk-barrow .rk-zoom #rk-zpct{min-width:58px}
+.rk-status{font-size:12.5px;margin-top:6px;padding:4px 10px;border-radius:6px;background:#eef3ff;color:var(--rk-accent);
+  display:inline-block}
+.rk-status.rk-ready{background:#e8f6ef;color:var(--rk-good);font-weight:600}
+#rk-doc{max-width:210mm;margin:18px auto 60px;background:var(--rk-paper);padding:16mm 15mm;box-shadow:0 2px 14px rgba(20,30,60,.08)}
+#rk-doc h1{font-size:24px;margin:4px 0 8px}
+#rk-doc h2{font-size:17px;margin:26px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--rk-line)}
+#rk-doc h3{font-size:14.5px;margin:18px 0 6px}
+#rk-doc h4.rk-h4{font-size:13px;margin:14px 0 4px}
+#rk-doc p{margin:6px 0}
+.rk-kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--rk-accent);font-weight:600}
+.rk-subtitle{font-size:14px}
+.rk-meta{color:var(--rk-dim);font-size:12.5px}
+.rk-why{color:var(--rk-dim)}
+.rk-caveat{color:var(--rk-dim);font-size:12.5px}
+.rk-warn{background:var(--rk-warn-bg);border-left:3px solid var(--rk-warn-line);padding:6px 10px;border-radius:4px}
+.rk-note{color:var(--rk-dim);font-size:11.5px;margin:-8px 0 12px}
+#rk-doc code{font-size:11.5px;word-break:break-all}
+.rk-list{margin:6px 0;padding-left:22px}
+.rk-pre{font:10.5px/1.45 Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;background:#f6f7fa;
+  border:1px solid var(--rk-line);border-radius:6px;padding:8px 10px}
+table.rk-table{border-collapse:collapse;width:100%;margin:10px 0 14px;font-size:10.5px}
+table.rk-table caption{caption-side:top;text-align:left;font-size:12px;color:var(--rk-ink);padding-bottom:5px}
+table.rk-table th,table.rk-table td{border-bottom:1px solid var(--rk-line);padding:3px 6px;text-align:left;vertical-align:top}
+table.rk-table thead th{border-bottom:1.5px solid var(--rk-ink);font-weight:600;white-space:normal;vertical-align:bottom;
+  line-height:1.25}
+table.rk-table thead th[title]{cursor:help}
+table.rk-table tfoot td{border-top:1.5px solid var(--rk-ink);font-weight:600}
+table.rk-table .rk-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A number's own cell never breaks; its heading must, or "rDock interaction (kJ/mol)" holds the
+   column at its full width and a table of ten such columns runs off the page, caption with it.
+   A long name or sequence with nothing to break on may break anywhere, for the same reason. */
+table.rk-table thead th.rk-num{white-space:normal}
+table.rk-table td:not(.rk-num){overflow-wrap:anywhere}
+table.rk-table tr.rk-dim td{color:var(--rk-dim)}
+table.rk-table tr.rk-mark td{font-weight:600}
+table.rk-facts tbody th{width:30%;color:var(--rk-dim);font-weight:500}
+.rk-figure{margin:12px 0 16px;break-inside:avoid}
+.rk-figure figcaption{font-size:12px;margin-top:6px}
+.rk-svg svg{width:100%;height:auto;display:block;max-height:150mm}
+.rk-chart svg{margin-bottom:6px}
+.rk-svg{overflow-x:auto}
+img.rk-png{width:100%;height:auto;display:block;background:#fff}
+.rk-mol{border:1px solid var(--rk-line);border-radius:6px;min-height:80px;display:flex;align-items:center;justify-content:center;
+  overflow:hidden}
+.rk-mol img.rk-png{aspect-ratio:4/3;object-fit:contain}
+/* A structure on its own is not drawn the full width of the page: it would fill half of it. */
+.rk-figure > .rk-mol{max-width:130mm;margin:0 auto}
+.rk-panels{display:grid;gap:8px}
+.rk-cols1{grid-template-columns:1fr}.rk-cols2{grid-template-columns:1fr 1fr}
+.rk-cols3{grid-template-columns:1fr 1fr 1fr}.rk-cols4{grid-template-columns:1fr 1fr 1fr 1fr}
+.rk-sub{font-size:11px;color:var(--rk-dim);margin-top:3px}
+.rk-view img.rk-png{border:1px solid var(--rk-line);border-radius:6px}
+.rk-viewbtns{text-align:right;margin-bottom:4px}
+.rk-own[contenteditable]{outline:none;border-bottom:1px dashed #9aa6bb;min-width:6em;display:inline-block}
+.rk-own[contenteditable]:empty:before{content:attr(data-ph);color:#9aa6bb}
+.rk-methods p{text-align:left}
+.rk-refs{font-size:12px;padding-left:24px}
+.rk-refs li{margin:3px 0}
+.rk-title{margin-bottom:8px}
+@media (max-width:760px){
+  #rk-doc{padding:18px 16px;margin:0}
+  .rk-cols3,.rk-cols4,.rk-cols2{grid-template-columns:1fr}
+}
+@page{size:A4;margin:14mm 13mm 16mm}
+@media print{
+  :root{--rk-ink:#000;--rk-dim:#333;--rk-line:#bbb}
+  body{background:#fff;color:#000}
+  #rk-bar,.rk-noprint{display:none!important}
+  #rk-doc{box-shadow:none;margin:0;padding:0;max-width:none;zoom:1!important}
+  .rk-newpage{break-before:page}
+  #rk-doc h2,#rk-doc h3,#rk-doc h4{break-after:avoid}
+  table.rk-table{font-size:8pt}
+  table.rk-table.rk-keep{break-inside:avoid}
+  table.rk-table thead{display:table-header-group}
+  tr{break-inside:avoid}
+  .rk-warn{background:none;border:1px solid #000}
+  .rk-pre{background:none}
+  .rk-own[contenteditable]{border-bottom:0}
+  .rk-own[contenteditable]:empty:before{content:""}
+  .rk-svg{overflow:visible}
+}

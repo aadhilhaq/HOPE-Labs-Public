@@ -422,7 +422,7 @@ def step(where, node_id, say=print):
         return "claimed"
 
     try:
-        carried = {}
+        carried, links = {}, []
         for edge in flow.into(node_id):
             if edge.src in ended:
                 continue                                # a track that ended brings nothing
@@ -430,6 +430,16 @@ def step(where, node_id, say=print):
             got = adapters.carry(flow, record, edge, where)
             carried.setdefault(edge.dst_port, []).append(got)
             say("from %s: %s" % (port.kind.name if port.kind else edge.src, got.get("what", "")))
+            # What the link carried, kept rather than only said. Until this was written down, the
+            # one question a flow is drawn to answer - what became of the candidates between the
+            # cards - could be answered only by reading the step jobs' logs as prose, and the
+            # flow's own report had to scrape its funnel out of them.
+            links.append({"from": edge.src, "from_port": edge.src_port,
+                          "to": node_id, "to_port": edge.dst_port,
+                          "kind": got.get("kind") or "", "what": got.get("what") or "",
+                          "count": got.get("count"),
+                          "dropped": [list(d) for d in (got.get("dropped") or [])],
+                          "names": list(got.get("names") or [])})
 
         empty = [p for p, got in carried.items()
                  if all(not g.get("count", 1) for g in got)]
@@ -437,7 +447,7 @@ def step(where, node_id, say=print):
             # Nothing came out of the track before this one. That is a result, not a fault: a
             # design run can pass nothing, and the flow should say so rather than queue a card
             # with an empty input and let the tool refuse it a minute later.
-            record.set(node_id, state=st.STOPPED,
+            record.set(node_id, state=st.STOPPED, carried=links,
                        note="nothing arrived at %s" % ", ".join(sorted(empty)))
             under = _stop_below(flow, record, node_id, "nothing came out of %s" % node_id)
             record.write()
@@ -452,7 +462,7 @@ def step(where, node_id, say=print):
         partly = ("ran on what arrived; %s ended with nothing to pass on"
                   % ", ".join(sorted(ended))) if ended else ""
         record.set(node_id, state=st.QUEUED if jobs else st.DONE, rundir=rundir, jobs=jobs,
-                   note=partly)
+                   carried=links, note=partly)
         _unstop_below(flow, record, node_id)
         record.write()
         say("%s %s" % (node.kind.name,

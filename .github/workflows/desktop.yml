@@ -71,16 +71,16 @@ jobs:
           if ($sig.Status -ne "Valid") { Write-Host "Unsigned. Windows will show 'Windows protected your PC' on first run: More info -> Run anyway." }
       - uses: actions/upload-artifact@v4
         with:
-          name: HOPE-Labs-windows
+          name: HOPE-Labs-public-windows
           path: dist/HOPE-Labs/
           # the release page keeps the files; the run's own copies only need to last until it
           retention-days: 3
       - name: zip the folder for the release page
-        run: Compress-Archive -Path dist/HOPE-Labs -DestinationPath HOPE-Labs-windows.zip
+        run: Compress-Archive -Path dist/HOPE-Labs -DestinationPath HOPE-Labs-public-windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: HOPE-Labs-windows.zip
+          path: HOPE-Labs-public-windows.zip
           # the release page keeps the files; the run's own copies only need to last until it
           retention-days: 3
 
@@ -125,11 +125,11 @@ jobs:
           dist/HOPE-Labs-check --selftest | tee out.txt
           grep -q "SELFTEST OK" out.txt
       - name: zip the app
-        run: cd dist && zip -r -y ../HOPE-Labs-mac-apple-silicon.zip HOPE-Labs.app
+        run: cd dist && zip -r -y ../HOPE-Labs-public-mac-apple-silicon.zip HOPE-Labs.app
       - uses: actions/upload-artifact@v4
         with:
-          name: HOPE-Labs-mac-apple-silicon
-          path: HOPE-Labs-mac-apple-silicon.zip
+          name: HOPE-Labs-public-mac-apple-silicon
+          path: HOPE-Labs-public-mac-apple-silicon.zip
           # the release page keeps the files; the run's own copies only need to last until it
           retention-days: 3
 
@@ -147,7 +147,7 @@ jobs:
           name: release-windows
       - uses: actions/download-artifact@v4
         with:
-          name: HOPE-Labs-mac-apple-silicon
+          name: HOPE-Labs-public-mac-apple-silicon
       - uses: softprops/action-gh-release@v2
         with:
           name: HOPE Labs ${{ github.ref_name }}
@@ -162,5 +162,5 @@ jobs:
             not a service and carries none of the tools. All rights reserved: see LICENSE and
             THIRD_PARTY_NOTICES.md in the repository.
           files: |
-            HOPE-Labs-windows.zip
-            HOPE-Labs-mac-apple-silicon.zip
+            HOPE-Labs-public-windows.zip
+            HOPE-Labs-public-mac-apple-silicon.zip

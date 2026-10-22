@@ -30,6 +30,38 @@ them ranked from one, because every other ranking on these pages starts at one.<
 is likely to be right overall, and ipTM says how much the interface between chains is likely to be
 right, which for a complex is usually the question you came with.</p>
 
+<h2 id="report">The report</h2>
+<p><b>Report (PDF)</b>, on the run you have open, writes the run up and opens it in a new tab with
+the print window ready. It is offered for a run that stopped as well as one that finished, because
+a run that ran out of walltime with two samples on disk is exactly the one whose numbers you need;
+the report says in its first lines that the job did not finish and reports what is on disk. It
+holds, in order: a summary of what was folded and how the best sample scored; the chains, one row
+each, with their lengths, their modifications, the alignment that served them, their chain pTM and their mean
+pLDDT; the samples, best first, with every confidence number Boltz-2 wrote beside
+them; the chain-pair ipTM matrix, each chain against each other; the confidence along the chains, as pLDDT per token in AlphaFold's bands and
+as the predicted aligned error; the best structure drawn in 3Dmol and coloured by pLDDT; the alignments
+phase one fetched; the methods, written from what this run actually did, with the
+references for it; and an appendix of the settings as asked and as run, the input the job was
+given, both phases of the work with the node and the card they used, the versions, and the files.
+</p>
+<p>Along the top of the report is a bar. The tick boxes choose which sections to include, and the
+options beside them are this page's own: which sample the figures are about, how many
+samples the table shows, which prediction to report when an old run folder holds two, whether to include the aligned-error map and whether to include
+the alignments section. <b>Save as PDF</b> opens your browser's print window, which is what writes
+the file; <b>Copy the methods and references</b> puts the methods paragraph and its numbered
+references on your clipboard, ready for a manuscript. The zoom control beside them (50 to 200 per
+cent) is for reading on screen and is kept in your browser: it never reaches the PDF, which always
+prints black on white at full size.</p>
+<p>Every caption states the result from this run's own numbers, so a figure can be read without the
+text around it. A caption is written by the server as the report is built, never a fixed line of
+prose, and a caption with nothing to compare says what is missing instead. The sample table of a run that folded a 95-residue protein dimer with a 20-base DNA strand into three samples, for
+instance, is captioned:</p>
+<blockquote><p>Sample 1 has the best confidence score, 0.887, ahead of samples 2 (0.883) and 3 (0.878), though sample 2 has the highest ipTM, 0.938 against 0.931; all three put the interface PDE below 0.41 &Aring;. Higher is better for every column except the two PDEs, where lower is better.</p></blockquote>
+<p>What the report does not have yet is a way of adding your own pictures to it. The structure
+figure in it is drawn by the report itself from the run's own file; the viewer on this screen has
+no <b>Add to report</b> button, so a view you have turned and coloured by hand cannot be put in
+the report. The report says so where that section would be.</p>
+
 <h2>Taking the results somewhere</h2>
 <p>Two ways, because they answer different questions.</p>
 <p><b>To a folder on the cluster.</b> Give a path and press Copy the structures, or Copy the whole

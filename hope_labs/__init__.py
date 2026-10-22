@@ -35,7 +35,7 @@ __version__ = "0.9.2"
 #: offers Browse files only when the state says 5, so PAGE_NEEDS stays at 2.
 PAGE_API = 5
 PAGE_NEEDS = 2
-APP = "HOPE Labs"
+APP = "HOPE Labs (public edition)"
 TAGLINE = "design, docking, folding and simulation, in one place"
 BLURB = "Docking, design, folding and simulation on a cluster, from one sign-in."
 LAB = "HOPE Lab"

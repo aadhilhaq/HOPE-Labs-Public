@@ -43,10 +43,15 @@ from hope_flow import drivers
 from . import SERVES
 from . import docs as pagedocs
 from . import runs as runsmod
+from . import runreport as reportmod
 from . import submit as submitmod
 from .. import docskit
+from .. import reporting as rk
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+#: Looked in after this page's own folder: the folding page's, which vendors the two viewers.
+VENDOR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "folding", "web")
 
 #: What may be downloaded out of a run folder. A design, a table, the plan, the job script and
 #: the log, which is everything a person has a reason to want; anything else in there is a cache
@@ -157,6 +162,17 @@ def api_run(query):
     return {"run": runsmod.detail(inside_roots(query.get("path", [""])[0]))}
 
 
+def api_report(query):
+    """The document the report page lays out, written from the run and nothing else.
+
+    A run it cannot read answers with an error the page shows rather than a traceback.
+    """
+    options = {key[4:]: value[0] for key, value in query.items()
+               if key.startswith("opt.") and value}
+    return reportmod.document(S.tool, inside_roots(query.get("rundir", query.get("path", [""]))[0]),
+                              options, install=S.install)
+
+
 def api_submit(body):
     """Queue the run. The refusals are the flow's own, because it is the flow's own code."""
     dry = S.dry_run or bool(body.get("dry_run"))
@@ -201,12 +217,18 @@ class Handler(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(length) or b"{}")
 
     def _static(self, name):
-        path = os.path.realpath(os.path.join(WEB, name.lstrip("/")))
-        if not path.startswith(os.path.realpath(WEB) + os.sep) or not os.path.isfile(path):
-            return self._send(404, "text/plain", b"not found")
-        kind = mimetypes.guess_type(path)[0] or "application/octet-stream"
-        with open(path, "rb") as handle:
-            self._send(200, kind, handle.read(), {"X-Content-Type-Options": "nosniff"})
+        # This page's own folder first, then the folding page's, which is where the lab vendors
+        # 3Dmol. The report's structure figures are drawn in the browser with it, and a report
+        # opened through a tunnel to a compute node has no internet to fetch it from a CDN. The
+        # docking page already looks in the same two places.
+        for root in (WEB, VENDOR):
+            path = os.path.realpath(os.path.join(root, name.lstrip("/")))
+            if path.startswith(os.path.realpath(root) + os.sep) and os.path.isfile(path):
+                kind = mimetypes.guess_type(path)[0] or "application/octet-stream"
+                with open(path, "rb") as handle:
+                    return self._send(200, kind, handle.read(),
+                                      {"X-Content-Type-Options": "nosniff"})
+        return self._send(404, "text/plain", b"not found")
 
     def _docs(self, path):
         """A page or the stylesheet of the documentation. What to send is decided by the shared
@@ -241,8 +263,29 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(url.query)
         if url.path in ("/", "/index.html"):
             return self._send(200, "text/html; charset=utf-8", index_page().encode("utf-8"))
+        # reportkit, the lab's report module: the one copy in this checkout, served by name so
+        # no path arrives from the browser at all. Before the general /static/ route, because
+        # the module lives beside the package rather than in this page's web folder.
+        if url.path in ("/static/reportkit.js", "/static/reportkit.css"):
+            body, kind = rk.static_file(os.path.basename(url.path))
+            if body is None:
+                return self._send(404, "text/plain", b"this checkout has no reportkit")
+            return self._send(200, kind, body, {"X-Content-Type-Options": "nosniff"})
         if url.path.startswith("/static/"):
             return self._static(url.path[len("/static/"):])
+        # THE REPORT OF A RUN: a page to read and to save as a PDF. Answered before the JSON
+        # guard below, so a request without the token gets a sentence a person can act on rather
+        # than a JSON error in an empty tab.
+        if url.path == "/report":
+            if not self._allowed(query):
+                return self._send(403, "text/plain",
+                                  b"open the report from the run's page, which carries the token")
+            try:
+                run = inside_roots(query.get("rundir", query.get("path", [""]))[0])
+            except submitmod.Refused as refusal:
+                return self._send(400, "text/plain", str(refusal).encode("utf-8"))
+            return self._send(200, "text/html; charset=utf-8", reportmod.page_for(
+                S.token, run, S.tool, autoprint=query.get("print", [""])[0] == "1").encode("utf-8"))
         # The documentation needs no token: it is the same for everyone, holds nothing of the
         # session, and a page of it kept as a bookmark has no token to carry.
         if url.path == "/docs" or url.path.startswith("/docs/"):
@@ -257,6 +300,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(api_runs(query))
             if url.path == "/api/run":
                 return self._json(api_run(query))
+            if url.path == "/api/report":
+                return self._json(api_report(query))
             if url.path == "/api/download":
                 return self._download(query)
         except submitmod.Refused as refusal:

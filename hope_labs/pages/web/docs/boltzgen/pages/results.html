@@ -78,3 +78,24 @@ The <b>design sequences</b> output goes into the docking instead, for designs sh
 to take, which is thirty residues or fewer.</p>
 <p>By hand: each structure named in <code>designs.json</code> is a complete complex in mmCIF and
 can be opened or handed to anything that reads one.</p>
+
+<h2 id="report">The report</h2>
+<p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,
+in a new tab, ready to save as a PDF. It is the run as you would describe it to somebody else:
+the selected designs with the numbers BoltzGen ranked them on, what each filter cost, the selection set against the whole population it was chosen from, the sequences to order, and the top design on the target; then the methods with their references, and an appendix holding the settings as asked beside
+the settings as the tool ran them, where the target came from, the versions, the job and the
+files.</p>
+<p>The bar along the top is the report's own. Tick the sections you want and set how many designs
+the tables show; zoom with the minus, the percentage and the plus, or fit the width. <b>Copy the
+methods and references</b> puts the methods on the clipboard. <b>Save as PDF</b> opens the
+browser's print window, where the printer to choose is "Save as PDF". The zoom is yours and is
+kept in this browser; it never reaches the PDF, which always prints at full size.</p>
+<p>Every caption states the result from the run's own numbers and then only what is needed to read
+it, rather than naming the table. So a ranking reads <i>"Of 10,000 designs, four passed every filter, and the narrowest single filter is the refolding RMSD, which 912 passed"</i>, rather than "the designs
+ranked by score". Where a run has nothing to say, the caption says what is missing and what would fill
+it: a run made before the design helper recorded its confidence figures is told so, in the report,
+rather than shown an empty column.</p>
+<p>Two things the report will not do. It writes nothing into the run folder: it only reads. And it
+shows no number the run did not write, so it and the Runs screen cannot disagree. There is no
+<b>Add to report</b> yet: this page has no viewer that can write into a run, so the structure
+figure is drawn by the report itself from the run's own file.</p>
