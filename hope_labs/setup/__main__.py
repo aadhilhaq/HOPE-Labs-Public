@@ -6,7 +6,8 @@ By Aadhil Haq
     python -m hope_labs.setup status               every tool, and how far its install has got
     python -m hope_labs.setup install boltz2       install a tool here, then check it with a job
     python -m hope_labs.setup check boltz2         only the check: fold something on the queue
-    python -m hope_labs.setup stop boltz2          stop an install at its next step
+    python -m hope_labs.setup remove boltz2        take an installed tool off again
+    python -m hope_labs.setup stop boltz2          stop an install, or a removal, at its next step
     python -m hope_labs.setup log boltz2           what the install has printed
 
 Run them on a login node, from the HOPE Labs checkout. --root names the HOPE Labs folder when it
@@ -30,7 +31,8 @@ from .recipes import RECIPES
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="python -m hope_labs.setup",
                                      description="Set HOPE Labs up on this cluster.")
-    parser.add_argument("action", choices=("probe", "status", "install", "check", "stop", "log"))
+    parser.add_argument("action", choices=("probe", "status", "install", "check", "remove", "stop",
+                                           "log"))
     parser.add_argument("tool", nargs="?", default="")
     parser.add_argument("--root", default="", help="the HOPE Labs folder (default: the one "
                                                    "holding this checkout)")
@@ -124,7 +126,8 @@ def main(argv=None):
             shown.join(5)
     print("%s: %s%s" % (recipe.name, state.get("state"),
                         (" - " + state.get("problem")) if state.get("problem") else ""))
-    return 0 if state.get("state") == engine.READY else 1
+    want = engine.ABSENT if args.action == "remove" else engine.READY
+    return 0 if state.get("state") == want else 1
 
 
 if __name__ == "__main__":

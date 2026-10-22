@@ -147,6 +147,8 @@ class Hub:
         self.lock = threading.Lock()
         self.starting = {}                # key -> the lock held while that tool starts
         self._scratch = ""                # the person's scratch on the cluster, asked for once
+        self._spaces = None               # every space they may keep things in, asked for once
+        self._listing = False             # whether that is being asked, in the background
         self.flows = Flows(self)          # queueing flows, and reading back how they are getting on
         #: Where the page being served comes from: a folder taken off the cluster, or "" for the
         #: one this launcher was built with. Set once, when the connection is made.
@@ -421,31 +423,91 @@ class Hub:
 
     def own_places(self):
         """Where this launcher looks for a HOPE Labs of its own, in order: the folder it was built
-        to use, then the one Set up offers first, in the person's own scratch."""
-        places = [FLOW_INSTALL]
+        to use, the one Set up offers first in the person's own scratch, then any of this edition
+        found in the other spaces they have - a group's, a project's.
+
+        One at a time, so the spaces are only listed when the first two are not it: listing them
+        is a walk through every one, and the first time on a cold login node that takes a while.
+        """
+        tried = [FLOW_INSTALL]
+        yield FLOW_INSTALL
         try:
-            if self.scratch != "/tmp":
-                places.append(posixpath.join(self.scratch, "hope-labs", "HOPE-labs"))
+            mine = (posixpath.join(self.scratch, "hope-labs", "HOPE-labs")
+                    if self.scratch != "/tmp" else "")
         except Exception:                                       # noqa: BLE001
-            pass
-        return places
+            mine = ""
+        if mine:
+            tried.append(mine)
+            yield mine
+        self.say("Looking for HOPE Labs in your other spaces on this cluster...")
+        for space in self.spaces():
+            for found in space["labs"]:
+                if found["edition"] == EDITION and found["path"] not in tried:
+                    tried.append(found["path"])
+                    yield found["path"]
+
+    def spaces(self, fresh=False):
+        """Every space this person may keep things in on the cluster, with the room each has
+        left and any HOPE Labs already in it, asked for once a session.
+
+        Somebody given this launcher should not need to know where their cluster keeps things:
+        their scratch, each group they belong to, a project or work folder. They are found the
+        way the cluster itself lists them - showquota where it has one, which gives the room as
+        well - and then by the usual names: $SCRATCH, $WORK and $PROJECT, and a folder named for
+        each of their groups under the places clusters keep them. Each is looked in for a HOPE
+        Labs at the top or one folder down, which is where Set up puts one.
+        """
+        if self._spaces is not None and not fresh:
+            return self._spaces
+        try:
+            status, out, _ = tunnel.run(self.t, SPACES, timeout=180)
+        except Exception as why:                                # noqa: BLE001
+            self.say("the spaces on this cluster could not be listed: %s" % str(why)[:160])
+            return []
+        self._spaces = read_spaces(out)
+        return self._spaces
+
+    def spaces_soon(self):
+        """The spaces if they have been listed, else None, with the listing started in the
+        background, so a page that asks is answered at once and asks again."""
+        if self._spaces is not None:
+            return self._spaces
+        with self.lock:
+            if not self._listing:
+                self._listing = True
+
+                def work():
+                    try:
+                        self.spaces()
+                    finally:
+                        self._listing = False
+
+                threading.Thread(target=work, daemon=True).start()
+        return None
 
     def labs_state(self):
         root = posixpath.dirname(self.labs)
-        suggest = ""
+        suggest, spaces = "", []
         if self.labs_found is False:
-            # Only a cluster still to be set up needs a folder suggested, and asking for the
-            # scratch folder is a round trip to the cluster.
+            # Only a cluster still to be set up needs a folder suggested and the spaces listed,
+            # and each is a round trip to the cluster.
             try:
                 if self.scratch != "/tmp":
                     suggest = posixpath.join(self.scratch, "hope-labs")
             except Exception:                                   # noqa: BLE001
                 suggest = ""
+            listed = self.spaces_soon()
+            spaces = None if listed is None else [
+                dict(sp, labs=[f for f in sp["labs"] if f["edition"] == EDITION])
+                for sp in listed]
+            if not suggest:
+                suggest = next((posixpath.join(sp["path"], "hope-labs") for sp in spaces or ()
+                                if sp["writable"] and not sp["home"]), "")
         return {"path": self.labs, "root": root, "found": self.labs_found,
                 "lab": self.labs == FLOW_INSTALL, "suggest": suggest, "boot": dict(self.boot),
                 # Which edition this launcher is, and which the checkout it is pointed at turned
                 # out to be. Equal in every ordinary case; use_own_edition is why.
-                "build": EDITION, "edition": self.labs_edition}
+                "build": EDITION, "edition": self.labs_edition, "spaces": spaces}
 
     def labs_here(self, path):
         """Use a HOPE Labs that is already set up on this cluster, at `path` (the folder or its
@@ -1046,6 +1108,75 @@ def serve(hub, port=0, host="127.0.0.1", tries=8):
 # is involved, and closing it leaves the flow running.
 
 FLOW_INSTALL = "/path/to/hope-labs/HOPE-labs"
+
+
+#: The person's spaces on the cluster, for Hub.spaces: what showquota lists, each prefixed so
+#: it can be told from the rest, their home as the account names it (not $HOME, which a job or a
+#: profile may have moved), then every folder they may keep things in, with whether they can
+#: write there and what df says is free (kB), then any HOPE Labs checkout at the top of one or a
+#: folder down, with the lines that say which edition it is.
+SPACES = r"""q=$(showquota 2>/dev/null)
+printf '%s\n' "$q" | sed 's/^/QUOTA /'
+h=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6); echo "HOME|${h:-$HOME}"
+{ printf '%s\n' "${SCRATCH:-}" "${WORK:-}" "${PROJECT:-}" "${WORKDIR:-}"
+  printf '%s\n' "$q" | awk '$1 ~ /^\// {print $1}'
+  for g in $(id -Gn 2>/dev/null); do
+    for b in /scratch/group /scratch/groups /scratch/project /project /projects /work /group /groups; do
+      [ -d "$b/$g" ] && echo "$b/$g"
+    done
+  done
+} | awk 'NF && !seen[$0]++' | while IFS= read -r d; do
+  [ -d "$d" ] || continue
+  w=no; [ -w "$d" ] && w=yes
+  echo "SPACE|$d|$w|$(df -Pk "$d" 2>/dev/null | awk 'NR==2{print $4}')"
+  for f in "$d"/HOPE-labs/hope_labs/__init__.py "$d"/*/HOPE-labs/hope_labs/__init__.py; do
+    [ -f "$f" ] || continue
+    c=${f%/hope_labs/__init__.py}
+    echo "LABS|$c|$(grep -hE '^(EDITION|APP) *=' "$f" | tr '\n' ' ')$(git -C "$c" config --get remote.origin.url 2>/dev/null)"
+  done
+done
+true"""
+
+
+def read_spaces(out):
+    """[{path, writable, home, free_gb, free_files, labs: [{path, edition}]}] from what SPACES
+    printed: the person's own scratch first, their home last, and never offered for an install,
+    because a home folder's few thousand files are gone in the first minute of one."""
+    from .setup.engine import showquota_rows
+    lines = (out or "").splitlines()
+    quota = showquota_rows("\n".join(l[6:] for l in lines if l.startswith("QUOTA ")))
+    home = next((l[5:].rstrip("/") for l in lines if l.startswith("HOME|")), "")
+
+    def inside(path, folder):
+        return (path + "/").startswith(folder.rstrip("/") + "/")
+
+    spaces, found = [], []
+    for line in lines:
+        bits = line.split("|")
+        if bits[0] == "SPACE" and len(bits) >= 3:
+            path = bits[1].rstrip("/") or "/"
+            kb = bits[3].strip() if len(bits) > 3 else ""
+            gb = int(kb) * 1024 / 1e9 if kb.isdigit() else None
+            files = None
+            rows = [q for q in quota if inside(path, q[0])]
+            if rows:
+                _, q_gb, files = max(rows, key=lambda q: len(q[0]))
+                if q_gb is not None:
+                    gb = q_gb if gb is None else min(gb, q_gb)
+            spaces.append({"path": path, "writable": bits[2] == "yes",
+                           "home": bool(home) and inside(path, home),
+                           "free_gb": round(gb, 1) if gb is not None else None,
+                           "free_files": files, "labs": []})
+        elif bits[0] == "LABS" and len(bits) >= 3:
+            found.append({"path": bits[1], "edition": edition_of("|".join(bits[2:]))})
+    for one in found:
+        holders = [sp for sp in spaces if inside(one["path"], sp["path"])]
+        if holders:
+            holder = max(holders, key=lambda sp: len(sp["path"]))
+            if one["path"] not in [f["path"] for f in holder["labs"]]:
+                holder["labs"].append(one)
+    spaces.sort(key=lambda sp: (sp["home"], not sp["writable"]))
+    return spaces
 
 
 def edition_of(said):

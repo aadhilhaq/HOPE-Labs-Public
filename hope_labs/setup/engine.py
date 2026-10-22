@@ -43,9 +43,9 @@ BEAT = 15
 STALE = 180
 
 #: The states an install can be in, as the page shows them.
-ABSENT, PRESENT, INSTALLING, CHECKING, READY, FAILED, STOPPED = (
-    "absent", "present", "installing", "checking", "ready", "failed", "stopped")
-BUSY = (INSTALLING, CHECKING)
+ABSENT, PRESENT, INSTALLING, CHECKING, READY, FAILED, STOPPED, REMOVING = (
+    "absent", "present", "installing", "checking", "ready", "failed", "stopped", "removing")
+BUSY = (INSTALLING, CHECKING, REMOVING)
 
 
 class Failed(RuntimeError):
@@ -106,8 +106,10 @@ def status(root, recipe):
             doc["detail"] = ("there is already something at %s that Set up did not put there, "
                              "so Set up leaves it alone" % where)
     elif doc.get("state") in BUSY and not alive(doc):
+        removing = doc.get("state") == REMOVING
         doc["state"] = STOPPED
-        doc["detail"] = "the install stopped without finishing; Install carries on from here"
+        doc["detail"] = ("the removal stopped part way; Remove finishes it" if removing else
+                         "the install stopped without finishing; Install carries on from here")
     doc["install"] = where
     return doc
 
@@ -317,7 +319,9 @@ def _gb(n):
 
 
 def run(root, recipe, action="install", account=""):
-    """Run an install, or only its check, to the end. Returns the final state."""
+    """Run an install, or only its check, or a removal, to the end. Returns the final state."""
+    if action == "remove":
+        return removal(root, recipe)
     key = recipe.key
     previous = read_state(root, key)
     if alive(previous) and previous.get("pid") != os.getpid():
@@ -394,6 +398,93 @@ def run(root, recipe, action="install", account=""):
     return ctx.state
 
 
+def removal(root, recipe):
+    """Take a tool Set up installed off this cluster: its folders, then its record.
+
+    Only what Set up put there, and only inside the HOPE Labs folder. A tool Set up has no record
+    of installing is left alone, as Install leaves alone a folder it did not make, and a path
+    that resolves outside the folder (through a link, say) is refused rather than followed. The
+    package manager and its download cache stay, because every other tool here uses them.
+
+    Returns the state the page then shows: absent, with the files and the room it gave back.
+    """
+    key = recipe.key
+    previous = read_state(root, key)
+    if not previous:
+        raise Failed("Set up did not install %s here, so it leaves it alone" % recipe.name)
+    if alive(previous) and previous.get("pid") != os.getpid():
+        raise Failed("%s is being %s; stop that first" % (
+            recipe.name, {INSTALLING: "installed", CHECKING: "checked",
+                          REMOVING: "removed"}.get(previous.get("state"), "worked on")))
+    home = os.path.realpath(root)
+    paths = []
+    for path in recipe.owns(root):
+        real = os.path.realpath(path)
+        if real == home or not real.startswith(home + os.sep):
+            raise Failed("%s is not inside %s, so Set up will not remove it" % (path, root))
+        if os.path.lexists(path):
+            paths.append(path)
+    try:
+        os.remove(stop_path(root, key))
+    except OSError:
+        pass
+    ctx = Context(root, recipe, action="remove")
+    ctx.state = {"tool": key, "name": recipe.name, "action": "remove", "state": REMOVING,
+                 "started": time.time(), "beat": time.time(), "pid": os.getpid(),
+                 "host": socket.gethostname(), "by": os.environ.get("USER") or "",
+                 "step": "", "detail": "starting"}
+    ctx.beat(force=True)
+    ctx.say("")
+    ctx.say("=== Removing %s from %s, by %s on %s" % (recipe.name, root, ctx.state["by"],
+                                                       ctx.state["host"]))
+    files, size = 0, 0
+    try:
+        for path in paths:
+            ctx.say("--- %s" % path)
+            for top, dirs, names in os.walk(path, topdown=False):
+                for name in names + dirs:
+                    one = os.path.join(top, name)
+                    try:
+                        st = os.lstat(one)
+                        if os.path.isdir(one) and not os.path.islink(one):
+                            os.rmdir(one)
+                        else:
+                            os.remove(one)
+                            files += 1
+                            size += st.st_size
+                    except FileNotFoundError:
+                        continue
+                    if files % 2000 == 0:
+                        ctx.beat("removed %d files (%s)" % (files, _gb(size)))
+            if os.path.islink(path) or os.path.isfile(path):
+                os.remove(path)
+            elif os.path.isdir(path):
+                os.rmdir(path)
+        ctx.say("=== %s is removed: %d files, %s given back" % (recipe.name, files, _gb(size)))
+        os.remove(state_path(root, key))
+        return {"tool": key, "state": ABSENT, "removed": {"files": files, "bytes": size},
+                "install": recipe.where(root)}
+    except Stopped:
+        ctx.state.update(state=STOPPED, detail="stopped part way when asked; Remove finishes it",
+                         finished=time.time())
+        ctx.say("=== stopped when asked")
+    except OSError as why:
+        ctx.state.update(state=FAILED, problem="could not remove %s: %s" % (
+            getattr(why, "filename", "") or "a file", why.strerror or why),
+            detail="the removal stopped part way", finished=time.time())
+        ctx.say("=== FAILED: %s" % ctx.state["problem"])
+    finally:
+        if os.path.exists(state_path(root, key)):
+            ctx.state["beat"] = time.time()
+            write_state(root, key, ctx.state)
+        ctx.close()
+        try:
+            os.remove(stop_path(root, key))
+        except OSError:
+            pass
+    return ctx.state
+
+
 def start(root, key, action="install", account="", python=None):
     """Start an install in a process of its own, left running on this login node.
 
@@ -405,10 +496,12 @@ def start(root, key, action="install", account="", python=None):
     recipe = RECIPES[key]
     now = status(root, recipe)
     if now.get("state") in BUSY:
-        raise Failed("%s is already being %s" % (
-            recipe.name, "checked" if now.get("state") == CHECKING else "installed"))
+        raise Failed("%s is already being %s" % (recipe.name, {
+            CHECKING: "checked", REMOVING: "removed"}.get(now.get("state"), "installed")))
     if now.get("state") == PRESENT:
         raise Failed(now["detail"])
+    if action == "remove" and now.get("state") == ABSENT:
+        raise Failed("%s is not installed here" % recipe.name)
     log = log_path(root, key)
     os.makedirs(os.path.dirname(log), exist_ok=True)
     argv = [python or sys.executable, "-m", "hope_labs.setup", action, key, "--root", root]
@@ -422,7 +515,8 @@ def start(root, key, action="install", account="", python=None):
                                 start_new_session=True)
     # Written at once, so the page sees it start rather than an absent tool for a moment.
     state = dict(read_state(root, key), tool=key, name=recipe.name, action=action,
-                 state=CHECKING if action == "check" else INSTALLING, pid=proc.pid,
+                 state={"check": CHECKING, "remove": REMOVING}.get(action, INSTALLING),
+                 pid=proc.pid,
                  host=socket.gethostname(), by=os.environ.get("USER") or "",
                  started=time.time(), beat=time.time(), detail="starting", problem="")
     write_state(root, key, state)
@@ -538,17 +632,12 @@ def _quotas(path):
     code, text = profilemod.run(["showquota"], timeout=60)
     if code == 0:
         best = None
-        for line in text.splitlines():
-            cols = line.split()
-            if len(cols) >= 5 and cols[0].startswith("/") and \
-                    (path + "/").startswith(cols[0].rstrip("/") + "/"):
-                if best is None or len(cols[0]) > len(best[0]):
-                    best = cols
+        for where, gb, files in showquota_rows(text):
+            if (path + "/").startswith(where.rstrip("/") + "/"):
+                if best is None or len(where) > len(best[0]):
+                    best = (where, gb, files)
         if best:
-            used, limit = _bytes(best[1]), _bytes(best[2])
-            fused, flimit = _int(best[3]), _int(best[4])
-            out.append(((limit - used) / 1e9 if used is not None and limit else None,
-                        (flimit - fused) if flimit else None))
+            out.append(best[1:])
     if shutil.which("lfs"):
         user = os.environ.get("USER") or ""
         code, text = profilemod.run(["lfs", "quota", "-q", "-u", user, path], timeout=60)
@@ -561,6 +650,24 @@ def _quotas(path):
                     out.append(((limit_kb - used_kb) * 1024 / 1e9 if limit_kb else None,
                                 (flimit - fused) if flimit else None))
     return out
+
+
+def showquota_rows(text):
+    """[(folder, free GB, free files)] from what showquota prints, as TAMU's clusters have it.
+
+    Every folder a person may write to and has a quota on is a row: their home, their scratch,
+    and each group's space. Kept apart from running it, because the launcher reads the same
+    answer over its connection to find where somebody can install.
+    """
+    rows = []
+    for line in (text or "").splitlines():
+        cols = line.split()
+        if len(cols) >= 5 and cols[0].startswith("/"):
+            used, limit = _bytes(cols[1]), _bytes(cols[2])
+            fused, flimit = _int(cols[3]), _int(cols[4])
+            rows.append((cols[0], (limit - used) / 1e9 if used is not None and limit else None,
+                         (flimit - fused) if flimit else None))
+    return rows
 
 
 def _bytes(text):

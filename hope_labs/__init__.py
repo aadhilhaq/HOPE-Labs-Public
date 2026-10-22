@@ -8,7 +8,7 @@ a person approves Duo once instead of once a tool.
 import os
 import sys
 
-__version__ = "0.9.4"
+__version__ = "0.9.5"
 
 #: What this build's server offers the page: the routes and the shapes they answer with. The page
 #: files say which of these they need, and the two numbers are how a launcher decides whether it
@@ -33,7 +33,10 @@ __version__ = "0.9.4"
 #: 5: a listing with no path opens on the person's own scratch, and says how far up the file
 #: browser may go ("up" only where it may, and "top", the line shown where it stops). The page
 #: offers Browse files only when the state says 5, so PAGE_NEEDS stays at 2.
-PAGE_API = 5
+#: 6: where HOPE Labs is (/api/labs) also lists every space the person has on the cluster, with
+#: the room each has left and any HOPE Labs in it. The page lists them only when the answer
+#: carries them, so PAGE_NEEDS stays at 2.
+PAGE_API = 6
 PAGE_NEEDS = 2
 APP = "HOPE Labs (public edition)"
 

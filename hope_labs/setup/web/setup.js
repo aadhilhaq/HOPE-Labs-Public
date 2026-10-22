@@ -63,9 +63,9 @@ let pollTimer = 0;
 const WORDS = {
   absent: "Not installed", present: "Installed here", installing: "Installing",
   checking: "Checking", ready: "Installed and checked", failed: "Stopped with a problem",
-  stopped: "Stopped part way",
+  stopped: "Stopped part way", removing: "Removing",
 };
-const BUSY = new Set(["installing", "checking"]);
+const BUSY = new Set(["installing", "checking", "removing"]);
 
 try { $("account").value = localStorage.hlsetupaccount || ""; } catch (e) { /* ignore */ }
 $("account").addEventListener("change", () => {
@@ -299,6 +299,19 @@ function paintTools() {
       again.title = "Queue the check fold again: worth doing after the cluster changes its drivers";
       again.onclick = () => act("/api/check", t.key);
       acts.appendChild(again);
+    }
+    // Anything Set up installed can be taken off again, and put back with Install whenever it
+    // is wanted. Only what Set up put there: a copy it found is not its to remove.
+    if (recipe && st.started && ["ready", "failed", "stopped"].includes(state)) {
+      const remove = el("button", "btn sm", "Remove");
+      remove.title = "Delete this tool's folders here, to give the room and the files back";
+      remove.onclick = () => {
+        if (!confirm("Remove " + t.name + " from " + (HELLO || {}).root + "?\n\nIts folders are deleted: about "
+            + recipe.disk_gb + " GB and " + number(recipe.files) + " files. Runs already made are not touched, "
+            + "and Install puts it back whenever you want it.")) return;
+        act("/api/remove", t.key);
+      };
+      acts.appendChild(remove);
     }
     if (busy) {
       const stop = el("button", "btn sm", "Stop");

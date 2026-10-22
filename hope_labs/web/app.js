@@ -125,7 +125,67 @@ function paintNewCluster() {
   if (!missing) return;
   $("nc-where").textContent = STATE.address || STATE.host || "this cluster";
   if (!$("nc-folder").value && labs.suggest) $("nc-folder").value = labs.suggest;
+  // A launcher from before 0.9.5 does not list the spaces at all, which is not the same as still
+  // listing them: it gets the two boxes below, as it always had.
+  if ("spaces" in labs) paintSpaces(labs.spaces);
   paintBoot(labs.boot || {});
+}
+
+/* Every space the person has on the cluster, found for them: a HOPE Labs already in one is used
+   with one click, and any other they can write to fills the folder to set up in. Their home is
+   listed, so nobody wonders where it went, and never offered. */
+let SPACES_ASKED = 0;
+function paintSpaces(spaces) {
+  const box = $("nc-spaces");
+  if (!box) return;
+  box.innerHTML = "";
+  if (spaces === null || spaces === undefined) {
+    box.appendChild(el("div", "why", "Looking through your spaces on this cluster..."));
+    clearTimeout(SPACES_ASKED);
+    SPACES_ASKED = setTimeout(async () => {
+      try { const labs = await api("/api/labs"); STATE.labs = labs; paintSpaces(labs.spaces); }
+      catch (e) { paintSpaces(null); }
+    }, 2000);
+    return;
+  }
+  if (!spaces.length) return;
+  box.appendChild(el("div", "why", "Your spaces on this cluster:"));
+  for (const sp of spaces) {
+    const has = (sp.labs || [])[0];
+    const usable = sp.writable && !sp.home;
+    const row = el("div", "ncspace" + (has ? " has" : "") + (usable || has ? "" : " off"));
+    row.appendChild(el("span", "where", sp.path));
+    const bits = [];
+    if (sp.free_gb !== null && sp.free_gb !== undefined) bits.push(Math.round(sp.free_gb).toLocaleString("en-GB") + " GB");
+    if (sp.free_files !== null && sp.free_files !== undefined) bits.push(Number(sp.free_files).toLocaleString("en-GB") + " files");
+    // A tool takes tens of thousands of files, so a space with fewer than that left is said so.
+    const low = sp.free_files !== null && sp.free_files !== undefined && sp.free_files < 100000;
+    row.appendChild(el("span", "room" + (low ? " low" : ""),
+      sp.home ? "home: not used, its file allowance is too small"
+        : !sp.writable ? "you cannot write here"
+        : bits.length ? bits.join(", ") + " free" + (low ? ": too few files for most tools" : "") : ""));
+    if (has) {
+      const use = el("button", "btn pri sm", "Use the HOPE Labs here");
+      use.title = has.path;
+      use.onclick = async () => {
+        try {
+          await api("/api/labs/use", { path: has.path });
+          await refresh();
+          flash("Using HOPE Labs in " + (STATE.labs || {}).root + ". This computer remembers it for this cluster.");
+        } catch (e) { flash(e.message, true); }
+      };
+      row.appendChild(use);
+    } else if (usable) {
+      const pick = el("button", "btn sm", "Set up here");
+      pick.onclick = () => {
+        $("nc-folder").value = sp.path.replace(/\/$/, "") + "/hope-labs";
+        $("nc-setup").focus();
+        flash("Press Set HOPE Labs up here to start, in " + $("nc-folder").value + ".");
+      };
+      row.appendChild(pick);
+    }
+    box.appendChild(row);
+  }
 }
 
 function paintBoot(boot) {
@@ -474,8 +534,8 @@ async function loadRuns(refresh) {
    current one is. PAGE_API_NEWEST is the newest server this page uses (PAGE_API in
    hope_labs/__init__.py, which the state reports as "api"), and PAGE_API_LACKS is what a launcher
    below it is without, in one line. Raising PAGE_API means changing these two lines. */
-const PAGE_API_NEWEST = 5;
-const PAGE_API_LACKS = "Browse files, and Up in the file browser stopping where it should";
+const PAGE_API_NEWEST = 6;
+const PAGE_API_LACKS = "Finding HOPE Labs in every space you have on the cluster, with the room each has left";
 /* Where the current launcher is: the releases page of the repository. */
 const LAUNCHER_DOWNLOAD = "https://github.com/aadhilhaq/HOPE-Labs-Public/releases/latest";
 const NOTICE_SEEN = "hlOlderLauncher";

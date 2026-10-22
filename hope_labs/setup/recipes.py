@@ -66,6 +66,11 @@ class Recipe:
     def where(self, root):
         return os.path.join(root, self.install)
 
+    def owns(self, root):
+        """Every folder this tool's install made under the HOPE Labs folder, which Remove takes
+        away again. Not the package manager or its cache: the other tools share those."""
+        return [self.where(root)]
+
     def steps(self):
         return []
 
@@ -484,6 +489,12 @@ class ADCP(Recipe):
 
     def checkout(self, root):
         return self.where(root)
+
+    def owns(self, root):
+        # install.sh puts its environment and the ADCP 1.1 suite beside the checkout, under the
+        # folder it is given, rather than inside it.
+        return [self.where(root), os.path.join(root, "envs", "adcp"),
+                os.path.join(root, "tools", "docking", "adcpsuite")]
 
     def code(self, ctx):
         source = (os.environ.get("HOPELABS_ADCP_SOURCE") or self.SOURCE).strip()

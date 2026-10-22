@@ -226,6 +226,16 @@ def api_check(body):
     return {"started": {key: pid}, "tools": tool_rows()}
 
 
+def api_remove(body):
+    """Take an installed tool off again, in a process of its own: its folders, then its record.
+    Install puts it back whenever it is wanted."""
+    key = str(body.get("tool") or "")
+    if key not in RECIPES:
+        raise engine.Failed("Set up has no install of %r to remove" % key)
+    pid = engine.start(S.root, key, "remove")
+    return {"started": {key: pid}, "tools": tool_rows()}
+
+
 def api_stop(body):
     key = str(body.get("tool") or "")
     if key not in RECIPES:
@@ -327,7 +337,8 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length) or b"{}")
             routes = {"/api/probe": api_probe, "/api/profile": api_profile,
                       "/api/gpucheck": api_gpu_check, "/api/install": api_install,
-                      "/api/check": api_check, "/api/stop": api_stop}
+                      "/api/check": api_check, "/api/remove": api_remove,
+                      "/api/stop": api_stop}
             if url.path in routes:
                 return self._json(routes[url.path](body))
         except engine.Failed as refusal:

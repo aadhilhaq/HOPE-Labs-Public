@@ -624,6 +624,15 @@ body.dragpane{cursor:col-resize;user-select:none}
 .tool.absent .blurb,.tool.absent .tag{opacity:.75}
 #nc-ask{display:flex;flex-direction:column;gap:10px}#nc-ask[hidden]{display:none}
 .ncmore{font-size:12px}.ncmore summary{cursor:pointer;color:var(--teal);margin-bottom:6px}
+/* The spaces found on the cluster: one row each, the folder, its room, and what can be done. */
+.ncspaces{display:flex;flex-direction:column;gap:6px}
+.ncspace{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;background:var(--card)}
+.ncspace.has{border-left:4px solid var(--green)}
+.ncspace.off{opacity:.65}
+.ncspace .where{font:12.5px var(--mono);flex:1;min-width:200px;overflow-wrap:anywhere}
+.ncspace .room{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.ncspace .room.low{color:var(--rust)}
 /* The warning's own Dismiss button, readable on the red. After .btn and .btn.sm so it wins. */
 .oldlauncher .btn{background:transparent;color:var(--on-alert);border-color:var(--on-alert);
                   font-size:13px;font-weight:600}

@@ -24,7 +24,14 @@ named. A key kept anywhere else goes in the <b>SSH key</b> box, and a cluster re
 gateway takes it in the <b>Gateway</b> box, as <code>host:port</code>.</p>
 
 <h2 id="the-first-time">The first time</h2>
-<p>On a cluster with no HOPE Labs on it, the Tools page says so and offers two things.</p>
+<p>At sign-in the launcher looks for a HOPE Labs of its own in every space you have on the
+cluster: your scratch, each group you belong to, and any work or project folder. One it finds is
+used, and your computer remembers it. Only when there is none does the Tools page ask.</p>
+<p>It then lists those spaces with the room and the number of files each has left, from the
+cluster's own quota where it has one. A space that already holds HOPE Labs has <b>Use the HOPE
+Labs here</b>; any other you can write to has <b>Set up here</b>, which fills in the folder below.
+Your home folder is listed but never offered: a tool alone takes more files than a home folder
+allows. A space with fewer than 100,000 files left is marked, because most tools need more.</p>
 <ul>
   <li><b>Set HOPE Labs up here.</b> Name a folder; the box suggests one in your scratch. HOPE Labs
     copies its own code there, fetches the package manager and makes a Python for its pages. It
@@ -65,6 +72,11 @@ it took. <b>Check again</b> repeats it, which is worth doing after a cluster cha
 <p>For ADCP docking the check is a docking on the CPU partition: the p53 peptide into MDM2, with
 a search far too small to mean anything and big enough to run every stage of a real run, the
 receptor's preparation, the docking and its MM-GBSA, and the report.</p>
+<p><b>Remove</b> takes an installed tool off again, to give its room and its files back: its own
+folders are deleted, and nothing else. Runs already made are kept, because they are in your runs
+folders rather than in the tool's, and so are the package manager and its download cache, which
+every tool shares. Remove only takes what Set up installed; a copy it found already there is left
+alone. <b>Install</b> puts the tool back whenever it is wanted.</p>
 <div class="note"><b>Set up installs Boltz-2 and ADCP docking today.</b> The other tools are
 listed with whether they are there; their own instructions are in <a href="own-installs.html">Installing
 by hand</a>, and they join this page one at a time.</div>
@@ -114,4 +126,5 @@ cd /scratch/you/hope-labs/HOPE-labs
 ../envs/hopelabs/bin/python3 -m hope_labs.setup install boltz2
 ../envs/hopelabs/bin/python3 -m hope_labs.setup status</pre>
 <p><code>install</code> follows the log in the terminal until the check has passed; with
-<code>--detach</code> it carries on in the background, as it does from the page.</p>
+<code>--detach</code> it carries on in the background, as it does from the page.
+<code>remove boltz2</code> takes it off again.</p>
