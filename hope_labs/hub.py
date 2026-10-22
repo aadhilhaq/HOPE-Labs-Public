@@ -24,7 +24,7 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-from . import PAGE_API, PAGE_NEEDS, __version__
+from . import EDITION, PAGE_API, PAGE_NEEDS, __version__
 from . import canvas
 from . import files as filesmod
 from . import settings
@@ -135,6 +135,10 @@ class Hub:
         #: Whether that checkout is there, once asked (None until then), and the first-time set-up
         #: while it runs.
         self.labs_found = None
+        #: Which edition that checkout is, once asked: "lab", "public", or "" for one not found.
+        #: A checkout of the other edition is not this launcher's, and holds a different set of
+        #: tools; use_own_edition is what does something about it.
+        self.labs_edition = ""
         self.boot = {}
         self._installed = (0.0, {})
         self.use_labs(labs or dict(installs or {}).get("flow") or FLOW_INSTALL, check=False)
@@ -358,16 +362,73 @@ class Hub:
         self.installs = dict(catalogue.installs_for(root), **self._named)
         self.installs["flow"] = labs
         self._installed = (0.0, {})
+        self.labs_edition = ""
         if check:
             self.labs_found = self.check_labs()
         return self.labs
 
     def check_labs(self):
-        """Whether the HOPE Labs checkout is where this launcher is looking for it."""
-        status, out, _ = tunnel.run(self.t, "test -f %s && echo HOPE-LABS-HERE"
-                                    % shlex.quote(self.labs + "/hope_labs/__init__.py"),
-                                    timeout=30)
-        return "HOPE-LABS-HERE" in (out or "")
+        """Whether the HOPE Labs checkout is where this launcher is looking for it, and which
+        edition it is, which is left in self.labs_edition."""
+        where = shlex.quote(self.labs + "/hope_labs/__init__.py")
+        status, out, _ = tunnel.run(
+            self.t, "if test -f %s; then echo HOPE-LABS-HERE; grep -hE '^(EDITION|APP) *=' %s; "
+                    "git -C %s config --get remote.origin.url; fi 2>/dev/null; true"
+                    % (where, where, shlex.quote(self.labs)), timeout=30)
+        here = "HOPE-LABS-HERE" in (out or "")
+        self.labs_edition = edition_of(out) if here else ""
+        return here
+
+    def use_own_edition(self):
+        """Fall back to a HOPE Labs of this launcher's own when the folder remembered for this
+        cluster has gone, or holds the other edition, or was never there.
+
+        One settings file used to serve both editions, and the folder in it was whichever of them
+        was set up last: a public launcher set up in somebody's own scratch wrote its path there,
+        and the other edition's launcher read that same path and went looking for its own
+        tools in a checkout that does not hold them, finding none of them installed. The editions keep a
+        file each now, so this is for the computer that already has the other one's folder
+        written down, for a folder that has since been moved or removed, and for a launcher whose
+        new file has not yet been told about the HOPE Labs that Set up made last time.
+
+        Returns where it moved to, or "" for leaving things as they are, which it does when
+        there is nothing better to move to: a cluster that has only the other edition on it is
+        still opened with that, rather than with an error about a folder the person cannot see.
+        """
+        if self.labs_found is None:
+            self.labs_found = self.check_labs()
+        if self.labs_found and self.labs_edition == EDITION:
+            return ""
+        was, found, edition = self.labs, self.labs_found, self.labs_edition
+        for place in self.own_places():
+            if place == was:
+                continue
+            self.use_labs(place)
+            if not (self.labs_found and self.labs_edition == EDITION):
+                continue
+            if was == FLOW_INSTALL and not found:
+                self.say("HOPE Labs found in %s" % self.labs)
+            else:
+                self.say("%s was remembered for this cluster, but %s; the HOPE Labs at %s is "
+                         "used instead" % (was, "it holds the %s edition and this is the %s "
+                         "launcher" % (edition, EDITION) if found else "it is not there",
+                         self.labs))
+            self.remember_labs()
+            return self.labs
+        self.use_labs(was, check=False)
+        self.labs_found, self.labs_edition = found, edition
+        return ""
+
+    def own_places(self):
+        """Where this launcher looks for a HOPE Labs of its own, in order: the folder it was built
+        to use, then the one Set up offers first, in the person's own scratch."""
+        places = [FLOW_INSTALL]
+        try:
+            if self.scratch != "/tmp":
+                places.append(posixpath.join(self.scratch, "hope-labs", "HOPE-labs"))
+        except Exception:                                       # noqa: BLE001
+            pass
+        return places
 
     def labs_state(self):
         root = posixpath.dirname(self.labs)
@@ -381,7 +442,10 @@ class Hub:
             except Exception:                                   # noqa: BLE001
                 suggest = ""
         return {"path": self.labs, "root": root, "found": self.labs_found,
-                "lab": self.labs == FLOW_INSTALL, "suggest": suggest, "boot": dict(self.boot)}
+                "lab": self.labs == FLOW_INSTALL, "suggest": suggest, "boot": dict(self.boot),
+                # Which edition this launcher is, and which the checkout it is pointed at turned
+                # out to be. Equal in every ordinary case; use_own_edition is why.
+                "build": EDITION, "edition": self.labs_edition}
 
     def labs_here(self, path):
         """Use a HOPE Labs that is already set up on this cluster, at `path` (the folder or its
@@ -392,10 +456,20 @@ class Hub:
         candidates = [path] if path.endswith("/HOPE-labs") else [path + "/HOPE-labs", path]
         for labs in candidates:
             self.use_labs(labs)
-            if self.labs_found:
-                self.remember_labs()
-                self.reload_from_cluster()
-                return self.labs_state()
+            if not self.labs_found:
+                continue
+            if self.labs_edition != EDITION:
+                # The two editions carry different sets of tools, and this launcher takes the
+                # set from the checkout it is pointed at. Pointed at the other edition's, it
+                # would offer that edition's tools and nothing it was built for.
+                raise ValueError("%s is the %s edition of HOPE Labs and this is the %s "
+                                 "launcher: the two hold different tools. Open it with the %s "
+                                 "launcher, or give the path of a %s checkout."
+                                 % (self.labs, self.labs_edition, EDITION, self.labs_edition,
+                                    EDITION))
+            self.remember_labs()
+            self.reload_from_cluster()
+            return self.labs_state()
         raise ValueError("there is no HOPE Labs at %s: no HOPE-labs/hope_labs in it" % path)
 
     def remember_labs(self):
@@ -972,6 +1046,23 @@ def serve(hub, port=0, host="127.0.0.1", tries=8):
 # is involved, and closing it leaves the flow running.
 
 FLOW_INSTALL = "/path/to/hope-labs/HOPE-labs"
+
+
+def edition_of(said):
+    """Which edition a checkout is, from the EDITION and APP lines of its hope_labs/__init__.py
+    and the repository it was cloned from.
+
+    A checkout from before the editions were marked carries no EDITION line. It is told apart by
+    where it came from, and failing that by its name: a public one set up before the public
+    edition was renamed still says plain "HOPE Labs", but it was cloned from HOPE-Labs-Public.
+    """
+    said = said or ""
+    for line in said.splitlines():
+        if line.startswith("EDITION"):
+            found = re.findall(r"""['\"]([^'\"]*)['\"]""", line)
+            if found and found[0]:
+                return found[0]
+    return "public" if ("HOPE-Labs-Public" in said or "public edition" in said) else "lab"
 
 
 def flow_command(install, args, root=""):

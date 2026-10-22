@@ -8,7 +8,7 @@ a person approves Duo once instead of once a tool.
 import os
 import sys
 
-__version__ = "0.9.3"
+__version__ = "0.9.4"
 
 #: What this build's server offers the page: the routes and the shapes they answer with. The page
 #: files say which of these they need, and the two numbers are how a launcher decides whether it
@@ -36,6 +36,12 @@ __version__ = "0.9.3"
 PAGE_API = 5
 PAGE_NEEDS = 2
 APP = "HOPE Labs (public edition)"
+
+#: Which of the two builds this is: the lab's own, or the public edition that
+#: tools/make_public.py generates. They hold different sets of tools and install to
+#: different places, so each remembers its cluster and its folder in a settings file of
+#: its own (settings.CONFIG_NAME) and refuses a checkout belonging to the other.
+EDITION = "public"
 TAGLINE = "design, docking, folding and simulation, in one place"
 BLURB = "Docking, design, folding and simulation on a cluster, from one sign-in."
 LAB = "HOPE Lab"

@@ -473,13 +473,19 @@ class App:
             self.hub = hubmod.Hub(self.t, user=user, host=node, say=self.say, installs=named,
                                   labs=labs, address=host)
             self.hub.labs_found = self.hub.check_labs()
+            # A folder remembered for this cluster that has gone, or that turns out to hold the
+            # other edition, is not this launcher's to open: this moves back to our own.
+            self.hub.use_own_edition()
             if not self.hub.labs_found:
                 # A cluster new to HOPE Labs, or one where it is somewhere this computer was not
                 # told. The page says so and offers both: set it up, or name where it is.
                 self.say("HOPE Labs is not set up on this cluster yet (looked for %s). The page "
                          "offers to set it up." % self.hub.labs)
-            elif self.hub.labs != hubmod.FLOW_INSTALL:
-                self.say("  HOPE Labs on this cluster: %s" % self.hub.labs)
+            else:
+                # Said every time, not only for a folder of somebody's own: which checkout a
+                # launcher opened is the first thing to know when its tiles look wrong.
+                self.say("  HOPE Labs on this cluster: %s (%s edition)"
+                         % (self.hub.labs, self.hub.labs_edition))
             # The page comes from the lab's install where it can, so a change to the page reaches
             # everybody the next time they sign in rather than when they next download this.
             if self.cluster_page.get() and self.hub.labs_found:

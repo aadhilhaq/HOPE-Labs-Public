@@ -16,17 +16,64 @@ import json
 import os
 import time
 
-CONFIG = os.path.join(os.path.expanduser("~"), ".hope_labs.json")
-SCHEMA = 1
+#: Where this launcher remembers its cluster, its install and its tools. The name carries the
+#: edition, because the two editions install to different places and one file between them is one
+#: file too few: a launcher set up in somebody's own scratch wrote that path here, and the other
+#: edition's launcher, reading the same file, then looked for its own tools in a checkout that
+#: does not hold them.
+CONFIG_NAME = ".hope_labs_public.json"
+CONFIG = os.path.join(os.path.expanduser("~"), CONFIG_NAME)
+#: 2: the editions were given a settings file each. A file written before that was shared
+#: between them, so the folder it remembers for a cluster may be the other edition's; it is
+#: dropped once, on the first read, and the cluster is looked for in this edition's own place
+#: again. Nothing else in the file is touched: the sign-in boxes, the flows and the runs are the
+#: same in both.
+SCHEMA = 2
+
+
+#: The file both editions shared before each had its own, beside this one. An edition whose own
+#: file is not there yet takes the sign-in boxes from it, so nobody types their cluster and their
+#: NetID in again, and only those: the folders in it may be the other edition's, and so may the
+#: flows and the runs, drawn with cards this edition may not have.
+SHARED_NAME = ".hope_labs.json"
+SIGN_IN = ("site", "host", "user", "jump", "key")
+
+
+def _read(path):
+    """The settings in `path`, or None when there is no file there to read."""
+    try:
+        with open(path) as fh:
+            kept = json.load(fh)
+    except OSError:
+        return None
+    except ValueError:
+        return {}
+    return kept if isinstance(kept, dict) else {}
 
 
 def load():
+    kept = _read(CONFIG)
+    if kept is None:
+        shared = os.path.join(os.path.dirname(CONFIG), SHARED_NAME)
+        boxes = _read(shared) if shared != CONFIG else None
+        return {k: boxes[k] for k in SIGN_IN if k in boxes} if boxes else {}
     try:
-        with open(CONFIG) as fh:
-            kept = json.load(fh)
-        return kept if isinstance(kept, dict) else {}
-    except (OSError, ValueError):
-        return {}
+        current = int(kept.get("schema") or 1) >= SCHEMA
+    except (TypeError, ValueError):
+        current = False
+    return kept if current else upgraded(kept)
+
+
+def upgraded(kept):
+    """This file as this version reads it. Pure: the next save writes the result down."""
+    kept = dict(kept, schema=SCHEMA)
+    kept.pop("labs", None)
+    installs = kept.get("installs")
+    if isinstance(installs, dict) and "flow" in installs:
+        installs = dict(installs)
+        installs.pop("flow")
+        kept["installs"] = installs
+    return kept
 
 
 def save(d):
