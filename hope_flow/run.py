@@ -174,6 +174,53 @@ def _queue_step(where, node_id, record, dependency=""):
     return jid
 
 
+#: The cards whose runs a flow tidies once nothing of it is left to happen, and the line, run in
+#: the tool's own folder, that does it: the tool's own Tidy, as the button on its page runs it.
+#: A flow's runs are not tidied by the tools themselves, because a card after them may still be
+#: reading what they wrote; once the flow has ended, nothing can.
+TIDY = {
+    "haddock": lambda rundir: "./bin/haddock-gui tidy %s" % _q(rundir),
+    "adcp": lambda rundir: ('if [ -f ./activate.sh ]; then . ./activate.sh; fi; '
+                            'PY="${ADCP_PYTHON:-python3}"; PYTHONPATH=%s "$PY" -m adcp_dock.tidy %s'
+                            % (_q(drivers.INSTALLS["adcp"]), _q(rundir))),
+}
+
+
+def _keeps(node):
+    return node.settings.get("keep_files") not in (None, "", False, "false", "no", 0, "0")
+
+
+def tidy_ended(flow, record, say=print):
+    """Tidy each docking run of a flow that has ended, once, with the tool's own Tidy.
+
+    Run by the seal job, on a compute node, when the flow has nothing left to happen: every card
+    that could read a run has ended by then. A card whose run is to keep every file is left, and
+    so is one already tidied. A tidy that fails is said and recorded; the run is as it was, and
+    the tool's page tidies it by hand. Returns the cards tidied.
+    """
+    if record.data.get("live"):
+        return []
+    done = []
+    for node in flow.nodes:
+        card = record.card(node.id)
+        line = TIDY.get(node.card)
+        if (not line or not card.get("rundir") or card.get("tidied") or _keeps(node)
+                or card["state"] not in st.ENDED):
+            continue
+        try:
+            drivers._shell(line(card["rundir"]), drivers.INSTALLS[node.card], say, minutes=60)
+        except Exception as why:                                    # noqa: BLE001
+            if "nothing to tidy" not in str(why):
+                say("%s: its run was not tidied (%s); Tidy on its page does it" % (node.id, why))
+                record.set(node.id, tidied="", tidy_note=str(why)[:300])
+                continue
+            # tidied already, by the seal of another card that ended at the same moment
+        record.set(node.id, tidied=time.strftime("%Y-%m-%d %H:%M:%S"), tidy_note="")
+        done.append(node.id)
+    record.write()
+    return done
+
+
 def _queue_seal(where, node_id, record, after, say=print):
     """A job that reads the flow's own state once the last card's work has ended, and writes it.
 

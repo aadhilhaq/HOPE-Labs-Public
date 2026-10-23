@@ -1165,7 +1165,8 @@ def _adcp_new(where, target, peptides_file, s, say=print):
             say("   %s is %r, which is not a number: the docking's own is used"
                 % (key.replace("_", " "), value))
     for flag, key in (("--receptor-gradient", "receptor_gradient"),
-                      ("--keep-trajectories", "keep_trajectories")):
+                      ("--keep-trajectories", "keep_trajectories"),
+                      ("--keep-files", "keep_files")):
         if s.get(key) not in (None, "", False, "false", "no", 0, "0"):
             args.append(flag)
     if s.get("mmgbsa", True):
@@ -2031,7 +2032,7 @@ def _haddock_options(s):
         out["seed"] = 0
     if str(s.get("clustering") or "") == "rmsd":
         out["clustering"] = "rmsd"
-    for key in ("water", "mmgbsa", "cofold"):
+    for key in ("water", "mmgbsa", "cofold", "keep_files"):
         if s.get(key) not in (None, "", False, "false", "no", 0, "0"):
             out[key] = True
     if out.get("mmgbsa"):

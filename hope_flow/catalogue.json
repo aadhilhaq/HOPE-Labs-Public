@@ -2200,6 +2200,17 @@
      "advanced": true
     },
     {
+     "key": "keep_files",
+     "label": "Keep every file of the run",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a flow tidies each docking run once it has ended: what the results no longer read is packed into one archive, and Undo on the tool's page puts it back",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
      "key": "cpus",
      "label": "Cores",
      "kind": "number",
@@ -2772,6 +2783,17 @@
      "default": false,
      "choices": [],
      "why": "a second, independent answer to where the partner sits, beside the docking",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "keep_files",
+     "label": "Keep every file of the run",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a flow tidies each docking run once it has ended: what the results no longer read is packed into one archive, and Undo on the tool's page puts it back",
      "optional": true,
      "needed": false,
      "advanced": true

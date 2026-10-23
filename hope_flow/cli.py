@@ -120,6 +120,13 @@ def cmd_status(a):
     # the seal job runs at the end of every flow - so the page exists without anyone asking for
     # it. Never worth failing a status for: the record is the thing, and the page is a reading of
     # it that can be made again at any time.
+    if got["state"] in ("done", "failed", "stopped") and os.environ.get("SLURM_JOB_ID"):
+        # Only in a job, which is what the seal job is: packing a docking run is thousands of
+        # files, which is work for a compute node and never for the page asking how a flow is.
+        try:
+            run.tidy_ended(flow, record, say=lambda *x: print(*x, file=sys.stderr))
+        except Exception as why:                                    # noqa: BLE001
+            print("  the flow's runs could not be tidied: %s" % why, file=sys.stderr)
     if got["state"] in ("done", "failed", "stopped"):
         try:
             report.write(a.flowdir)

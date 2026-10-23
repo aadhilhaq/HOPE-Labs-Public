@@ -31,3 +31,8 @@ new node it is almost always the card or the driver rather than the tool.</p>
 <p>The entities as you gave them, row by row, with the chains each became. Beside them, the input
 file the job actually read, so an argument about what a finished run folded can be settled from
 the run folder rather than from memory.</p>
+
+<h2 id="tidy">Tidying when it finishes</h2>
+<p>A run that finishes and has written its structures packs what its results no longer read into one archive in its own <code>archive</code> folder: the alignment search's own working files (the <code>_env</code> folder; the alignment offered for download stays), and the matplotlib and CUDA caches. The structures, their confidence and PAE files, the alignments, the inputs and the log stay, and so do the weights and the home folder the job was given. A run that wrote nothing is left whole. <b>Keep every file</b>, among the advanced settings, leaves the run alone, and</p>
+<pre>python -m hope_labs.folding.tidy RUN colabfold --undo</pre>
+<p>run from the HOPE Labs folder puts every file back.</p>

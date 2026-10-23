@@ -40,6 +40,7 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 
 from . import (CCD_CODE, CHEMICAL, HEAVY_ATOMS, MAX_TOKENS, SERVES, TYPICAL_LIGAND_ATOMS,
                WARN_TOKENS)
@@ -188,6 +189,11 @@ def _resource_settings(site):
                     % (site.name, site.max_gpu_hours(), site.gpu_partition)),
         Setting("account", "Account", "text", "", optional=True,
                 why="Left empty, the job is charged to your default account."),
+        Setting("keep_files", "Keep every file", "yesno", False, advanced=True,
+                why="A finished run packs what its results no longer read, Boltz-2's "
+                    "preprocessed inputs and the alignment search's working files, into one "
+                    "archive in its folder; python -m hope_labs.folding.tidy RUN TOOL --undo "
+                    "puts them back. Tick this to keep every file as the tool wrote it."),
     ]
 
 
@@ -713,8 +719,17 @@ if [ "$found" -eq 0 ]; then
   echo 'The log above is the tool'"'"'s own. The input it was given is in inputs/.'
   exit 1
 fi
-echo "folding: {name} finished with status $status"
+{tidy}echo "folding: {name} finished with status $status"
 exit $status
+"""
+
+#: The run tidying itself, once its structures have been found: only after a success, and left
+#: out when the form says to keep every file (tidy.py says what goes and what stays).
+TIDY = """# The run tidies itself, its structures being there (hope_labs.folding.tidy).
+if [ "$status" -eq 0 ]; then
+  PYTHONPATH={checkout} {python} -m hope_labs.folding.tidy "$OUT" {tool} \
+    || echo 'tidy: this run could not be tidied, and is as the tool left it'
+fi
 """
 
 
@@ -813,9 +828,13 @@ def script_text(tool, install, run, name, asked, site=None, cpus=None, mem=None)
         out=run, outq=_q(run), tmpcap=TMPDIR_CAP,
         account=("#SBATCH --account=%s" % str(asked["account"]).strip()
                  if str(asked.get("account") or "").strip() else ""))
+    keep = asked.get("keep_files") not in (None, "", False, "false", "no", 0, "0")
+    tidy = "" if keep else TIDY.format(
+        checkout=_q(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        python=_q(sys.executable), tool=tool)
     tail = TAIL.format(lookdir=_q(look), pattern=pattern,
                        lookshown=os.path.join(os.path.relpath(look, run), pattern),
-                       whynone=why.replace("'", "'\"'\"'"), name=name)
+                       whynone=why.replace("'", "'\"'\"'"), name=name, tidy=tidy)
     return head + line + tail
 
 

@@ -310,6 +310,12 @@ engine's own bookkeeping and last seconds, and the real job named after the tool
 finished flow gathers them onto one page: the chain, what each card left, the first rows of its
 tables, and the files worth keeping. The page carries everything it shows, so it can be sent to
 somebody with no account on the cluster. <b>Files</b> on any card opens that card's folder.</p>
+<p>Once nothing of a flow is left to happen, each docking run in it is tidied by its own tool, as
+the <b>Tidy</b> button on that tool's page does it: what the results no longer read is packed into
+one archive in the run's folder, and <b>Undo tidy</b> there puts it back. It waits for the flow to
+end, not for the docking, because a card after the docking may still be reading what it wrote.
+<b>Keep every file of the run</b>, on a docking card, leaves that run alone. The simulations tidy themselves when they finish, as they do
+when started from their own page.</p>
 
 <h2 id="carrying-on">When something fails</h2>
 <p>A stage that fails stops the stages after it, because each waits on the one before, unless a

@@ -1155,6 +1155,10 @@ ADCP = Card(
         Setting("keep_trajectories", "Keep every replica's trajectory", "yesno", False,
                 optional=True, advanced=True,
                 why="one archive per peptide; tens of thousands of files otherwise thrown away"),
+        Setting("keep_files", "Keep every file of the run", "yesno", False, optional=True,
+                advanced=True,
+                why="a flow tidies each docking run once it has ended: what the results no longer "
+                    "read is packed into one archive, and Undo on the tool's page puts it back"),
         Setting("cpus", "Cores", "number", 48, optional=True, advanced=True,
                 least=1, most=96, step=1,
                 why="ADCP searches in parallel, one replica per core"),
@@ -1346,6 +1350,10 @@ HADDOCK = Card(
         Setting("cofold", "Co-fold each pair with Boltz-2 and compare it", "yesno", False,
                 optional=True, advanced=True,
                 why="a second, independent answer to where the partner sits, beside the docking"),
+        Setting("keep_files", "Keep every file of the run", "yesno", False, optional=True,
+                advanced=True,
+                why="a flow tidies each docking run once it has ended: what the results no longer "
+                    "read is packed into one archive, and Undo on the tool's page puts it back"),
         # Three is HADDOCK's own MAX_REPLICATES, and a test holds this against it.
         Setting("replicates", "Dock each partner this many times", "number", 1, optional=True,
                 advanced=True, least=1, most=3, step=1,
