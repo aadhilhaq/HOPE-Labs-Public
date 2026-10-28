@@ -20,17 +20,7 @@ import time
 #: Where a step job runs. It reads a few files and calls sbatch, so it wants a short queue and
 #: very little of anything else. The partition is a setting because this is the one line that
 #: differs between the clusters the lab uses.
-#: No queue is named by default: the scheduler offers a job every queue its --time fits (Grace
-#: answers Partition=short,medium,long), and naming one shorter than the job asks for does not
-#: fail and does not run -- it sits PENDING on Reason=PartitionTimeLimit until somebody looks.
-#: HOPEFLOW_PARTITION names one for a cluster whose scheduler does not route on time.
-STEP_PARTITION = os.environ.get("HOPEFLOW_PARTITION", "")
-
-
-def partition_lines(name=""):
-    """["#SBATCH --partition=..."] for a queue worth naming, else []."""
-    name = (name or STEP_PARTITION or "").strip()
-    return ["#SBATCH --partition=%s" % name] if name else []
+STEP_PARTITION = os.environ.get("HOPEFLOW_PARTITION", "short")
 STEP_TIME = "00:30:00"
 STEP_CPUS = 2
 STEP_MEM = "8G"
@@ -111,7 +101,7 @@ def step_script(flow_dir, node_id, python, package_root, account="", partition="
     lines = [
         "#!/bin/bash",
         "#SBATCH --job-name=flow-%s" % node_id,
-    ] + partition_lines(partition) + [
+        "#SBATCH --partition=%s" % (partition or STEP_PARTITION),
         "#SBATCH --time=%s" % STEP_TIME,
         "#SBATCH --ntasks=1",
         "#SBATCH --cpus-per-task=%d" % STEP_CPUS,

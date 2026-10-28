@@ -1378,7 +1378,7 @@ def _queue_preparation(node, flow_dir, plan, say):
     from . import queue as q
     lines = ["#!/bin/bash",
              "#SBATCH --job-name=flow-%s-prepare" % node.id,
-             ] + q.partition_lines(s.get("partition")) + [
+             "#SBATCH --partition=%s" % (s.get("partition") or q.STEP_PARTITION),
              "#SBATCH --time=%s" % (s.get("walltime") or "02:00:00"),
              "#SBATCH --nodes=1", "#SBATCH --ntasks=1",
              "#SBATCH --cpus-per-task=%d" % PREPARE_CPUS,
@@ -1572,10 +1572,10 @@ def _finish_runs(rundirs, after, s, flow_dir, node_id, say=print, reps_of=None):
     script = os.path.join(where, "finish-%s.sbatch" % node_id)
     lines = ["#!/bin/bash",
              "#SBATCH --job-name=flow-%s-finish" % node_id,
-             ] + q.partition_lines() + [
              # The step jobs' partition, never the card's own: the card's partition is where its
              # simulations run, which is a GPU partition when somebody names one, and a report
              # and a video are CPU work that would hold a GPU node for an hour doing nothing on it.
+             "#SBATCH --partition=%s" % q.STEP_PARTITION,
              "#SBATCH --time=01:00:00", "#SBATCH --ntasks=1", "#SBATCH --cpus-per-task=2",
              "#SBATCH --mem=8G",
              "#SBATCH --output=%s/%s-finish-%%j.out" % (where, node_id)]
