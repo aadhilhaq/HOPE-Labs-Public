@@ -5,8 +5,8 @@ By Aadhil Haq
 Neither install has a page inside it, so each is driven by one of ours, in this repository, the
 way RFdiffusion's and BoltzGen's are (hope_labs/pages). What is different about these two is the
 shape of the form rather than the shape of the machinery: a design run has a target and a binder,
-and a folding run has a list of entities. The lab asked for the form alphafoldserver.com has, a
-row per entity with a type, a sequence and a number of copies, and that is what this serves.
+and a folding run has a list of entities. The lab asked for an entity form, a row per entity
+with a type, a sequence and a number of copies, and that is what this serves.
 
 These are a sibling of hope_labs/pages rather than two more tools inside it. The page there is
 drawn from a card in hope_flow/cards.py and submits through hope_flow's own target-then-binder
@@ -116,13 +116,13 @@ RNA = Entity(
     min_len=4, max_len=1000,
     placeholder="Type or paste one RNA strand")
 
-#: The ligands and ions AlphaFold Server offers by name, in its order, with the lab's own
+#: The common ligands and ions, offered by name, with the lab's own
 #: additions after them where that list is short for the work done here (see IONS), as the
 #: Chemical Component
 #: Dictionary codes Boltz-2 takes. Each was looked for in the install's own cache of components,
 #: which is where a code has to be for Boltz-2 to build it, and read for what it is made of: the
 #: phosphates of each nucleotide, the iron of each heme, one atom of the right charge for each
-#: ion. AlphaFold Server's four chlorophylls (CLA, CHL, BCL, BCB) are left out because the cache
+#: ion. Four chlorophylls (CLA, CHL, BCL, BCB) are left out because the cache
 #: does not have them, and a run asking for one would fail on the GPU rather than here.
 LIGANDS = (
     ("ADP", "adenosine diphosphate"), ("ATP", "adenosine triphosphate"),
@@ -137,8 +137,8 @@ IONS = (
     ("CA", "Ca\u00b2\u207a, calcium"), ("NA", "Na\u207a, sodium"), ("MN", "Mn\u00b2\u207a, manganese"),
     ("K", "K\u207a, potassium"), ("FE", "Fe\u00b3\u207a, iron"), ("CU", "Cu\u00b2\u207a, copper"),
     ("CO", "Co\u00b2\u207a, cobalt"),
-    # Past AlphaFold Server's list, and the lab's own, for one reason: every metal above is in a
-    # single oxidation state, and the state AlphaFold Server picked for iron is the one a
+    # Past that list, and the lab's own, for one reason: every metal above is in a
+    # single oxidation state, and the state that list carries for iron is the one a
     # ferroxidase does not transport. FtrABCD takes up Fe2+ and the mineral it stores is Fe3+, so
     # a list whose only iron is FE - which is genuinely the ferric code, correctly labeled - hands
     # somebody studying iron uptake the wrong ion with nothing said, because the tile reads
@@ -158,7 +158,7 @@ HEAVY_ATOMS = {
 #: What a code that is not listed is counted as: a typical drug-sized molecule.
 TYPICAL_LIGAND_ATOMS = 30
 
-#: AlphaFold Server's modifications, in its order, by the kind of chain: (CCD code, name, the
+#: The common modifications, by the kind of chain: (CCD code, name, the
 #: residue it is made from). Every one is in Boltz-2's cache. The residue was found by matching
 #: each component against the standard residues in the same cache rather than remembered, and
 #: settled by the formula where the match alone could not tell: citrulline (CIR) comes from
@@ -214,7 +214,7 @@ CCD = Entity(
     "Any component in the Chemical Component Dictionary, by its code.",
     min_len=1, max_len=5, given="code", placeholder="a code, for example ATP or HEM")
 
-#: A small molecule as SMILES. Something AlphaFold Server does not take and Boltz-2 does: Boltz-2
+#: A small molecule as SMILES, for one no code names: Boltz-2
 #: reads it with RDKit and standardizes it itself.
 SMILES = Entity(
     "smiles", "SMILES",

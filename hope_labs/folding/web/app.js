@@ -496,7 +496,7 @@ function drawRows() {
     cp.appendChild(spin);
     top.appendChild(cp);
 
-    /* Everything else about the row, behind one button, as AlphaFold Server has it. */
+    /* Everything else about the row, behind one button. */
     const more = el("button", "pill dots", "⋮");
     more.type = "button";
     more.title = "Modifications, duplicate, delete";
@@ -623,9 +623,8 @@ function reverseComplement(i) {
 }
 
 /* ---- the modifications dialog ----
-   AlphaFold Server's: the chain laid out residue by residue, a click on one, and a choice of what
-   it becomes. Only the modifications made from that residue are offered, and the server checks
-   the same thing, because Boltz-2 does not: it puts whatever it is given wherever it is told. */
+   The chain laid out residue by residue, a click on one, and a choice of what it becomes.
+   Only the modifications made from that residue are offered, and submit checks the same thing, because Boltz-2 does not: it puts whatever it is given wherever it is told. */
 let MODROW = -1;
 let MODAT = 0;
 function openMods(i) {

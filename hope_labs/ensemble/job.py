@@ -330,12 +330,25 @@ def compare_line(root, run, other):
 
 
 #: A comparison against a simulation: a processor job, because it reads every frame of a
-#: trajectory and nothing it does wants a card. Short and small, so it queues on the ordinary
-#: partition while the GPU queue is busy.
+#: trajectory and nothing it does wants a card. Short and small, so it queues while the GPU
+#: queue is busy. It names no partition: the scheduler offers a job every queue its --time fits,
+#: and naming one that is shorter than the job asks for leaves it PENDING for ever instead of
+#: failing. {partition} is filled with a whole "#SBATCH" line, or nothing.
+def _cpu_partition_line(site):
+    """The "#SBATCH --partition=" line for a small processor job, or "" for none.
+
+    Grace's scheduler routes on --time (it answers Partition=short,medium,long), so naming a
+    queue can only narrow the choice; naming one shorter than the job asks for is what leaves a
+    job PENDING on Reason=PartitionTimeLimit until somebody notices. A site whose queues must be
+    named sets HOPELABS_CPU_PARTITION."""
+    import os
+    name = os.environ.get("HOPELABS_CPU_PARTITION", "")
+    return "#SBATCH --partition=%s\n" % name if name else ""
+
+
 COMPARE = """#!/bin/bash
 #SBATCH --job-name=ens_vs_md_{name}
-#SBATCH --partition={partition}
-#SBATCH --nodes=1
+{partition}#SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
@@ -373,7 +386,7 @@ def compare_script_text(root, run, md_run, name, site=None, account=""):
         root, "bioemu", ["python", "-m", "hope_labs.ensemble.compare", run, md_run],
         binds=[run, md_run, here], gpu=False, home=home, extra_env={"PYTHONPATH": here}))
     return COMPARE.format(
-        name=name, partition=site.cpu_partition, out=run, outq=_q(run), line=line,
+        name=name, partition=_cpu_partition_line(site), out=run, outq=_q(run), line=line,
         account=("#SBATCH --account=%s" % str(account).strip() if str(account or "").strip()
                  else ""),
         home="\n".join(imagesmod.home_lines(root, "bioemu", home)))

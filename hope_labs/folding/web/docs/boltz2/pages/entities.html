@@ -3,7 +3,7 @@
 than left to the tool.</p>
 
 <h2>One row per chain or molecule</h2>
-<p>A folding run is a list of entities, laid out as AlphaFold Server lays them out. Each row is a
+<p>A folding run is a list of entities, one row each. Each row is a
 type, an optional name, what the entity is and a number of copies. The copies are more of the same
 row: a row of 300 residues with three copies is three chains and 900 residues, and two copies of
 Mg²⁺ are two ions. The running total under the rows says what is in the run.</p>
@@ -20,7 +20,7 @@ Mg²⁺ are two ions. The running total under the rows says what is in the run.<
 <tr><td>RNA</td><td>A, C, G, U, and N</td>
     <td>One strand per row. No alignment is fetched for a nucleic acid.</td></tr>
 <tr><td>Ligand</td><td>picked from a list</td>
-    <td>AlphaFold Server's ligands, by their Chemical Component Dictionary codes: ATP, ADP, AMP,
+    <td>Common ligands, by their Chemical Component Dictionary codes: ATP, ADP, AMP,
     GTP, GDP, FAD, NAD, NADP, NADPH, heme, heme C, palmitic, oleic, myristic and citric acid.
     Its four chlorophylls are not offered, because Boltz-2's dictionary does not have them.</td></tr>
 <tr><td>Ion</td><td>picked from a list</td>
@@ -32,16 +32,14 @@ Mg²⁺ are two ions. The running total under the rows says what is in the run.<
     page at the RCSB so you can see what it is.</td></tr>
 <tr><td>SMILES</td><td>SMILES</td>
     <td>A molecule with no code. Boltz-2 reads it with RDKit and standardizes it before folding,
-    so the molecule modeled may differ slightly from the one you typed. AlphaFold Server has no
-    such row; Boltz-2 does.</td></tr>
+    so the molecule modeled may differ slightly from the one you typed.</td></tr>
 </table>
 <p>A T in an RNA row and a U in a DNA row are both refused here. Neither is refused by Boltz-2:
 its tables have no residue for either, so it substitutes the unknown base and folds the result
 without a word said.</p>
 
 <h2>The menu on each row</h2>
-<p>The <b>&#8942;</b> at the end of a row holds everything about it that is not one of its boxes,
-as on AlphaFold Server:</p>
+<p>The <b>&#8942;</b> at the end of a row holds everything about it that is not one of its boxes:</p>
 <table>
 <tr><th>Item</th><th>What it does</th></tr>
 <tr><td>Modifications…</td><td>Protein, DNA and RNA rows. Opens the chain residue by residue so
@@ -55,7 +53,7 @@ as on AlphaFold Server:</p>
 
 <h2 id="modifications">Modifications</h2>
 <p>Click a residue in the chain, then choose what it becomes. Only the modifications made from
-that residue are listed, which are AlphaFold Server's own:</p>
+that residue are listed:</p>
 <table>
 <tr><th>Chain</th><th>Modifications offered</th></tr>
 <tr><td>Protein</td><td>phosphoserine (SEP), phosphothreonine (TPO), phosphotyrosine (PTR),

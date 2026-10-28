@@ -159,7 +159,7 @@ ul.warnlist li{font-size:var(--fs-sm);color:var(--amber);line-height:1.4;padding
   border-left:3px solid var(--amber)}
 
 /* ---- the row's menu ---------------------------------------------------------- */
-/* AlphaFold Server's three dots: everything about a row that is not one of its boxes. Drawn on the
+/* The row's three dots: everything about a row that is not one of its boxes. Drawn on the
    page rather than inside the row, so a row near the bottom of a scrolled list does not clip it,
    and placed above the button when there is no room below. */
 .rowmenu{position:fixed;z-index:60;min-width:calc(220px * var(--ui-scale));background:var(--card);

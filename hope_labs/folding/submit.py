@@ -370,8 +370,8 @@ def _not_in_cache(code, install):
 def _modification_problem(row, entity, install):
     """What is wrong with a chain's modifications, in one sentence, or "".
 
-    The residue under each one is checked against the residue the modification is made from, as
-    AlphaFold Server checks it, because Boltz-2 does not: it swaps the residue at that position
+    The residue under each one is checked against the residue the modification is made from,
+    because Boltz-2 does not check it: it swaps the residue at that position
     for whatever component it is given and folds the result. A typed code that is not one of the
     listed ones is checked to exist and nothing more, since its residue is not known here.
     """
