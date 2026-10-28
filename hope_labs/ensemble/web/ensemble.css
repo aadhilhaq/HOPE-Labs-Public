@@ -1,0 +1,210 @@
+/* The ensemble page's own parts: the presets, the sampling fields, the variants, and on the Runs
+   screen the headline, the shapes table, the per residue chart and the comparisons. Everything
+   else, the palette, the type scale, the shell, the structure browser and the run plan, is
+   /static/style.css. Every size here is one of its tokens, so the text-size control in the header
+   grows this page with the rest. */
+
+/* Said across the top when the tool is not installed at this site. Not a dismissible notice: it
+   is the reason Submit is refused, and it stays while that is true. */
+.banner{margin:0;padding:var(--sp-2) var(--sp-4);background:var(--rust-soft);color:var(--rust);
+  border-bottom:1px solid var(--line);font-size:var(--fs-sm);line-height:1.5}
+.banner.dryline{background:var(--teal-soft);color:var(--teal)}
+
+/* The Next bar stays at the bottom of the form, however short the form is. */
+#stage>.nextbar{margin-top:auto}
+
+/* ---- the rail: what is set scrolls, the plan and Submit are a foot that does not ----------- */
+/* Held at the foot by position:sticky instead, the plan and the buttons lay over the Run name and
+   the Run folder on a 1366 laptop, where the rail has barely any travel to scroll them clear; at
+   150% the whole box left the window while the Next bar still said to press Submit. Two parts in
+   a column cannot overlap at any size: the settings scroll, the plan and the buttons do not.
+   The plan is in the foot and not among the settings, because among them it fell below the fold
+   at the larger text sizes and took Show the job with it. */
+#railside{display:flex;flex-direction:column;overflow:hidden;padding-bottom:var(--sp-4)}
+#railside .railscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  scroll-padding-bottom:var(--sp-3)}
+#railside .submitbox{flex:0 0 auto;margin-top:var(--sp-2);padding-top:var(--sp-2);
+  background:var(--card)}
+/* The shadow along its top only while there is something scrolled under it. */
+#railside .submitbox.held{box-shadow:0 -10px 14px -12px rgba(0,0,0,.28)}
+.runplan-head{display:flex;align-items:center;gap:var(--sp-2)}
+/* Past two thirds of the rail the plan scrolls within the foot; the buttons never do. */
+#railside .submitbox .runplan{flex:0 1 auto;min-height:0;overflow-y:auto}
+#railside .submitbox .gobar{flex:0 0 auto}
+/* Where the results land and Show the job on the one line: two lines of them pushed Run folder
+   below the fold of a rail on a 1366x768 laptop. */
+.runplan-foot{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);
+  flex-wrap:wrap}
+.runplan-foot .runplan-where{flex:1 1 auto;min-width:0}
+/* The rail at 768px tall holds three resources, two places and the foot, and at that height one
+   field to a row left Run folder and Browse off the screen. The two short ones share a row. */
+#fields-res{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(148px * var(--ui-scale)),1fr));
+  gap:0 var(--sp-3)}
+#fields-res>.fld[data-key="gpu"]{grid-column:1 / -1}
+/* The run folder, folded away under the run name rather than a row of its own. */
+details.wherefolder{margin-top:var(--sp-2);border-top:0;padding-top:0}
+details.wherefolder>summary{color:var(--teal)}
+/* The rail is the tightest column on the page: three resources, two places, the plan and the
+   buttons in 642px on a 1366x768 laptop. It keeps the page's rhythm everywhere else and a
+   tighter one here, which is what puts the last row of the settings above the fold. */
+#railside{padding-bottom:var(--sp-3)}
+#railside .grp{margin-top:var(--sp-3)}
+#railside .runplan{padding-top:var(--sp-2)}
+#railside .submitbox .btns{margin-top:var(--sp-2)}
+
+/* ---- the molecule ---------------------------------------------------------- */
+.srcpane{margin-top:var(--sp-3)}
+.withbtn.short{max-width:calc(420px * var(--ui-scale))}
+/* A sequence is read in blocks, and a line break inside one would be read as a gap. */
+.seqbox{min-height:calc(96px * var(--ui-scale));resize:vertical;line-height:1.6;word-break:break-all}
+.molacts{display:flex;align-items:center;gap:var(--sp-1);margin-top:var(--sp-3);flex-wrap:wrap}
+.molacts .why{margin-left:var(--sp-2)}
+.picked .mutrow{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3);flex-wrap:wrap}
+.picked .mutrow label{font-size:var(--fs-sm);font-weight:500}
+.picked .mutrow .inp{width:calc(200px * var(--ui-scale));flex:0 0 auto}
+.picked .tag{font-size:var(--fs-xs);font-weight:600;border-radius:999px;padding:1px var(--sp-2);
+  background:var(--wait);color:var(--dim);white-space:nowrap}
+.picked .tag.ok{background:var(--good-soft);color:var(--good)}
+.picked .tag.mut{background:var(--rust-soft);color:var(--rust)}
+/* The mutated residues in the preview. A variant's letters differ from its parent's in one place,
+   and that place was inside the elided middle: both cards showed the same letters and only the
+   W23A tag told them apart. */
+.picked .seqpeek b{font-weight:700;color:var(--rust);background:var(--rust-soft);
+  border-radius:3px;padding:0 1px}
+
+/* ---- sampling ------------------------------------------------------------- */
+.presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(160px * var(--ui-scale)),1fr));
+  gap:var(--sp-3)}
+.presets .ptile{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--line);
+  border-radius:var(--radius);padding:var(--sp-3);background:var(--card);cursor:pointer;color:var(--ink);
+  line-height:1.35}
+.presets .ptile:hover{border-color:var(--teal)}
+.presets .ptile.on{border-color:var(--teal);background:var(--teal-soft);box-shadow:0 0 0 1px var(--teal) inset}
+.presets .ptile b{font-size:var(--fs-md);font-weight:600}
+.presets .ptile .n{font-size:var(--fs-sm);color:var(--dim)}
+.presets .ptile .cost{font-size:var(--fs-sm);color:var(--teal);font-weight:600}
+.sfields{display:flex;gap:var(--sp-3) var(--sp-5);flex-wrap:wrap;align-items:flex-start;margin-top:var(--sp-3)}
+.sfields .fld{min-width:0}
+.sfields label.f{margin-top:0}
+.sfields .fld.num{flex:0 0 calc(150px * var(--ui-scale))}
+.sfields .fld.wide{flex:1 1 calc(280px * var(--ui-scale))}
+/* A short choice is a row of chips: one press rather than two, and every choice visible. */
+.seg{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.seg .chip{margin:0}
+.seg .chip:not(.on){background:var(--card);border-color:var(--line);color:var(--ink)}
+.seg .chip:not(.on):hover{border-color:var(--teal);color:var(--teal)}
+.fldacts{display:flex;gap:var(--sp-2);margin-top:var(--sp-1)}
+details.more{margin-top:var(--sp-3);border-top:1px solid var(--line-soft);padding-top:var(--sp-2)}
+details.more>summary{cursor:pointer;font-size:var(--fs-sm);font-weight:600;color:var(--teal);
+  list-style:none;display:inline-flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) 0}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"+";display:inline-flex;align-items:center;justify-content:center;
+  width:var(--q-size);height:var(--q-size);border-radius:50%;border:1px solid var(--line);font-size:var(--fs-sm)}
+details.more[open]>summary::before{content:"\2212"}
+details.more>summary .why{font-weight:400}
+/* A tick among the boxes sits on the boxes' line, on one line of its own words. */
+#fields-more{display:flex;gap:var(--sp-3) var(--sp-5);flex-wrap:wrap;align-items:flex-end}
+#fields-more .fld{flex:0 1 auto;min-width:calc(200px * var(--ui-scale))}
+#fields-more .tickrow{min-height:var(--ctl-h)}
+#fields-more .tick{white-space:nowrap}
+
+/* ---- after the run -------------------------------------------------------- */
+.ticks{display:flex;flex-direction:column;gap:var(--sp-1)}
+.againstrow{display:flex;align-items:center;gap:var(--sp-3);margin:0 0 var(--sp-1) calc(26px * var(--ui-scale));
+  flex-wrap:wrap}
+.againstname{font-size:var(--fs-sm);color:var(--dim);overflow-wrap:anywhere}
+.againstname.set{color:var(--ink);font-weight:500}
+
+/* ---- the job, for the curious --------------------------------------------- */
+dialog#jobdlg{width:min(calc(760px * var(--ui-scale)),calc(100vw - 32px))}
+dialog#helpdlg{width:min(calc(600px * var(--ui-scale)),calc(100vw - 32px))}
+#jobdlg .mhead .modes{margin-left:auto}
+.told{font-family:var(--mono);font-size:var(--fs-xs);line-height:1.6;background:var(--wait);
+  border-radius:var(--radius-sm);padding:var(--sp-3);max-height:55vh;overflow:auto;white-space:pre-wrap;
+  margin:var(--sp-2) 0 0;overflow-wrap:anywhere}
+#helpbody .helpnotes{margin:var(--sp-1) 0 0;font-size:var(--fs-sm)}
+#helpbody .helpnotes dt{font-weight:600;margin-top:var(--sp-1)}
+#helpbody .helpnotes dd{margin:0 0 0 var(--sp-4);color:var(--dim)}
+
+/* ---- a finished run ------------------------------------------------------- */
+/* Every box of the results screen says what it is and carries the one ? that explains the words
+   in it. A tooltip on each column was the only explanation there was, and a tooltip is not
+   there for a touch or for a keyboard. */
+.rmain .boxhead{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+  margin-bottom:var(--sp-3)}
+.rmain .boxhead h3{margin:0}
+/* Every tile's number starts on the same line, whether or not the words above it wrapped onto a
+   second one: "From the structure given" takes two lines and used to push its number below its
+   neighbors'. Each label keeps two lines of room, and the line under the number is held to the
+   foot of the tile. */
+.rmain .tile,.cmp .tile{display:flex;flex-direction:column}
+.rmain .tile .tk,.cmp .tile .tk{display:flex;align-items:flex-start;gap:var(--sp-1);
+  min-height:calc(2.9 * var(--fs-xs))}
+.rmain .tile .tk .q,.cmp .tile .tk .q{flex:0 0 auto}
+.rmain .tile .sub,.cmp .tile .sub{margin-top:auto}
+
+/* The one sentence the run is read by, at the top where it will be read. */
+.headline{margin:0;padding:var(--sp-3) var(--sp-4);background:var(--teal-soft);color:var(--ink);
+  border-radius:var(--radius-sm);font-size:var(--fs-md);line-height:1.55}
+.acts{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.statement{display:flex;align-items:center;gap:var(--sp-1);margin:var(--sp-2) 0 0;font-size:var(--fs-sm);
+  color:var(--rust);font-weight:600}
+
+/* The shapes, one row each, with the share of the samples drawn as well as written. */
+table.shapes{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+table.shapes th{text-align:left;font-weight:600;color:var(--dim);font-size:var(--fs-xs);
+  padding:var(--sp-1) var(--sp-2) var(--sp-2);border-bottom:1px solid var(--line)}
+table.shapes td{padding:var(--sp-2);border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.shapes td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.shapes tr.on td{background:var(--teal-soft)}
+table.shapes tr:hover td{background:var(--wait)}
+table.shapes .bar{display:inline-block;width:calc(120px * var(--ui-scale));height:8px;border-radius:4px;
+  background:var(--line-soft);overflow:hidden;vertical-align:middle;margin-right:var(--sp-2)}
+table.shapes .bar .fill{display:block;height:100%;background:var(--teal)}
+table.shapes .swatch{display:inline-block;width:calc(10px * var(--ui-scale));height:calc(10px * var(--ui-scale));
+  border-radius:50%}
+
+/* The viewer. A height rather than an aspect, in pixels: the box sits under a table whose height
+   depends on how many shapes were found, and a viewer that changed size would jump. */
+.rmain .viewer{position:relative;height:340px;margin-top:0;border:1px solid var(--line);
+  border-radius:0 0 var(--radius-sm) var(--radius-sm);overflow:hidden;background:var(--wait)}
+.rmain .vbar{margin-top:var(--sp-3)}
+
+/* The one chart on the page. The lines are drawn to the box; the words about them are text on
+   the page, so they grow with the rest of it. How far each residue moves up the left, residue
+   number along the bottom, which is a position in a molecule; nothing here is plotted against
+   the sample number, which is not a time. Without the column of values down the left the
+   heights said nothing, and the largest of them sat in the middle of the residue row reading
+   as a tick rather than as the top of the scale. */
+.chartbox{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--sp-2);
+  margin-top:var(--sp-1)}
+.charty{display:flex;flex-direction:column;justify-content:space-between;text-align:right;
+  height:calc(170px * var(--ui-scale));font-size:var(--fs-xs);color:var(--dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  /* The lines are drawn between 4% and 96% of the box, so the top and the zero sit level with
+     them rather than four pixels adrift of the scale they label. */
+  padding:calc(6.8px * var(--ui-scale)) 0}
+svg.chart{display:block;width:100%;height:calc(170px * var(--ui-scale));color:var(--dim)}
+.chartkey{display:flex;gap:var(--sp-4);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--dim);
+  margin-top:var(--sp-1);grid-column:2}
+.chartkey i{display:inline-block;width:calc(18px * var(--ui-scale));height:0;border-top:2px solid var(--teal);
+  vertical-align:middle;margin-right:var(--sp-1)}
+.chartkey i.given{border-top:2px dashed var(--rust)}
+.chartaxis{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--dim);
+  font-variant-numeric:tabular-nums;grid-column:2}
+
+/* ---- the comparisons ------------------------------------------------------ */
+.cmphead{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.cmphead h3{margin:0;flex:1 1 auto}
+.cmp{border:1px solid var(--line-soft);border-radius:var(--radius);padding:var(--sp-3);margin-top:var(--sp-3);
+  background:var(--ground)}
+.cmp .cmpname{font-size:var(--fs-md);font-weight:600;color:var(--teal);overflow-wrap:anywhere}
+.cmp .tiles{margin:var(--sp-2) 0}
+
+/* What a finished run was given, and its log: there for the curious, closed until opened. */
+details.disclose>summary{cursor:pointer;font-size:var(--fs-lg);font-weight:600;list-style:none;
+  display:flex;align-items:center;gap:var(--sp-2)}
+details.disclose>summary::-webkit-details-marker{display:none}
+details.disclose>summary::before{content:"\25B8";color:var(--dim);font-size:var(--fs-sm)}
+details.disclose[open]>summary::before{content:"\25BE"}
+details.disclose[open]>summary{margin-bottom:var(--sp-3)}

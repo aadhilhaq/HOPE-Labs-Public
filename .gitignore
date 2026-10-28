@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.spec
+BUILD_VERSION
+docs/brand/hopelabs.ico
+docs/brand/hopelabs.png
+*.icns
+*.iconset/
+.venv/
+packaging/win_version.built.txt

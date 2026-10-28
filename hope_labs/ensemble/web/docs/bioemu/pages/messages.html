@@ -1,0 +1,75 @@
+<h1>What the messages mean</h1>
+<p class="lead">The refusals on the form, the refusals at Submit, and the lines in a job's log that
+are worth recognizing.</p>
+
+<h2>On the form</h2>
+<h3>this sequence holds 'U', which is not one of the twenty amino acids</h3>
+<p>BioEmu samples one protein chain. It has no alphabet for DNA or RNA and no way to be given a
+ligand, so a letter outside the twenty is refused here rather than sampled into something that
+means nothing. The letter is named so you can find it: it is usually a selenocysteine, an
+<code>X</code> standing in for something unknown, or a line of DNA pasted by mistake.</p>
+
+<h3>1340 residues is past what the cards here will hold</h3>
+<p>Sampling holds the whole chain on the card and the memory it needs grows with the square of the
+length, so a longer chain does not run slowly, it runs out of card memory. Sample a domain at a
+time. The ceiling is 1200 residues.</p>
+
+<h3>620 residues is beyond what BioEmu was trained within</h3>
+<p>Not a refusal. The samples are an extrapolation rather than a prediction, and the page says so
+once rather than every time. Worth looking at; not worth reporting without that sentence
+attached.</p>
+
+<h3>40 samples says nothing about a distribution</h3>
+<p>The least this page will queue is enough to see whether a chain holds one shape or several.
+Asking for ten and reading a population off it is the one mistake this page can stop.</p>
+
+<h3>BioEmu reads an alignment as .a3m</h3>
+<p>You named a file that does not end in <code>.a3m</code>. The tool decides what a file is by its
+suffix, so a <code>.fasta</code> named here would be read as a bare sequence, which on a compute
+node means a run that waits for a server it cannot reach.</p>
+
+<h2>At Submit</h2>
+<h3>the alignment could not be fetched</h3>
+<p>Phase one failed and nothing was queued. The ColabFold server rations its answers and queues
+when it is busy, so the usual answer is to try again in a few minutes. If it keeps failing, check
+that the page is running on a login node rather than anywhere else, and that the cluster's own
+proxy setting is right in Set up. You can also fetch an alignment by other means and name the
+file.</p>
+
+<h3>BioEmu's image is not at ...</h3>
+<p>The tool is not installed where this page was told to look. Open Set up from the launcher and
+install it, or start the page with the image you do have. A job that cannot find its tool fails a
+minute into a booking, so this is refused here.</p>
+
+<h3>this run has not been read yet, so there is nothing to compare</h3>
+<p>A comparison needs the sampled shapes, which are found when the job reads its own samples at
+the end. Wait for the job to finish, or queue it again if it stopped early.</p>
+
+<h3>no chain of this simulation is the sequence that was sampled</h3>
+<p>The comparison lists every chain it found with its length and sequence. Usually the
+construct differs: a tag, a missing loop, a mutation, or the wrong run. The chain is matched on
+its sequence because names and lengths are not reliable.</p>
+
+<h2>In the job's log</h2>
+<h3>STOPPING: there is no usable GPU on this node</h3>
+<p>The job asked for a card and was given one, so this is the driver disagreeing with the
+scheduler rather than a missing card. The job stops rather than sampling on the processor, which
+would spend the whole booking. Queue it again: it will almost certainly land somewhere else.</p>
+
+<h3>STOPPING: the sampling finished and wrote nothing</h3>
+<p>BioEmu writes its samples only once every batch has been drawn, so a job killed at its walltime
+leaves none. Either raise the walltime or ask for fewer samples. The log above this line is the
+tool's own and will say how far it got.</p>
+
+<h3>Error while fetching result from MSA server. Retrying...</h3>
+<p>This should never appear in a job's log. It means the job was handed a bare sequence rather
+than an alignment file and is trying to reach the alignment server from a compute node, where
+nothing answers. It will retry until the walltime runs out. Cancel it, and report it: a run from
+this page is always handed a file. <a href="phases.html">The two phases</a> explains why.</p>
+
+<h3>the samples are there but could not be read</h3>
+<p>The sampling worked and the step that reads it did not. The samples and the topology are in
+<code>out/</code> and nothing has been lost; <code>analysis/</code> is empty. Running</p>
+<pre>python -m hope_labs.ensemble.analyse RUN</pre>
+<p>from the HOPE Labs folder, inside the image, reads them again, and the error above the line
+says what went wrong.</p>

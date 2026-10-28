@@ -1,0 +1,165 @@
+/* reportkit: the lab's report page. By Aadhil Haq.
+   The same file in every tool. A sheet of A4 on a gray desk on screen; black
+   on white at full size in print, whatever the zoom or the theme. */
+:root{--rk-ink:#1b2333;--rk-dim:#5c667a;--rk-line:#d9dee8;--rk-accent:#1a56db;--rk-paper:#ffffff;--rk-desk:#eef1f6;
+  --rk-warn-bg:#fff6e5;--rk-warn-line:#e0a24a;--rk-good:#1a7f5a;
+  /* The type is the scale the lab's pages use (hope_labs/pages/web/style.css): every size is a
+     token, every token is its size times --ui-scale, and the floor is a flat 13px so no step can
+     put anything under the smallest size the lab allows. The report has no text-size control of
+     its own - it has a zoom, which magnifies the whole sheet - so --ui-scale stays 1 here and the
+     tokens are 13/14/15/17/20/26. The floor is kept all the same: a tool that sets --ui-scale on
+     the report page gets the same bottom to the scale as the pages do.
+
+     Before this, the whole of a table was 10.5px, the kicker 11, code and the note under a figure
+     11.5, the status line, the byline and a caveat 12.5. Table 1 of an MD report - every heading
+     and every number in it - was the smallest text on the screen, which is the wrong way round:
+     the numbers are what the report is for. */
+  --ui-scale:1;
+  --fs-xs:max(13px, calc(13px * var(--ui-scale)));
+  --fs-sm:max(13px, calc(14px * var(--ui-scale)));
+  --fs-md:max(13px, calc(15px * var(--ui-scale)));
+  --fs-lg:max(13px, calc(17px * var(--ui-scale)));
+  --fs-xl:max(13px, calc(20px * var(--ui-scale)));
+  --fs-big:max(13px, calc(26px * var(--ui-scale)));
+  --lh:1.45;
+  --sp-1:calc(4px * var(--ui-scale));
+  --sp-2:calc(8px * var(--ui-scale));
+  --sp-3:calc(12px * var(--ui-scale));
+  --sp-4:calc(16px * var(--ui-scale));
+  --sp-5:calc(20px * var(--ui-scale));
+  --sp-6:calc(28px * var(--ui-scale));
+  --rk-sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --rk-mono:Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--rk-desk);color:var(--rk-ink);font-family:var(--rk-sans);
+  font-size:var(--fs-md);line-height:var(--lh)}
+/* The bar is sticky, so every pixel it grows is a pixel of the sheet nobody can see. Its own text
+   was already 13px, the smallest the lab allows, so it keeps the size and the height it had. */
+#rk-bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--rk-line);padding:var(--sp-2) var(--sp-4)}
+.rk-barrow{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:center;font-size:var(--fs-xs)}
+.rk-barrow label{display:inline-flex;align-items:center;gap:6px;color:var(--rk-dim)}
+.rk-barrow select,.rk-barrow input[type=number]{font:inherit;padding:3px 6px;border:1px solid var(--rk-line);border-radius:6px;
+  background:#fff;max-width:100%}
+.rk-barrow input[type=number]{width:4.5em}
+.rk-barrow .rk-chk input{margin:0}
+.rk-secs{display:inline-flex;flex-wrap:wrap;gap:var(--sp-1) 10px;align-items:center}
+.rk-lb{color:var(--rk-dim)}
+.rk-barrow button,.rk-mini{font:inherit;cursor:pointer;border:1px solid var(--rk-accent);background:#fff;color:var(--rk-accent);
+  border-radius:7px;padding:5px 12px}
+.rk-barrow button.rk-primary{background:var(--rk-accent);color:#fff}
+.rk-mini{padding:3px 10px;font-size:var(--fs-xs);margin-left:6px}
+.rk-mini[disabled]{opacity:.4;cursor:default}
+.rk-zoom{display:inline-flex;align-items:center;gap:var(--sp-1)}
+.rk-barrow .rk-zoom button{padding:3px 10px;min-width:34px}
+.rk-barrow .rk-zoom #rk-zpct{min-width:58px}
+.rk-status{font-size:var(--fs-xs);margin-top:var(--sp-1);padding:var(--sp-1) var(--sp-3);border-radius:6px;background:#eef3ff;
+  color:var(--rk-accent);display:inline-block}
+.rk-status.rk-ready{background:#e8f6ef;color:var(--rk-good);font-weight:600}
+#rk-doc{max-width:210mm;margin:18px auto 60px;background:var(--rk-paper);padding:16mm 15mm;box-shadow:0 2px 14px rgba(20,30,60,.08)}
+#rk-doc h1{font-size:var(--fs-big);line-height:1.2;margin:var(--sp-1) 0 var(--sp-2)}
+#rk-doc h2{font-size:var(--fs-xl);line-height:1.25;margin:var(--sp-6) 0 var(--sp-2);padding-bottom:var(--sp-1);
+  border-bottom:1px solid var(--rk-line)}
+#rk-doc h3{font-size:var(--fs-lg);line-height:1.3;margin:var(--sp-5) 0 var(--sp-1)}
+#rk-doc h4.rk-h4{font-size:var(--fs-md);margin:var(--sp-3) 0 var(--sp-1)}
+#rk-doc p{margin:var(--sp-2) 0}
+.rk-kicker{font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--rk-accent);font-weight:600}
+.rk-subtitle{font-size:var(--fs-lg);line-height:1.35}
+.rk-meta{color:var(--rk-dim);font-size:var(--fs-sm)}
+.rk-why{color:var(--rk-dim)}
+.rk-caveat{color:var(--rk-dim);font-size:var(--fs-sm)}
+.rk-warn{background:var(--rk-warn-bg);border-left:3px solid var(--rk-warn-line);padding:var(--sp-2) var(--sp-3);border-radius:4px}
+.rk-note{color:var(--rk-dim);font-size:var(--fs-sm);margin:calc(-1 * var(--sp-2)) 0 var(--sp-3)}
+#rk-doc code{font-family:var(--rk-mono);font-size:var(--fs-xs);word-break:break-all}
+.rk-list{margin:var(--sp-2) 0;padding-left:calc(22px * var(--ui-scale))}
+.rk-pre{font-family:var(--rk-mono);font-size:var(--fs-xs);line-height:var(--lh);white-space:pre-wrap;word-break:break-word;
+  background:#f6f7fa;border:1px solid var(--rk-line);border-radius:6px;padding:var(--sp-2) var(--sp-3)}
+/* A table is a column of numbers somebody reads off the screen in a meeting, so it is read at the
+   same 13px as everything else and not at the 10.5px it used to be. The cells gained the vertical
+   padding that size needs and kept the horizontal padding they had: 24 % more type is 24 % more
+   column, and a wide table has no room to spare. */
+/* .rk-facts is named on its own as well as with .rk-table because a tool may write a facts table
+   by hand: the module always writes both classes, so no report this module builds changes by a
+   pixel, while a hand-written one stops being the only table in the lab with no borders, no cell
+   padding and no width - the flow report's settings tables ran 280px off the sheet without it. */
+table.rk-table,table.rk-facts{border-collapse:collapse;width:100%;margin:var(--sp-3) 0 var(--sp-4);font-size:var(--fs-xs)}
+table.rk-table caption{caption-side:top;text-align:left;font-size:var(--fs-sm);color:var(--rk-ink);padding-bottom:var(--sp-1)}
+/* A caption is part of its table, so in a box that scrolls it is as wide as the table and its last
+   words are cut off at the edge of the sheet. It is measured against the box instead (100cqw) and
+   held at the left while the columns scroll under it, so it reads as the sentence it is. */
+.rk-tablebox > table.rk-table > caption{width:100cqw;position:sticky;left:0}
+table.rk-table th,table.rk-table td,table.rk-facts th,table.rk-facts td{border-bottom:1px solid var(--rk-line);
+  padding:var(--sp-1) calc(6px * var(--ui-scale));text-align:left;vertical-align:top}
+table.rk-table thead th{border-bottom:1.5px solid var(--rk-ink);font-weight:600;white-space:normal;vertical-align:bottom;
+  line-height:1.25}
+table.rk-table thead th[title]{cursor:help}
+table.rk-table tfoot td{border-top:1.5px solid var(--rk-ink);font-weight:600}
+table.rk-table .rk-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A number's own cell never breaks; its heading must, or "rDock interaction (kJ/mol)" holds the
+   column at its full width and a table of ten such columns runs off the page, caption with it.
+   A long name or sequence with nothing to break on may break anywhere, for the same reason. */
+table.rk-table thead th.rk-num{white-space:normal}
+table.rk-table td:not(.rk-num),table.rk-facts td:not(.rk-num){overflow-wrap:anywhere}
+table.rk-table tr.rk-dim td{color:var(--rk-dim)}
+table.rk-table tr.rk-mark td{font-weight:600}
+table.rk-facts tbody th{width:30%;color:var(--rk-dim);font-weight:500}
+/* Wrapping gets nearly every table inside the sheet. The one that still will not fit - twelve
+   columns of numbers that cannot be broken - scrolls inside its own box, so the page itself never
+   scrolls sideways and the text next to it is never pushed off a laptop screen. The box is the
+   table's own, so only the table that is too wide carries a scrollbar. Print undoes it: on paper
+   there is nothing to scroll and a clipped table would lose a column. */
+.rk-tablebox{overflow-x:auto;overscroll-behavior-x:contain;container-type:inline-size}
+.rk-figure{margin:var(--sp-3) 0 var(--sp-4);break-inside:avoid}
+.rk-figure figcaption{font-size:var(--fs-sm);line-height:var(--lh);margin-top:var(--sp-1)}
+.rk-svg svg{width:100%;height:auto;display:block;max-height:150mm}
+.rk-chart svg{margin-bottom:var(--sp-1)}
+.rk-svg{overflow-x:auto}
+img.rk-png{width:100%;height:auto;display:block;background:#fff}
+.rk-mol{border:1px solid var(--rk-line);border-radius:6px;min-height:80px;display:flex;align-items:center;justify-content:center;
+  overflow:hidden}
+.rk-mol img.rk-png{aspect-ratio:4/3;object-fit:contain}
+/* A structure on its own is not drawn the full width of the page: it would fill half of it. */
+.rk-figure > .rk-mol{max-width:130mm;margin:0 auto}
+.rk-panels{display:grid;gap:var(--sp-2)}
+.rk-cols1{grid-template-columns:1fr}.rk-cols2{grid-template-columns:1fr 1fr}
+.rk-cols3{grid-template-columns:1fr 1fr 1fr}.rk-cols4{grid-template-columns:1fr 1fr 1fr 1fr}
+.rk-sub{font-size:var(--fs-xs);color:var(--rk-dim);margin-top:3px}
+.rk-view img.rk-png{border:1px solid var(--rk-line);border-radius:6px}
+.rk-viewbtns{text-align:right;margin-bottom:var(--sp-1)}
+.rk-own[contenteditable]{outline:none;border-bottom:1px dashed #9aa6bb;min-width:6em;display:inline-block}
+.rk-own[contenteditable]:empty:before{content:attr(data-ph);color:#9aa6bb}
+.rk-methods p{text-align:left}
+.rk-refs{font-size:var(--fs-sm);padding-left:calc(24px * var(--ui-scale))}
+.rk-refs li{margin:3px 0}
+.rk-title{margin-bottom:var(--sp-2)}
+/* A phone, and a sheet of A4 zoomed past the window: the sheet gives up its margins and the
+   panels stack rather than squeezing four columns of pictures into one screen's width. */
+@media (max-width:760px){
+  #rk-doc{padding:var(--sp-5) var(--sp-4);margin:0}
+  .rk-cols3,.rk-cols4,.rk-cols2{grid-template-columns:1fr}
+}
+@page{size:A4;margin:14mm 13mm 16mm}
+@media print{
+  :root{--rk-ink:#000;--rk-dim:#333;--rk-line:#bbb}
+  body{background:#fff;color:#000}
+  #rk-bar,.rk-noprint{display:none!important}
+  #rk-doc{box-shadow:none;margin:0;padding:0;max-width:none;zoom:1!important}
+  .rk-newpage{break-before:page}
+  #rk-doc h2,#rk-doc h3,#rk-doc h4{break-after:avoid}
+  /* Paper is read at arm's length and is 184mm wide between the margins, so a table is set in
+     points here and keeps the 8pt it has always printed at. The screen's 13px is for reading off
+     a screen; this is what makes the columns of a wide table fit the page. */
+  table.rk-table,table.rk-facts{font-size:8pt}
+  table.rk-table caption,.rk-figure figcaption{font-size:9pt}
+  table.rk-table.rk-keep{break-inside:avoid}
+  table.rk-table thead{display:table-header-group}
+  tr{break-inside:avoid}
+  /* Paper has nothing to scroll and no box to measure against, so the two things that keep a
+     wide table on the screen are undone here and the PDF is the one it always was. */
+  .rk-tablebox{overflow:visible;container-type:normal}
+  .rk-tablebox > table.rk-table > caption{width:auto;position:static}
+  .rk-warn{background:none;border:1px solid #000}
+  .rk-pre{background:none}
+  .rk-own[contenteditable]{border-bottom:0}
+  .rk-own[contenteditable]:empty:before{content:""}
+  .rk-svg{overflow:visible}
+}

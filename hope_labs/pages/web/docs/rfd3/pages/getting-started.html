@@ -1,0 +1,32 @@
+<h1>Getting started</h1>
+<p class="lead">A first run, start to finish, and what to look at when it comes back.</p>
+
+<h2 id="before-you-start">Before you start</h2>
+<p>Nothing to install. The model, its checkpoint and its environment are in the lab's group
+space and the page uses them. The checkpoint is 2.5 GB and is shared, not copied per run.</p>
+
+<h2 id="a-first-run">A first run</h2>
+<ol>
+<li>Give it a target: a PDB id to fetch, or a file already on Grace.</li>
+<li>Name the chain the binder should be designed against, and the hotspots it should reach.
+Without hotspots the binder may grow anywhere on the target, which is a real thing to want and
+rarely the thing you meant.</li>
+<li>Leave the binder length at 70 to 100 for a first run.</li>
+<li>Leave <b>Designs to generate</b> at 8. They are made in one pass, so this costs GPU memory
+rather than time.</li>
+<li>Press <b>Queue</b>. The run appears on the Runs screen.</li>
+</ol>
+
+<h2 id="what-to-look-at-first">What to look at first</h2>
+<p>When it finishes, open the run and look at the designs in order. Each is a complex: the binder
+and the target together, with the binder first. The sequence shown is ProteinMPNN's, ranked by
+its score, lowest first.</p>
+<div class="note"><b>Check the first design in a viewer before trusting the list.</b> A binder
+that has grown somewhere other than the face you named is the failure this catches, and it is
+obvious in one look and invisible in a table of scores.</div>
+
+<h2 id="how-long-it-takes">How long it takes</h2>
+<p>About five minutes a design on an A100, sequences included, for a binder of seventy residues
+against a target of under a hundred. A bigger target and a longer binder cost more. The default
+walltime of twelve hours is generous for eight designs and is there so that a first run does not
+fail on the clock.</p>

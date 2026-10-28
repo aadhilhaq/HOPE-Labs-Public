@@ -1,0 +1,168 @@
+# Builds the desktop launcher for Windows and macOS. PyInstaller does not cross-compile, so a
+# Windows .exe has to be built on Windows and a Mac .app on a Mac; this runs on both runners and
+# leaves each build attached to the run for anyone to download (Actions tab -> the run ->
+# Artifacts). The cluster side needs none of this.
+#
+# Never on a push to main: a tag is pushed deliberately, when a build is wanted; it also runs
+# from the Actions tab.
+name: desktop launcher
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: stamp the build with its commit
+        shell: bash
+        run: |
+          echo "$(git rev-parse --short HEAD) $(git log -1 --format=%cd --date=format:%Y-%m-%d)" > BUILD_VERSION
+          cat BUILD_VERSION
+      - name: install
+        run: pip install paramiko pyinstaller pillow
+      - name: draw the icon
+        run: python docs/brand/make_icon.py
+      - name: fill the version resource in from the license
+        run: python packaging/win_version.py
+      - name: check the launcher's pure parts
+        env: { PYTHONPATH: "${{ github.workspace }}" }
+        run: python -m hope_labs --selftest
+      - name: build a console copy and make it prove it starts
+        run: |
+          pyinstaller --noconfirm --onefile --console `
+            --name HOPE-Labs-check --paths . `
+            --add-data "BUILD_VERSION;." --add-data "hope_labs/web;hope_labs/web" `
+            --add-data "hope_labs/setup/bootstrap.sh;hope_labs/setup" `
+            --add-data "LICENSE;." --add-data "THIRD_PARTY_NOTICES.md;." `
+            --hidden-import paramiko packaging/launcher.py
+          $out = & dist\HOPE-Labs-check.exe --selftest 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { Write-Error "the bundled launcher did not start (exit $LASTEXITCODE)"; exit 1 }
+          if ($out -notmatch "SELFTEST OK") { Write-Error "it started but did not reach the end of --selftest"; exit 1 }
+          if ($out -match "paramiko NOT INSTALLED") { Write-Error "paramiko did not come along in the bundle"; exit 1 }
+      - name: build the launcher
+        # --onedir, not --onefile: a one-file build unpacks a runtime at startup, which is what
+        # antivirus heuristics flag; the folder has to travel whole, which is why the artifact is
+        # the folder.
+        run: >
+          pyinstaller --noconfirm --onedir --windowed
+          --name HOPE-Labs --paths .
+          --icon docs/brand/hopelabs.ico
+          --version-file packaging/win_version.built.txt
+          --hidden-import paramiko
+          --add-data "BUILD_VERSION;."
+          --add-data "hope_labs/web;hope_labs/web"
+          --add-data "hope_labs/setup/bootstrap.sh;hope_labs/setup"
+          --add-data "LICENSE;."
+          --add-data "THIRD_PARTY_NOTICES.md;."
+          packaging/launcher.py
+      - name: say whether it was signed
+        run: |
+          $sig = Get-AuthenticodeSignature dist\HOPE-Labs\HOPE-Labs.exe
+          Write-Host "signature: $($sig.Status)"
+          if ($sig.Status -ne "Valid") { Write-Host "Unsigned. Windows will show 'Windows protected your PC' on first run: More info -> Run anyway." }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HOPE-Labs-public-windows
+          path: dist/HOPE-Labs/
+          # the release page keeps the files; the run's own copies only need to last until it
+          retention-days: 3
+      - name: zip the folder for the release page
+        run: Compress-Archive -Path dist/HOPE-Labs -DestinationPath HOPE-Labs-public-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: HOPE-Labs-public-windows.zip
+          # the release page keeps the files; the run's own copies only need to last until it
+          retention-days: 3
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: stamp the build with its commit
+        run: |
+          echo "$(git rev-parse --short HEAD) $(git log -1 --format=%cd --date=format:%Y-%m-%d)" > BUILD_VERSION
+          cat BUILD_VERSION
+      - name: install
+        run: pip install paramiko pyinstaller pillow
+      - name: check tkinter came with this python
+        run: python -c "import tkinter; print('tkinter', tkinter.TkVersion)"
+      - name: draw the icon
+        run: python docs/brand/make_icon.py
+      - name: check the launcher's pure parts
+        env: { PYTHONPATH: "${{ github.workspace }}" }
+        run: python -m hope_labs --selftest
+      - name: make an icns from the mark
+        run: |
+          mkdir -p hopelabs.iconset
+          for s in 16 32 64 128 256 512; do
+            python -c "import sys; sys.path.insert(0,'.'); from docs.brand.make_icon import draw_mark; draw_mark($s).save('hopelabs.iconset/icon_${s}x${s}.png')" || true
+          done
+          iconutil -c icns hopelabs.iconset -o hopelabs.icns || echo "no icns; the app gets the default icon"
+      - name: build the launcher
+        run: >
+          pyinstaller --noconfirm --windowed --name HOPE-Labs --paths .
+          $( [ -f hopelabs.icns ] && echo "--icon hopelabs.icns" )
+          --hidden-import paramiko --add-data "BUILD_VERSION:." --add-data "hope_labs/web:hope_labs/web"
+          --add-data "hope_labs/setup/bootstrap.sh:hope_labs/setup"
+          --add-data "LICENSE:." --add-data "THIRD_PARTY_NOTICES.md:."
+          packaging/launcher.py
+      - name: self-test the bundle
+        run: |
+          pyinstaller --noconfirm --onefile --console --name HOPE-Labs-check --paths . --add-data "BUILD_VERSION:." --add-data "hope_labs/web:hope_labs/web" --add-data "hope_labs/setup/bootstrap.sh:hope_labs/setup" --add-data "LICENSE:." --add-data "THIRD_PARTY_NOTICES.md:." --hidden-import paramiko packaging/launcher.py
+          dist/HOPE-Labs-check --selftest | tee out.txt
+          grep -q "SELFTEST OK" out.txt
+      - name: zip the app
+        run: cd dist && zip -r -y ../HOPE-Labs-public-mac-apple-silicon.zip HOPE-Labs.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HOPE-Labs-public-mac-apple-silicon
+          path: HOPE-Labs-public-mac-apple-silicon.zip
+          # the release page keeps the files; the run's own copies only need to last until it
+          retention-days: 3
+
+  # A tag also gets a release page with both zips, which anyone who can see the repository can
+  # download from.
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: HOPE-Labs-public-mac-apple-silicon
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: HOPE Labs ${{ github.ref_name }}
+          body: |
+            The desktop launcher for HOPE Labs, built from ${{ github.sha }}.
+            Windows: unzip, run HOPE-Labs.exe (unsigned: More info -> Run anyway the first time).
+            macOS (Apple silicon): unzip, open HOPE-Labs.app (unsigned: the first time, System
+            Settings -> Privacy & Security -> Open Anyway; on macOS 14 and earlier, right-click
+            it -> Open).
+            Cluster side: on a Slurm cluster the launcher sets HOPE Labs up in a folder you choose,
+            then installs the tools you tick from its Set up page (Docs: Setting up on a cluster).
+
+            The launcher signs in to the cluster as you and starts the tools installed there; it is
+            not a service and carries none of the tools. All rights reserved: see LICENSE and
+            THIRD_PARTY_NOTICES.md in the repository.
+          files: |
+            HOPE-Labs-public-windows.zip
+            HOPE-Labs-public-mac-apple-silicon.zip

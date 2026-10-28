@@ -1,0 +1,79 @@
+<h1>Getting started</h1>
+<p class="lead">Download HOPE Labs, sign in to your cluster once, set it up there the first time, and let
+its tabs reach this computer.</p>
+
+<h2 id="what-you-need">What you need</h2>
+<ul>
+<li>An account on a cluster with Slurm, such as Grace at Texas A&amp;M HPRC, where you sign in
+with your password and Duo on your phone.</li>
+<li>A browser on the same computer. HOPE Labs opens its page in your default browser; the
+instructions here are for Chrome.</li>
+<li>A folder on the cluster for HOPE Labs and the tools, with room to spare: your scratch, or a
+group folder if others will use it too. The first time you sign in, HOPE Labs offers to set itself
+up there and to install the tools you tick: <a href="set-up.html">Setting up on a cluster</a>.</li>
+</ul>
+
+<h2 id="download">Download and start it</h2>
+<table>
+<tr><th>Computer</th><th>Download</th><th>The first time</th></tr>
+<tr><td>Windows</td><td><code>HOPE-Labs-public-windows.zip</code></td><td>Unzip the whole folder,
+not only the program, and run <code>HOPE-Labs.exe</code> inside it. It is not signed, so Windows
+says <b>Windows protected your PC</b>: choose <b>More info</b>, then <b>Run anyway</b>.</td></tr>
+<tr><td>macOS, Apple silicon</td><td><code>HOPE-Labs-public-mac-apple-silicon.zip</code></td><td>Unzip
+it and open the app. It is not signed, so the first time macOS will not open it: in <b>System
+Settings</b>, under <b>Privacy &amp; Security</b>, choose <b>Open Anyway</b> beside the line about
+HOPE-Labs, and confirm (on macOS 14 and earlier, right click the app and choose <b>Open</b>
+instead). After the first time it opens like any other app.</td></tr>
+<tr><td>Any computer with Python 3.10 or newer</td><td>the source</td><td>The two lines below,
+in the checkout. Python needs tkinter, which most installs include.</td></tr>
+</table>
+<p>Both downloads are on the releases page of the HOPE Labs repository. From the source:</p>
+<pre>pip install paramiko
+python -m hope_labs</pre>
+
+<h2 id="signing-in">Signing in</h2>
+<p>HOPE Labs opens a small window first. It is the sign in, and it stays open while you work:
+closing it signs you out.</p>
+<table>
+<tr><th>Box</th><th>What goes in it</th></tr>
+<tr><td><b>Cluster</b></td><td><b>Grace (TAMU)</b>, <b>ACES (TAMU)</b>, or <b>Other (SLURM)</b> for any
+other cluster with Slurm. ACES signs in with a certificate rather than a password.</td></tr>
+<tr><td><b>Address</b></td><td>Filled in when you pick the cluster:
+<code>grace.hprc.tamu.edu</code>.</td></tr>
+<tr><td><b>NetID</b></td><td>Your NetID alone, such as <code>jdoe</code>. If you type your TAMU
+email address, the part before the @ is used, and the log says so.</td></tr>
+</table>
+<p>Press <b>Sign in and open HOPE Labs</b>. Grace asks for your password, then Duo asks how you
+want to approve. Each question arrives in a small window of its own, with the text exactly as
+Grace sent it; answer it as you would in a terminal. When you have approved, the panel called
+<b>What is happening</b> says <b>Signed in on</b> and the login node's name, then <b>HOPE Labs is
+open</b>, and the page opens in your browser by itself.</p>
+<div class="tip"><b>One Duo approval covers every tool.</b> HOPE Labs holds the one connection
+for as long as you are signed in, and every tool you open goes through it.</div>
+<p>If the page does not open, <b>Open the page</b> in the same window opens it again, and the log
+shows its address to paste into a browser. The address carries a token that only this session
+knows, so keep it to yourself; it changes every time you sign in.</p>
+<p>The boxes are remembered for next time, in a file called <code>.hope_labs_public.json</code> in your
+home folder on your own computer. Your password is never kept. The same file can point HOPE Labs
+at <a href="own-installs.html#pointing-hope-labs-at-your-copies">tools installed somewhere
+else</a>.</p>
+
+<h2 id="allow-its-tabs">Let its tabs open</h2>
+<p>Each tool opens in a tab of its own, on the tool's own page, served from your computer through
+the connection HOPE Labs holds. A tab opened by your click is not a pop-up, so Chrome lets it open.
+If nothing opens at all, Chrome blocked it: click the blocked mark at the right of the address bar,
+choose <b>Always allow</b>, and pick the tool again.</p>
+<p>Chrome remembers that answer for the page's address, and the address includes its port. HOPE
+Labs asks for the same port every time you sign in, worked out from your account name, so the
+answer holds from one session to the next. If that port is busy, the log says which port the page
+is on instead, and Chrome may ask once more.</p>
+
+<h2 id="next">Next</h2>
+<p>The page that opens is the <a href="tools.html">Tools page</a>, with a block for each tool
+under the four category buttons. On a cluster new to HOPE Labs it offers to set HOPE Labs up first:
+see <a href="set-up.html">Setting up on a cluster</a>. Then pick a tool and press
+<b>Launch</b>.</p>
+<p>Two more views sit beside it in the column on the left. <b>Flows</b> draws several tools as one
+graph and queues them together, read as a plan first: see
+<a href="index.html#flows">Flows</a>. <b>Results</b> lists every tool's run folders in one place,
+each beside the step that usually follows it: see <a href="results.html">Results</a>.</p>

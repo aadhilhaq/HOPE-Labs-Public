@@ -1,0 +1,38 @@
+HOPE Labs: the launcher for the HOPE Lab's tools, and HOPE-flow
+Copyright (c) 2026, Sandun Fernando, HOPE Lab, Texas A&M University. Authored by Aadhil Haq, Samavath Mallawarachchi and Lasan Manujitha. All rights reserved.
+
+Academic Use License
+
+Permission is granted, free of charge, to any person or organization to use, copy and modify this
+software, and to distribute copies of it, for non-commercial research and teaching, provided that:
+
+1. The copyright notice above and this license are kept in every copy and in every substantial
+   portion of the software.
+
+2. Published work that used this software credits it, as its CITATION.cff describes.
+
+3. A modified copy that is distributed says that it has been modified.
+
+4. Use follows Texas A&M University policy and the policy of Texas A&M High Performance Research
+   Computing. This permission is granted strictly within those limits: nothing here allows what
+   those policies do not.
+
+Any commercial use requires a separate written license from Dr. Sandun Fernando. Commercial use
+includes use by or for a company, use in providing a service for a fee, and selling or licensing
+the software or a service built on it.
+
+It is a launcher: it signs in to a cluster, starts tools there and draws them as a
+flow. It implements none of the methods those tools run, and it grants nothing for
+them: each tool keeps its own license and its own notices.
+
+The third-party programs and libraries it uses keep their own licenses; see
+THIRD_PARTY_NOTICES.md. Some of them restrict redistribution or hosted use, and those terms reach
+this software: it may not be used to give anyone a tool in a way that tool's own license forbids.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Contact: Dr. Sandun Fernando (sfernando@tamu.edu), Aadhil Haq (aadhil.haq@tamu.edu).

@@ -1,0 +1,83 @@
+<h1>What a run leaves</h1>
+<p class="lead">The structures, the spec it was driven by, the record the next card reads, and
+which chain is actually the design.</p>
+
+<h2 id="the-structures">The structures</h2>
+<p>One file per design, written as CIF under
+<code>rfd4/inference_samples/&lt;design&gt;/</code>. Each holds the binder and the target
+together: the design arrives already placed, so docking it again is a choice rather than a
+necessity.</p>
+<p>Beside them in the run folder are the two files that say what was asked:
+<code>rfd4_spec.yaml</code>, the condition spec the model was driven by, and
+<code>rfd4_spec.json</code>, the same thing in a form the report reads back. The converted
+target is <code>target.cif</code>.</p>
+
+<h2 id="reached">What each design reached</h2>
+<p>The conditions are a request, not a guarantee: the model is free to hand back a binder that
+sits beside the site rather than on it, and the run itself used to say nothing about which. So
+every design is measured against the residues the run was aimed at, and the table shows a tick per
+marked residue, how many of them it reached, and the contacts in all. Hovering the ticks gives the
+contacts residue by residue, with the design's own residue nearest to each.</p>
+<p>A contact is any pair of heavy atoms within 4.5&nbsp;&#8491;, which is the rule the site itself
+was taken by. Hydrogens are left out: a deposited target
+has none, and a number that changed when somebody protonated their file would be a number nobody
+could reproduce.</p>
+<div class="note"><b>Reaching the site is not the same as being a binder.</b> A design can touch
+every marked residue and still be a sequence that folds into something else. Nothing in this run
+has refolded them, so the table is in the order the tool wrote them rather than a ranking: fold
+them to rank them.</div>
+<p>The measurement has to undo the renumbering described below before it can be made at all. The
+site is named in the target's own numbering and the design carries its own, so each marked residue
+is mapped onto the design by its position in the chain, and the two sequences are compared residue
+by residue first. A mapping that had slipped by one would report a design reaching a site it
+missed, which is worse than reporting nothing.</p>
+
+<h2 id="which-chain">Which chain is the design</h2>
+<p>A chain of its own, with a letter the tool picked. Not chain A, and not one of the chains you
+named.</p>
+<p>A preserved segment keeps the chain id it had in the input, so the target comes back under the
+letters you asked for. The binder is an expandable segment in a run of its own, which gets a
+fresh id: on a target of chains A and B, the binder is C.</p>
+<div class="note"><b>This is the opposite of RFdiffusion3,</b> where the design is always chain A
+and the target is relettered around it. Working the binder out by elimination is right here and
+wrong there, which is exactly why the run records it: <code>designs.json</code> names the
+binder's chains and the target's rather than leaving it to be guessed.</div>
+<p>Every output chain is renumbered from 1, so a residue no longer sits at the number it went in
+at. The generated files also carry the model's own annotations, which mark the atoms that were
+conditioned, if you need to find a motif in the output rather than trust the numbering.</p>
+
+<h2 id="designs-json">designs.json</h2>
+<p>The record every design tool here writes, and the only thing a following card reads. One
+entry per design:</p>
+<ul>
+<li><code>name</code> and <code>path</code>, the design and where its structure is</li>
+<li><code>binder_chains</code> and <code>target_chains</code>, as the output labels them</li>
+<li><code>sequence</code>, the model's own for the designed chain</li>
+<li><code>score</code>, which is always empty for this tool</li>
+</ul>
+<p>Because the format is the one RFdiffusion, RFdiffusion3 and BoltzGen already write, the cards
+that follow needed no change to accept these designs: a complex can go to HOPE-MD.</p>
+
+<h2 id="no-score">Why the score is empty</h2>
+<p>Nothing in the run scored the designs, and the column is empty rather than zero to say so.</p>
+<p>The model can score designs as it makes them, but that means refolding each one with
+AlphaFold or OpenFold3, which are separate environments with their own weights. A design run
+composed with them would be a folding run as well, and would need both installed to produce
+anything at all. So the run is composed without them, and ranking the designs is the next step:
+fold them and compare.</p>
+<p>The report says this in as many words rather than showing an empty column and letting it be
+read as a failure.</p>
+
+<h2 id="report">The report</h2>
+<p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,
+in a new tab, ready to save as a PDF. It is the run as you would describe it to somebody else:
+the designs with their chains and lengths, the sequences to order, the best design on the target,
+and what the model was told, which for this tool means the contig and every condition with what
+each one does; then the methods with their references, and an appendix holding the settings as
+asked, where the target came from, the versions, the job and the files.</p>
+<p>The bar along the top is the report's own. Tick the sections you want and set how many designs
+the tables show; zoom with the minus, the percentage and the plus, or fit the width. <b>Copy the
+methods and references</b> puts the methods on the clipboard. <b>Save as PDF</b> opens the
+browser's print window, where the printer to choose is "Save as PDF".</p>
+<p>Two things the report will not do. It writes nothing into the run folder: it only reads. And
+it shows no number the run did not write, so it and the Runs screen cannot disagree.</p>

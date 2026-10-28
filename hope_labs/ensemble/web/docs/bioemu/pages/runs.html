@@ -1,0 +1,53 @@
+<h1>The Runs screen</h1>
+<p class="lead">Your runs, what Slurm makes of them, and the two things you can do to a job that is
+already queued.</p>
+
+<h2>The list</h2>
+<p>Newest first, with a dot for the state: amber for queued, teal and blinking for running, green
+for finished, rust for stopped. Mine shows yours; Everyone shows every run in the folders this
+page was started with, which is how to see what a colleague's run did without asking them.</p>
+<p>A folder is a run when it holds a <code>submission.json</code>, and the page writes that before
+it queues anything, so a run whose submission failed is still listed and can still be read.</p>
+
+<h2>What the tiles say</h2>
+<p>Samples is how many structures are on disk, counted by looking rather than by reading the log.
+Before the job has finished, that count comes from the batches written so far, which is how you
+can watch a long run arrive. Shapes is how many distinct ones reading them found, and it appears
+only once the run has been read.</p>
+
+<h2>The sentence at the top of a finished run</h2>
+<p>One shape, or several with the share of the samples each holds, and how far the samples lie
+from the mean shape. It is the same sentence in the report and in a flow's record, written once so
+that all three say the same thing. <a href="shapes.html">The shapes, and what they are not</a>
+explains what is behind it.</p>
+
+<h2>Cancel, and Queue again</h2>
+<p>Cancel runs <code>scancel</code> on the job. Slurm decides whether you may, which is to say it
+is your job or it is not. What is already on disk stays in the run folder.</p>
+<p>Queue again submits the same job script a second time. It is phase two only, so it needs no
+network: the alignment is already in the folder. Use it for a run that ran out of walltime or
+died on a bad node. The sampling starts again from the beginning either way.</p>
+
+<h2>The log</h2>
+<p>The last couple of hundred lines of the Slurm log, under <em>The log</em> at the bottom of the
+run (open already when the run stopped early), with the whole file a download away. The job
+prints the node, the card and the driver before it samples anything, because when sampling fails
+on a new node it is almost always the card or the driver rather than the tool. If the node turns
+out to have no usable card at all, the job stops there rather than spending the booking on the
+processor.</p>
+
+<h2>What was sampled</h2>
+<p>Under <em>The job it was given</em>: the sequence as it was sampled and the job script exactly
+as it was queued, so an argument about what a finished run sampled can be settled
+from the run folder rather than from memory.</p>
+
+<h2 id="tidy">Tidying when it finishes</h2>
+<p>A run that finishes and has written its samples packs what its results no longer read into one
+archive in its own <code>archive</code> folder: the per batch arrays the samples were written
+from, which are the same numbers as the trajectory file, the embeddings made from the alignment,
+and the matplotlib and CUDA caches. The samples, the topology, everything under
+<code>analysis</code>, the alignment, the sequence and the log stay, and so does the home folder
+the image was given. A run that wrote nothing is left whole. <b>Keep every file</b>, under After the run on the
+form, leaves the run alone, and</p>
+<pre>python -m hope_labs.ensemble.tidy RUN --undo</pre>
+<p>run from the HOPE Labs folder puts every file back.</p>

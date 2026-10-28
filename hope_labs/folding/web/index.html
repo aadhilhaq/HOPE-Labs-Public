@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__APP__</title>
+<!-- The shell, the palette and the type scale are the shared stylesheet, so the lab's pages read
+     as kin; this page's own sheet is the rows, the sequence box, the structure summary and the
+     viewer. The server looks in this page's web folder first and the design page's second, which
+     is where the shared sheet, the text-size control and the structure browser live. -->
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/folding.css">
+<!-- In the head, so the text size somebody chose is applied before anything is drawn. -->
+<script src="/static/zoom.js" data-page="__TOOL__"></script>
+<link rel="icon" href="__FAVICON__">
+</head>
+<body data-tool="__TOOL__">
+<header class="apphead">
+  <span class="mark">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm" id="appname">__APP__</span>
+  </span>
+  <span class="bd" id="where"></span>
+  <span class="headtools">
+    <span class="tabs" role="tablist" aria-label="Screens">
+      <button class="tab on" data-screen="setup" role="tab" aria-selected="true" type="button">Fold</button>
+      <button class="tab" data-screen="runs" role="tab" aria-selected="false" type="button">Runs <em id="runcount" hidden></em></button>
+    </span>
+    <span data-hl-zoom></span>
+    <button class="pill theme" id="theme" type="button" title="Switch between light and dark">Dark</button>
+    <!-- Docs last, in the corner where a documentation link is looked for. It opens in a tab of
+         its own and carries no token: the documentation is the same for everyone. -->
+    <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+       title="How this page works, with what to do when something goes wrong">Docs</a>
+  </span>
+</header>
+
+<!-- Said across the top rather than left to be discovered: a tool that is not installed here
+     cannot be queued, and a page started as a dry run queues nothing. -->
+<p class="banner" id="notinstalled" hidden></p>
+
+<!-- ============================== FOLD ============================== -->
+<main id="screen-setup" class="screen">
+  <!-- The form scrolls in #stage. The Next bar is the row of the page's grid under it, a sister
+       of #stage rather than a child of it: inside the scrolling area it scrolled away with the
+       form, and laid over it it covered whatever happened to be at the bottom of the window. -->
+  <section class="stage" id="stage">
+
+    <ol class="steprail" id="rail" aria-label="Steps">
+      <li><button class="st" type="button" data-goto="what"><span class="n">1</span><b>What to fold</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="settings"><span class="n">2</span><b>Settings</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="submit"><span class="n">3</span><b>Submit</b></button></li>
+    </ol>
+
+    <!-- 1. What to fold: one row per chain or molecule. A structure is read rather than typed
+         out: its chains become rows, with their sequences and copies. -->
+    <section class="box" id="step-what">
+      <h2>What to fold <button class="q" type="button" data-help="what" aria-label="About what to fold">?</button>
+        <span class="cstate need" id="st-what">Needed</span></h2>
+
+      <div class="pickzone" id="pickzone">
+        <div class="pickbtns">
+          <button class="btn pri" id="choose" type="button">Choose a structure</button>
+          <button class="btn quiet" id="pastebtn" type="button">Paste sequences</button>
+          <button class="btn quiet" id="codebtn" type="button">PDB code</button>
+        </div>
+        <p class="hint">or drop a structure or FASTA file here</p>
+        <!-- What the chooser offers is set from the server's own lists when the page loads. -->
+        <input type="file" id="file" hidden>
+      </div>
+
+      <div id="structs"></div>
+
+      <div class="ents" id="ents" hidden>
+        <div id="rows"></div>
+      </div>
+      <p class="errmsg" id="rowserr" hidden></p>
+
+      <div class="entbar" id="entbar" hidden>
+        <button class="btn sm quiet" id="addrow" type="button">+ Add a molecule</button>
+        <button class="btn sm quiet" id="addstruct" type="button">Choose a structure</button>
+        <button class="btn sm quiet" id="addpaste" type="button">Paste sequences</button>
+        <span class="why" id="total"></span>
+      </div>
+
+      <div class="srcpane" id="codepane" hidden>
+        <label class="f" for="pdbid"><span class="fname">PDB code</span></label>
+        <div class="withbtn short">
+          <input class="inp" id="pdbid" placeholder="1YCR" maxlength="4" autocomplete="off" spellcheck="false">
+          <button class="btn sm pri" id="fetch" type="button">Fetch</button>
+          <button class="btn sm quiet" id="codecancel" type="button">Cancel</button>
+        </div>
+      </div>
+
+      <div class="srcpane" id="pastebox" hidden>
+        <label class="f" for="pastetext"><span class="fname">Sequences</span>
+          <button class="q" type="button" data-help="paste" aria-label="What can be pasted">?</button></label>
+        <textarea class="inp mono seqbox" id="pastetext" rows="4" spellcheck="false"
+                  placeholder="&gt;heavy chain&#10;QVQLVQSGAEVKKPGASVKVSCKAS&#10;&gt;light chain&#10;DIQMTQSPSSLSASVGDRVTITCRAS"></textarea>
+        <div class="row">
+          <button class="btn sm pri" id="pasteadd" type="button">Add these</button>
+          <button class="btn sm quiet" id="pastecancel" type="button">Cancel</button>
+          <span class="why" id="pastesays"></span>
+        </div>
+      </div>
+
+      <p class="errmsg" id="src-err" hidden></p>
+      <p class="note" id="srcsays" hidden></p>
+    </section>
+
+    <!-- 2. The tool's own settings, each drawn once: here, and nowhere in the rail. -->
+    <section class="box" id="step-settings">
+      <h2><span id="settingsname">Settings</span> <button class="q" type="button" data-help="settings" aria-label="About the settings">?</button>
+        <span class="cstate done" id="st-settings">Ready</span></h2>
+      <div class="sfields" id="fields-main"></div>
+      <details class="more" id="moreopts">
+        <summary>More options <span class="why" id="morecount"></span></summary>
+        <div class="sfields" id="fields-more"></div>
+      </details>
+    </section>
+
+  </section>
+
+  <!-- What to do now, in one line, under the form rather than over it: a row of the page's own
+       grid, so the form scrolls above it and the bar covers no control. -->
+  <div class="nextbar" id="nextbar" role="status" aria-live="polite">
+    <span class="nextlab">Next</span>
+    <span class="nexttext" id="nexttext">Choose a structure, or paste sequences.</span>
+    <button class="btn sm" id="nextgo" type="button">Show me</button>
+  </div>
+
+  <!-- ------------------------------- the rail ------------------------------- -->
+  <aside class="rail" id="railside">
+   <!-- The settings scroll in here; the plan and Submit sit below them, outside what scrolls, so
+        the Run name and the Run folder are never drawn half under the plan. -->
+   <div class="railscroll" id="railscroll">
+    <div class="grp" id="g-res">Resources</div>
+    <div id="fields-res"></div>
+
+    <div class="grp" id="g-where">Where it goes</div>
+    <label class="f" for="name"><span class="fname">Run name</span></label>
+    <input class="inp" id="name" placeholder="Named for you" autocomplete="off">
+    <label class="f" for="out"><span class="fname">Run folder</span></label>
+    <div class="withbtn">
+      <input class="inp" id="out" placeholder="Chosen for you" autocomplete="off">
+      <button class="btn sm" id="outbrowse" type="button" title="Choose a folder on the cluster, or make one">Browse</button>
+    </div>
+    <p class="errmsg" id="out-err" hidden></p>
+   </div>
+
+    <!-- The plan and Submit, held at the foot of the rail and never over anything. -->
+    <section class="submitbox" id="step-submit">
+      <!-- The run plan: what will happen, where, and roughly how long, in plain numbered steps.
+           It appears once there is something to fold, directly above the button that commits. -->
+      <div class="runplan" id="plan" hidden>
+        <div class="runplan-head">Run plan <button class="q" type="button" data-help="plan" aria-label="About the run plan">?</button></div>
+        <ol class="runplan-steps" id="phases"></ol>
+        <p class="runplan-where" id="planwhere"></p>
+        <button class="linkbtn" id="showjob" type="button">Show the job</button>
+      </div>
+      <ul class="problist" id="problems" hidden></ul>
+      <ul class="warnlist" id="warnings" hidden></ul>
+      <div class="btns">
+        <button class="btn pri" id="go" type="button" disabled>Submit</button>
+        <button class="btn quiet" id="dry" type="button" disabled
+                title="Write the run folder, the input and the job script; fetch nothing and queue nothing">Dry run</button>
+      </div>
+      <p class="gowhy" id="gowhy">Choose a structure or paste sequences first.</p>
+      <p class="note" id="golast" hidden></p>
+    </section>
+  </aside>
+</main>
+
+<!-- ============================== RUNS ============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <section class="rrail" id="runrail">
+    <div class="row" style="justify-content:space-between">
+      <span class="modes" id="scope">
+        <button data-scope="mine" class="on" type="button">Mine</button>
+        <button data-scope="all" type="button">Everyone</button>
+      </span>
+      <button class="pill" id="refresh" type="button" title="Read the run folders and the queue again" aria-label="Refresh">&#8635;</button>
+    </div>
+    <div class="legend"><span><span class="dot q"></span>queued</span><span><span class="dot run"></span>running</span><span><span class="dot fin"></span>finished</span><span><span class="dot stop"></span>stopped</span></div>
+    <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+  </section>
+  <section class="rmain" id="rundetail">
+    <p class="empty">Pick a run on the left.</p>
+  </section>
+</main>
+
+<!-- The ? dialog: the reasons, where they can be read by somebody who wants them and stepped over
+     by somebody who does not. -->
+<dialog id="helpdlg" class="hlmodal" aria-labelledby="helptitle">
+  <div class="mhead"><h2 id="helptitle"></h2>
+    <button class="mx" id="helpx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody" id="helpbody"></div>
+  <div class="mfoot">
+    <a id="helpdocs" href="/docs/index.html" target="_blank" rel="noopener">More in the docs</a>
+    <button class="btn sm" id="helpclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The job, for the curious: the input file exactly as it will be written, and the command that
+     reads it. Opened from Show the job under the run plan, never a panel on the form. -->
+<dialog id="jobdlg" class="hlmodal" aria-labelledby="jobtitle">
+  <div class="mhead"><h2 id="jobtitle">The job</h2>
+    <span class="modes" id="toldmodes">
+      <button data-told="input" class="on" type="button">Input file</button>
+      <button data-told="command" type="button">Command</button>
+    </span>
+    <button class="mx" id="jobx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody">
+    <p class="why" id="toldwhat"></p>
+    <pre class="told" id="toldtext"></pre>
+    <p class="why" id="toldfirst" hidden></p>
+  </div>
+  <div class="mfoot">
+    <span class="why" id="toldslurm"></span>
+    <button class="btn sm" id="jobclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<script src="/static/picker.js"></script>
+<script src="/static/app.js"></script>
+<!--__CREDITBAR__-->
+</body>
+</html>

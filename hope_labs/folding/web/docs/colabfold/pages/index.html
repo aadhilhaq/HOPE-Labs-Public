@@ -1,0 +1,36 @@
+<h1>ColabFold on Grace</h1>
+<p class="lead">The lab's page for folding protein chains on the cluster, with the alignments fetched
+where there is a network and the prediction run where there is not.</p>
+
+<h2>What it does</h2>
+<p>ColabFold folds protein chains. One chain gives you a monomer; several chains
+give you a complex, predicted with AlphaFold-Multimer. This page runs it in two
+phases, described below, with a form in front of them.</p>
+<p>The page is part of HOPE Labs rather than part of ColabFold. It serves the form, writes
+a FASTA record, fetches the alignments, writes the job and queues it, and then reads the run folder
+back. The folding itself is ColabFold 1.6.2, exactly as installed, run through its own
+command line.</p>
+
+<h2>The one thing worth knowing first</h2>
+<p>A compute node on this cluster has no route to the internet. It resolves names and every
+connection fails. Both folding tools want an alignment from a server on the internet, so a run
+cannot be one job: the alignments are fetched on the login node, before anything is queued, and
+the prediction runs in a GPU job with no network at all. The page does both for you, in that
+order, when you press Submit. <a href="alignments.html">The two phases</a> explains what happens
+where and what it means when something goes wrong in one of them.</p>
+
+<h2>What this page does not do</h2>
+<p>Protein only. ColabFold has no model for a nucleic acid or a small molecule,
+and a form that offered either would be offering to fold the letters as amino acids and give you
+a confidence score for the result. If you need a nucleic acid or a ligand in the structure, use
+Boltz-2 instead.</p>
+<p>Relaxation is not offered either. The <code>--amber</code> family of options needs OpenMM and
+PDBFixer, and neither is installed in this environment; a run that asked for relaxation would
+fail at the very end, after the folding was done.</p>
+<p>Boltz-2 has a page of its own on this launcher, with the same form and the same two
+phases.</p>
+
+<h2>Where to start</h2>
+<p><a href="getting-started.html">Getting started</a> walks through one run from the beginning.
+<a href="entities.html">The sequences</a> is about the rows and what is checked in them, which is
+where most of a folding run's mistakes are made.</p>

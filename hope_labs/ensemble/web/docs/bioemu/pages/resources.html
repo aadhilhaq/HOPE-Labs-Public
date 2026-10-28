@@ -1,0 +1,55 @@
+<h1>Resources and submitting</h1>
+<p class="lead">What the job asks the scheduler for, which of the settings change what you get,
+and what the page checks before anything is queued.</p>
+
+<h2>What a job asks for</h2>
+<p>One GPU, four processor cores and 32 GB of memory, for the walltime you set. The card is what
+matters: sampling holds the whole chain on it, so a long sequence wants the largest card there
+is. Left on auto the job asks for the card this cluster's profile names as its default, which on
+Grace is an A100.</p>
+<p>The processor side of a run is light. Reading the samples afterwards is seconds and happens in
+the same job.</p>
+
+<h2>How long a run takes</h2>
+<p>A few hundred samples of a small protein is minutes on an A100. The cost is close to linear in
+the number of samples and grows with the length of the chain, so the honest way to plan a large
+run is to sample 100 first, read the time it took off the Runs screen, and scale.</p>
+<p>The first run of a sequence also waits for its alignment, which is a minute or two and happens
+before the job is queued, so it does not come out of the booking.</p>
+<p>The default walltime is two hours, which is generous for anything the page will accept. A job
+killed at its walltime leaves nothing: BioEmu writes its samples only once every batch has been
+drawn.</p>
+
+<h2>The settings that change what you get</h2>
+<p><strong>Structures to sample.</strong> How many draws. More samples is a better picture of the
+distribution and especially of its smaller populations, which is where the interesting answers
+usually are.</p>
+<p><strong>Model.</strong> Three checkpoints. <code>bioemu-v1.1</code> is the one the published
+paper reports, so it is the one a number taken from here can be compared against, and it is the
+default. <code>bioemu-v1.0</code> is the earlier preprint's. <code>bioemu-v1.2</code> was trained
+on more simulation and on measured folding free energies. Runs made on different checkpoints
+cannot be compared with one another, which is why the older ones are kept rather than
+removed.</p>
+<p><strong>Drop unphysical samples.</strong> BioEmu's own filter, on by default in the tool as
+well. It removes draws that are not physically sensible, a chain passing through itself and the
+like. Turn it off only if you want to see everything the model drew.</p>
+<p><strong>Seed.</strong> The same number gives the same samples again. Worth setting for anything
+that goes in a paper.</p>
+
+<h2>What is checked before anything is queued</h2>
+<p>The page checks as you type, field by field, and says what is wrong where you typed it: the
+sequence against the alphabet and both length limits, the number of samples against the least
+worth asking for, the alignment file against being there and being an <code>.a3m</code>, the
+walltime against what the partition allows.</p>
+<p>It also checks that the image is where it is supposed to be. A job that cannot find its tool
+fails a minute into a booking, and the reason is already known here.</p>
+
+<h2>Dry run</h2>
+<p>A dry run writes the run folder and the job script, fetches no alignment and queues nothing.
+It is the way to read exactly what would be submitted, and it costs no booking.</p>
+
+<h2>Where runs go</h2>
+<p>Your own scratch, in <code>bioemu_runs</code>, unless you name a folder yourself. A run is tens
+of megabytes once it has been tidied, so a few hundred of them is not a problem; what fills a
+scratch quota on this cluster is the number of files rather than their size, and a finished run
+packs its working files into one archive by itself.</p>

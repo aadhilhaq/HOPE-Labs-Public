@@ -1,0 +1,1085 @@
+/* HOPE Labs: the hub's page. The palette is HOPE-MD's, so the hub and the pages it opens read as
+   one thing, and the type and the spacing are the scale every page here shares
+   (hope_labs/pages/web/style.css): every size is a token on :root, every token multiplies by
+   --ui-scale, which the text-size control in each header sets, and no token is under 13px.
+
+   13px is the smallest anything (the bar along the bottom, hints, table headings), 14px labels
+   and secondary text, 15px body, inputs, buttons and chips, 17px card titles, 20px the page title.
+   Monospace is for a sequence, a residue list, a numeric column or a log, never for a box somebody
+   types a name, a time or a path into.
+
+   The flow canvas is a drawing with a zoom of its own, so its cards keep their own sizes (--nd-*)
+   whatever the text size. The cards the canvas puts in by itself are placed by a card's width,
+   214px (hope_flow/flow.py), and a card that grew with the text would land on its neighbors. */
+:root{
+  --ground:#eef3f3; --card:#ffffff; --ink:#0f1719; --dim:#5f6f71;
+  --line:#d7e2e2; --line-soft:#e7eeee; --wait:#e9f0f0;
+  --teal:#0d5c6b; --green:#146b47; --rust:#c2603a; --amber:#b07a1c;
+  --teal-soft:#e3eef0; --rust-soft:#f7ece7; --on-accent:#ffffff;
+  --alert:#b3261e; --on-alert:#ffffff;
+  --rail:#0b2b33; --rail-ink:#dcebee; --rail-dim:#8fb1b8; --rail-line:#143b45;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+
+  /* Each type token is its size times --ui-scale, and never under 13px. The floor is its own
+     per step rather than 13px for all five: with one floor, Smaller text ran four of them
+     together and a label, a line of body and a hint were drawn at one size on a tighter grid.
+     Each step keeps a size of its own at 80%, and the smallest is still 13px. */
+  --ui-scale:1;
+  --fs-xs:max(13px, calc(13px * var(--ui-scale)));
+  --fs-sm:max(13.5px, calc(14px * var(--ui-scale)));
+  --fs-md:max(14px, calc(15px * var(--ui-scale)));
+  --fs-lg:max(15.5px, calc(17px * var(--ui-scale)));
+  --fs-xl:max(17.5px, calc(20px * var(--ui-scale)));
+  --lh:1.45;
+
+  --sp-1:calc(4px * var(--ui-scale));
+  --sp-2:calc(8px * var(--ui-scale));
+  --sp-3:calc(12px * var(--ui-scale));
+  --sp-4:calc(16px * var(--ui-scale));
+  --sp-5:calc(20px * var(--ui-scale));
+  --sp-6:calc(28px * var(--ui-scale));
+
+  --ctl-h:calc(38px * var(--ui-scale));
+  --ctl-h-sm:calc(32px * var(--ui-scale));
+  --q-size:calc(22px * var(--ui-scale));
+  /* The dark column grows with the text, up to a share of the window. */
+  --railw:clamp(212px, calc(236px * var(--ui-scale)), 32vw);
+  --radius:12px; --radius-sm:8px;
+
+  /* The two side panes of the flow canvas, at their usual widths. */
+  --palw0:max(200px, calc(212px * var(--ui-scale))); --panw0:max(280px, calc(300px * var(--ui-scale)));
+  /* The drawing's own type, in its own pixels. --flow-eff is the scale the drawing is actually
+     drawn at - its own zoom times the text size - and applyZoom() in flow.js writes it on the
+     canvas every time either of them moves. A card's name is divided by it, so shrinking the
+     drawing lengthens the name's own pixels rather than the letters a person sees, and the name
+     is still 13px on the screen at the smallest the drawing goes.
+
+     It was declared here and never set, so every name was frozen at 14 of the drawing's pixels:
+     at the 38% the example opened at, "Target" was drawn at 5.3px and the socket under it at
+     4.9px, and the comment above said the opposite of what the page did.
+
+     The rest of a card's text is not stretched to match - a card is 214 of the drawing's pixels
+     wide and its sockets would not fit. Below .85 the card drops to its name alone and the
+     drawing reads as the shape of the flow (.canvasbox.overview), and fitZoom() will not shrink
+     it past half size, where a name at 13px no longer fits the card it is in. */
+  --flow-eff:1;
+  --nd-text:13px; --nd-x:18px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --on-accent:#0b1113;
+  --rail:#070e10; --rail-ink:#d7e5e8; --rail-dim:#86a5ac; --rail-line:#16262b; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --on-accent:#0b1113;
+  --rail:#070e10; --rail-ink:#d7e5e8; --rail-dim:#86a5ac; --rail-line:#16262b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:var(--fs-md);line-height:var(--lh);display:grid;
+  grid-template-columns:var(--railw) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;
+  overflow:hidden}
+/* The credits are the last row of the page rather than a strip laid over it. Fixed to the foot
+   of the window, it covered the bottom of both columns: the rail's last button could not be
+   pressed at all on a laptop, and the rail's own last line was sliced in half. */
+body > .creditbar{position:static;grid-column:1/-1;grid-row:2;height:auto;min-height:0;
+  padding:var(--sp-1) var(--sp-4);border-top:1px solid var(--line);background:var(--card);
+  font-size:var(--fs-xs);line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--teal)}
+
+/* ------------------------------------------------------------------ the dark column */
+.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;gap:2px;
+  padding:var(--sp-4) var(--sp-3);overflow-y:auto;min-width:0}
+.brand{display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-2) var(--sp-4);min-width:0}
+.brand svg{width:calc(28px * var(--ui-scale));height:calc(28px * var(--ui-scale));flex:0 0 auto}
+.brandtext{display:flex;flex-direction:column;min-width:0}
+.brand .nm{font-weight:600;font-size:var(--fs-xl);line-height:1.2;white-space:nowrap}
+.brand .sub{font-size:var(--fs-xs);color:var(--rail-dim);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.rlabel{font-size:var(--fs-xs);font-weight:600;color:var(--rail-dim);margin:var(--sp-4) var(--sp-2) var(--sp-1)}
+.ritem{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-2);
+  min-height:calc(34px * var(--ui-scale));border-radius:var(--radius-sm);border:0;background:none;
+  color:var(--rail-ink);width:100%;text-align:left;font-size:var(--fs-md);line-height:1.3}
+.ritem:hover{background:rgba(255,255,255,.07)}
+.ritem:focus-visible{outline:2px solid var(--rail-ink);outline-offset:-2px}
+.ritem.on{background:var(--teal);color:var(--on-accent);font-weight:600}
+.ritem .dot{width:calc(8px * var(--ui-scale));height:calc(8px * var(--ui-scale));border-radius:50%;
+  background:var(--rail-dim);flex:0 0 auto}
+.ritem .dot.up{background:#4cbf94;box-shadow:0 0 0 3px rgba(76,191,148,.18)}
+.ritem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ritem.quiet{color:var(--rail-dim);font-size:var(--fs-sm)}
+.ritem.quiet:hover{color:var(--rail-ink)}
+/* Nothing running: one line, not an empty gap where fifteen names used to be. */
+.ritem.railnone{margin:0;cursor:default}
+.ritem.railnone:hover{background:none}
+/* What is left of the column pushes the quiet items and the one line about cost to its foot. */
+.rspace{flex:1 0 var(--sp-3)}
+.rfoot{margin-top:var(--sp-2);padding:var(--sp-3) var(--sp-2) 0;font-size:var(--fs-xs);
+  color:var(--rail-dim);border-top:1px solid var(--rail-line)}
+.rfoot b{color:var(--rail-ink);font-weight:600}
+
+/* ------------------------------------------------------------------ the views */
+/* The views are laid out by the room they have at the size the text is drawn at: the container
+   queries below are in em of this column's own text, so 150% on a laptop gets the layout a
+   narrow window would, rather than a canvas squeezed between two wide panes. */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;container:hub / inline-size}
+/* A launcher older than the page: a red warning across the top of whichever view is open, so
+   it is seen at once. The red stays the same in the dark theme, where white on it still reads. */
+.oldlauncher{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-5);
+  background:var(--alert);color:var(--on-alert);font-size:var(--fs-md);font-weight:600;
+  line-height:var(--lh);flex:0 0 auto;flex-wrap:wrap}
+.oldlauncher .oldicon{flex:0 0 auto;display:inline-grid;place-items:center;
+  width:calc(26px * var(--ui-scale));height:calc(26px * var(--ui-scale));border-radius:50%;
+  background:var(--on-alert);color:var(--alert);font-size:var(--fs-lg);font-weight:700}
+.oldlauncher .oldtext{flex:1 1 calc(320px * var(--ui-scale));min-width:0}
+.oldlauncher a{color:var(--on-alert);text-decoration:underline;text-underline-offset:2px}
+.top{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-5);
+  border-bottom:1px solid var(--line);background:var(--card);flex:0 0 auto;flex-wrap:wrap;
+  row-gap:var(--sp-3)}
+.top h1{font-size:var(--fs-xl);margin:0;font-weight:600;line-height:1.2}
+.top .why{color:var(--dim);font-size:var(--fs-sm)}
+/* Never narrower than its words at the smallest text, which stays at 13px at 80% and 90%. */
+.top .pick{width:auto;max-width:max(170px, calc(170px * var(--ui-scale)))}
+/* The filters, a row of their own under the title, and no row at all while there are none.
+   Fifteen chips are four rows at 150% on a laptop, which pushed the runs themselves off the
+   screen, so where there is no room for the row the same filter is one box instead. */
+.topchips{flex:1 0 100%}
+.topchips:empty{display:none}
+.filterpick{display:none}
+.filterpick select{width:auto;max-width:min(100%, calc(280px * var(--ui-scale)))}
+@container hub (max-width:57.9em){
+  .chips.topchips{display:none}
+  .filterpick:not(:empty){display:block;flex:1 0 100%}
+}
+/* The word that starts a line saying what to do next. */
+.nextlab{font-weight:700;color:var(--teal);font-size:var(--fs-sm);margin-right:var(--sp-2)}
+.spacer{flex:1}
+.search{display:flex;align-items:center;gap:var(--sp-2);background:var(--wait);border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:0 var(--sp-3);min-height:var(--ctl-h-sm);
+  min-width:calc(220px * var(--ui-scale));color:var(--dim)}
+.search svg{width:calc(14px * var(--ui-scale));height:calc(14px * var(--ui-scale));flex:0 0 auto}
+.search input{border:0;background:none;outline:0;width:100%;min-width:0;font-size:var(--fs-md);
+  color:var(--ink)}
+.search:focus-within{border-color:var(--teal)}
+.chips{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.chip{font-size:var(--fs-md);padding:0 var(--sp-3);min-height:var(--ctl-h-sm);border-radius:999px;
+  border:1px solid var(--line);background:var(--card);color:var(--dim);line-height:1.3}
+.chip:hover{border-color:var(--teal);color:var(--teal)}
+.chip.on{background:var(--teal);border-color:var(--teal);color:var(--on-accent);font-weight:600}
+.chip .n{opacity:.75;margin-left:var(--sp-1);font-variant-numeric:tabular-nums}
+.body{flex:1;min-height:0;overflow:auto;padding:var(--sp-5)}
+
+/* ------------------------------------------------------------------ the tools */
+.toolgroups{display:flex;flex-direction:column;gap:var(--sp-6)}
+.toolsec h2{font-size:var(--fs-lg);font-weight:600;line-height:1.3;margin:0 0 var(--sp-3);
+  display:flex;align-items:baseline;gap:var(--sp-2)}
+.toolsec h2 .n{font-size:var(--fs-sm);font-weight:400;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,calc(300px * var(--ui-scale))),1fr));
+  gap:var(--sp-5)}
+.tool{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:var(--sp-4);
+  display:flex;flex-direction:column;gap:var(--sp-3);min-width:0;transition:border-color .12s,box-shadow .12s}
+.tool:hover{border-color:var(--teal);box-shadow:0 6px 20px rgba(13,92,107,.09)}
+.tool .head{display:flex;align-items:flex-start;gap:var(--sp-3)}
+.tool .titles{flex:1;min-width:0}
+.badge{width:calc(40px * var(--ui-scale));height:calc(40px * var(--ui-scale));border-radius:10px;
+  background:var(--teal-soft);color:var(--teal);display:flex;align-items:center;justify-content:center;
+  flex:0 0 auto}
+.badge svg{width:calc(22px * var(--ui-scale));height:calc(22px * var(--ui-scale))}
+.tool h3{margin:0;font-size:var(--fs-lg);font-weight:600;line-height:1.3;display:flex;align-items:center;
+  gap:var(--sp-2);flex-wrap:wrap}
+.tool .tag{font-size:var(--fs-sm);color:var(--dim);margin-top:2px}
+.tool .acts{margin-top:auto}
+.tool.absent .tag{opacity:.8}
+.state{font-size:var(--fs-xs);font-weight:600;padding:0 var(--sp-2);border-radius:999px;
+  background:var(--wait);color:var(--dim);line-height:1.6;white-space:nowrap}
+.state.up{background:rgba(76,191,148,.16);color:var(--green)}
+.state.off{background:var(--rust-soft);color:var(--rust)}
+.acts{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
+/* What a tool does, takes and leaves, in the dialog its ? opens. */
+.infolist{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:var(--sp-2) var(--sp-4);
+  margin:var(--sp-4) 0 0;font-size:var(--fs-md)}
+.infolist dt{color:var(--dim);font-size:var(--fs-sm);padding-top:1px}
+.infolist dd{margin:0;min-width:0}
+.infotext{margin:0 0 var(--sp-3);font-size:var(--fs-md);line-height:1.6}
+.dsheet.narrow{width:min(calc(560px * var(--ui-scale)),100%)}
+
+/* ------------------------------------------------------------------ buttons */
+.btn{border-radius:var(--radius-sm);padding:0 var(--sp-4);min-height:var(--ctl-h);font-size:var(--fs-md);
+  font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  line-height:1.25;text-align:center}
+.btn:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+.btn.pri,.btn.go{background:var(--teal);border-color:var(--teal);color:var(--on-accent)}
+.btn.pri:hover:not(:disabled),.btn.go:hover:not(:disabled){filter:brightness(1.08);color:var(--on-accent)}
+.btn.sm{min-height:var(--ctl-h-sm);padding:0 var(--sp-3);font-weight:500}
+.btn.go.sm{font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+/* A primary that cannot be pressed yet stays a filled button at full contrast, in gray rather
+   than the accent: a washed-out Launch reads as broken. */
+.btn.pri:disabled{opacity:1;background:var(--dim);border-color:var(--dim);color:var(--on-accent);
+  cursor:not-allowed}
+/* A hand-off to the next tool: quiet and inviting, not the rust this page uses for a fault. */
+.btn.next{border-color:var(--teal);color:var(--teal);background:transparent}
+.btn.next:hover:not(:disabled){background:var(--teal-soft)}
+.btn:focus-visible,.chip:focus-visible,.q:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+/* The ? that opens what a box, a card or a tool is for, rather than a paragraph under it. */
+.q{width:var(--q-size);height:var(--q-size);flex:0 0 auto;border:1px solid var(--line);border-radius:50%;
+  background:var(--card);color:var(--dim);font-size:var(--fs-xs);font-weight:700;line-height:1;padding:0;
+  display:inline-flex;align-items:center;justify-content:center}
+.q:hover,.q[aria-expanded="true"]{border-color:var(--teal);color:var(--teal)}
+
+/* ------------------------------------------------------------------ a tool's tab, while it starts */
+.toolbar{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-5);
+  background:var(--card);border-bottom:1px solid var(--line);flex-wrap:wrap;row-gap:var(--sp-2);
+  min-height:calc(56px * var(--ui-scale))}
+.toolbar svg{width:calc(24px * var(--ui-scale));height:calc(24px * var(--ui-scale));flex:0 0 auto}
+.toolbar .tname{font-size:var(--fs-xl);font-weight:600;line-height:1.2}
+.toolbar .why{color:var(--dim);font-size:var(--fs-sm)}
+.handoff{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-5);
+  background:var(--teal-soft);border-bottom:1px solid var(--line);flex-wrap:wrap;font-size:var(--fs-md)}
+.handoff .lb{font-size:var(--fs-sm);font-weight:600;color:var(--dim)}
+.handoff code{font-family:var(--sans);font-size:var(--fs-sm);overflow-wrap:anywhere;min-width:0}
+.wait{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-5) var(--sp-5);background:var(--card);
+  border-bottom:1px solid var(--line);font-size:var(--fs-md);line-height:var(--lh)}
+.wait b{font-size:var(--fs-lg)}
+.wait .why{color:var(--dim);font-size:var(--fs-sm)}
+.wait .spin{width:calc(22px * var(--ui-scale));height:calc(22px * var(--ui-scale));flex:0 0 auto}
+
+/* ------------------------------------------------------------------ results */
+table.runs{border-collapse:collapse;width:100%;font-size:var(--fs-md);table-layout:fixed}
+table.runs th{text-align:left;font-size:var(--fs-xs);color:var(--dim);font-weight:600;
+  padding:var(--sp-2);border-bottom:1px solid var(--line)}
+table.runs td{padding:var(--sp-2);border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.runs tr:hover td{background:var(--wait)}
+.runname{font-weight:600;display:flex;align-items:baseline;gap:var(--sp-1);min-width:0}
+.runpath{font-size:var(--fs-xs);color:var(--dim);overflow-wrap:anywhere;margin-top:2px}
+.toolchip{font-size:var(--fs-sm);padding:1px var(--sp-2);border-radius:999px;background:var(--teal-soft);
+  color:var(--teal);font-weight:600;white-space:nowrap}
+.runwhen{white-space:nowrap;color:var(--dim);font-size:var(--fs-sm)}
+/* Four columns of buttons do not fit a laptop at the larger text sizes: the table was 1666px
+   wide in a 1366px window, and what a person saw of their runs was the word "Run". So each run
+   becomes a block of its own instead, in the order it reads: the name and its folder, the tool
+   and when, then what to do next. The rows and the cells keep their places in the markup. */
+@container hub (max-width:57.9em){
+  table.runs,table.runs tbody,table.runs tr,table.runs td{display:block;width:auto}
+  table.runs thead{display:none}
+  table.runs tr.runrow{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+    padding:var(--sp-3);margin-bottom:var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-2)}
+  table.runs tr.runrow td{border:0;padding:0}
+  table.runs tr.runrow td:nth-child(2),table.runs tr.runrow td:nth-child(3){display:inline-block;
+    margin-right:var(--sp-3)}
+  table.runs tr:hover td{background:none}
+  table.runs tr.resrowwrap td{padding:0 0 var(--sp-3)}
+}
+.empty{color:var(--dim);font-size:var(--fs-md);padding:var(--sp-6) 2px;line-height:1.6;margin:0}
+.spin{display:inline-block;width:calc(14px * var(--ui-scale));height:calc(14px * var(--ui-scale));
+  border:2px solid var(--line);border-top-color:var(--teal);border-radius:50%;
+  animation:turn .7s linear infinite;vertical-align:-2px}
+@keyframes turn{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+/* Top right, under the header: the bottom right is where every view keeps its main button, and a
+   message about what just happened covered the button for what to do next. */
+/* What just happened, as a card that says what it is. A bare white box laid across the drawing
+   and over the top of the settings could be read as a card, a caption or a message, and it took
+   the clicks of whatever it covered; this has a name along its top, an X, and it lets the pointer
+   through to the page under it except on its own buttons. */
+.flash{flex:0 0 auto;display:flex;align-items:baseline;gap:var(--sp-3);background:var(--teal-soft);
+  border-bottom:1px solid var(--line);border-left:4px solid var(--teal);
+  padding:var(--sp-2) var(--sp-4);font-size:var(--fs-md);line-height:var(--lh);
+  color:var(--ink);flex-wrap:wrap;row-gap:var(--sp-1)}
+.flash.bad{background:var(--rust-soft);border-left-color:var(--rust)}
+.flash .flashhead{display:contents}
+.flash .flashwhat{flex:0 0 auto;font-size:var(--fs-sm);font-weight:700;color:var(--teal)}
+.flash.bad .flashwhat{color:var(--rust)}
+.flash .flashx{order:9;margin-left:auto;flex:0 0 auto;border:0;background:none;color:var(--dim);
+  font-size:var(--fs-lg);line-height:1;padding:0 var(--sp-2);border-radius:var(--radius-sm);
+  align-self:center}
+.flash .flashx:hover{background:var(--card);color:var(--ink)}
+.flash .flashsaid{flex:1 1 auto;min-width:0;white-space:pre-wrap}
+/* A small window: the dark column goes across the top. */
+@media (max-width:820px){
+  body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .rail{flex-direction:row;overflow-x:auto;padding:var(--sp-2);align-items:center}
+  .rail .rlabel,.rail .rfoot,.rail .rspace{display:none}
+  #railtools{display:flex;gap:2px}
+  .ritem{width:auto;white-space:nowrap}
+  .brand{padding:0 var(--sp-2) 0 var(--sp-1)}
+}
+
+/* ------------------------------------------------------------------ the flow canvas */
+/* The Flows head holds a flow's name and every way to keep or open one, so it is spaced closer
+   than the other heads, and fits one row on a laptop at 100%. */
+#view-flow > .top{column-gap:var(--sp-2)}
+#namebox{min-width:0;width:max(130px, calc(150px * var(--ui-scale)))}
+.flowwrap{flex:1;min-height:0;display:grid;position:relative;
+  grid-template-columns:var(--palw,var(--palw0)) minmax(0,1fr) var(--panw,var(--panw0))}
+/* The two inner edges a person can drag to make the cards or the settings wider: a strip nine
+   pixels wide over each edge, drawn as a line only while it is pointed at or dragged. */
+.panedrag{position:absolute;top:0;bottom:0;width:9px;margin-left:-4px;z-index:6;cursor:col-resize;
+  touch-action:none;outline:0}
+.panedrag::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:1px;background:transparent}
+.panedrag:hover::after,.panedrag:focus-visible::after,.panedrag.on::after{left:3px;width:3px;background:var(--teal)}
+.panedrag.l{left:var(--palw,var(--palw0))}
+.panedrag.r{left:calc(100% - var(--panw,var(--panw0)))}
+body.dragpane{cursor:col-resize;user-select:none}
+.palette{border-right:1px solid var(--line);background:var(--card);overflow:auto;padding:var(--sp-3);min-width:0}
+.rlabel.pl{color:var(--dim);margin:0 var(--sp-1) var(--sp-2);font-size:var(--fs-sm)}
+.palhead{font-size:var(--fs-xs);font-weight:600;color:var(--dim);margin:var(--sp-3) var(--sp-1) var(--sp-1)}
+.pcard{display:flex;align-items:center;gap:var(--sp-2);width:100%;text-align:left;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);padding:var(--sp-2);margin-bottom:var(--sp-1);
+  min-width:0;font-size:var(--fs-md);line-height:1.3;min-height:var(--ctl-h)}
+.pcard:hover{border-color:var(--teal);background:var(--teal-soft)}
+.pcard.start{border-color:var(--teal)}
+.pbadge{width:calc(26px * var(--ui-scale));height:calc(26px * var(--ui-scale));border-radius:7px;
+  background:var(--teal-soft);color:var(--teal);display:flex;align-items:center;justify-content:center;
+  flex:0 0 auto}
+.pbadge svg{width:calc(18px * var(--ui-scale));height:calc(18px * var(--ui-scale))}
+.pnames{display:flex;flex-direction:column;min-width:0}
+/* A card's name wraps rather than being cut: "HOPE-pipelin..." and "RFD4-Proteina" at the
+   larger text sizes were names nobody could read, in a column whose width is fixed. */
+.pname{font-size:var(--fs-sm);font-weight:600;min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.phint{font-size:var(--fs-sm);color:var(--dim);line-height:var(--lh);margin:var(--sp-2) var(--sp-1) 0}
+.palette .phint{margin:0 var(--sp-1) var(--sp-2)}
+
+/* the drawing: a dotted ground that scrolls, with the links under the cards */
+.canvasbox{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+.canvasgrid{flex:1;min-height:0;overflow:auto;background:var(--ground);
+  background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:23px 23px}
+/* The name's own size is worked out HERE and not on :root: a custom property is substituted
+   where the declaration that uses it sits, so --nd-name declared on :root read :root's
+   --flow-eff, which is 1, whatever the canvas itself carried - and every name stayed frozen at
+   14 of the drawing's pixels. On the element the scale is written on, each of the two drawings
+   (the canvas and the run view's stage) works out its own. */
+.canvas{position:relative;width:1180px;height:660px;
+  --nd-name:max(14px, calc(13px / var(--flow-eff)))}
+.wires{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.wires .wire{fill:none;stroke:var(--teal);stroke-width:2}
+.wires .wire.bad{stroke:var(--rust);stroke-dasharray:6 4}
+.wires .wire.live{stroke-dasharray:4 4;opacity:.85}
+.wires .hit{fill:none;stroke:transparent;stroke-width:14;pointer-events:stroke;cursor:pointer}
+/* a link into a card that has run: it says why it stays, and is not clicked off */
+.wires .hit.lockedin{cursor:default}
+/* An empty canvas says where to start, in the middle of it, rather than showing a dotted void. */
+.canvasempty{position:absolute;left:50%;top:var(--sp-6);transform:translateX(-50%);z-index:4;
+  display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding:var(--sp-5) var(--sp-6);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);text-align:center;
+  box-shadow:0 6px 20px rgba(0,0,0,.06);max-width:calc(100% - 32px)}
+.canvasempty p{margin:0;font-size:var(--fs-md);font-weight:600}
+
+.node{position:absolute;width:214px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);user-select:none;touch-action:none;font-size:var(--nd-text);
+  line-height:1.4}
+.node.on{border-color:var(--teal);box-shadow:0 6px 20px rgba(13,92,107,.14)}
+.nhead{display:flex;align-items:center;gap:8px;padding:8px 6px 7px 10px;cursor:grab}
+.nbadge{width:24px;height:24px;border-radius:7px;background:var(--teal-soft);color:var(--teal);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.nnames{display:flex;flex-direction:column;min-width:0;flex:1}
+.nname{font-size:var(--nd-name);font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.ntag{font-size:var(--nd-text);color:var(--dim)}
+.node .opt{font-size:var(--nd-text)}
+.nx{border:0;background:none;color:var(--dim);font-size:var(--nd-x);line-height:1;padding:2px 6px;border-radius:5px}
+.nx:hover{color:var(--rust);background:var(--rust-soft)}
+.socks{display:flex;flex-direction:column;border-top:1px solid var(--line-soft);padding:4px 0 6px}
+.sock{display:flex;align-items:center;gap:7px;width:100%;border:0;background:none;border-radius:6px;
+  padding:3px 10px;font-size:var(--nd-text);line-height:1.35;color:var(--ink);text-align:left;min-width:0}
+.col.out .sock{flex-direction:row-reverse;text-align:right}
+.sock .st{display:flex;align-items:baseline;gap:6px;min-width:0}
+.col.out .sock .st{justify-content:flex-end}
+.sock .dot{width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--teal);
+  flex:0 0 auto}
+.col.in .sock .dot{margin-left:-11px}
+.col.out .sock .dot{margin-right:-11px}
+/* a ring says several links may arrive here; one without it holds one */
+.sock .dot.many{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--teal)}
+.sock .sl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sock.ok{background:rgba(76,191,148,.14)}
+.sock.ok .dot{border-color:var(--green)}
+.sock.ok.hot{background:rgba(76,191,148,.3)}
+.sock.no{opacity:.5}
+.sock.no .dot{border-color:var(--rust);background:var(--rust-soft)}
+.sock.from .dot{background:var(--teal)}
+
+/* what is wrong with the flow, and the one button that waits for it to be nothing */
+.probbar{flex:0 0 auto;max-height:30%;overflow:auto;display:flex;align-items:center;gap:var(--sp-4);
+  border-top:1px solid var(--line);background:var(--card);padding:var(--sp-3) var(--sp-4)}
+.probs{flex:1;min-width:0}
+.problist{margin:0;padding-left:var(--sp-5);font-size:var(--fs-md);line-height:1.6}
+.problist li::marker{color:var(--rust)}
+.pgood{margin:0;font-size:var(--fs-md);color:var(--dim)}
+
+/* the panel: the picked card's settings, as the catalog describes them */
+.panel{border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:var(--sp-4);min-width:0}
+.ptitle{font-size:var(--fs-lg);font-weight:600;line-height:1.3;display:flex;align-items:center;gap:var(--sp-2)}
+.ptag{font-size:var(--fs-sm);color:var(--dim);margin:2px 0 var(--sp-3)}
+/* The one highlighted line a card's settings may carry. */
+.pnote{font-size:var(--fs-sm);font-weight:600;line-height:var(--lh);color:var(--ink);background:var(--teal-soft);
+  border-left:3px solid var(--teal);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  padding:var(--sp-2) var(--sp-3);margin:var(--sp-3) 0}
+.pnote.ran{color:var(--dim)}
+.pnote.fixedcard{color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:var(--sp-1);margin-bottom:var(--sp-3)}
+/* A field's name, and after it on the same line what it is (optional, set for you), its ? and what
+   it may be: in the flow of the text, so a long name keeps its ? beside its last word. */
+.flab{display:block;font-size:var(--fs-sm);font-weight:600;line-height:1.4}
+.flab > *{margin-left:var(--sp-2)}
+.opt{font-size:var(--fs-xs);color:var(--dim);font-weight:500}
+.opt.set{color:var(--teal);font-weight:600}
+/* A box that has become required because of what is on the canvas, and which card made it so. */
+.opt.needed{color:var(--rust);font-weight:600}
+
+/* ---- the structure question: one button, and what was chosen ---- */
+.field.structure .chosen{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--wait);padding:var(--sp-2) var(--sp-3);min-width:0}
+.field.structure .chosenname{font-size:var(--fs-md);font-weight:600;overflow-wrap:anywhere}
+.field.structure .chosenwhere{font-size:var(--fs-xs);color:var(--dim);overflow-wrap:anywhere}
+.field.structure .btn.pri{width:100%}
+/* The button that takes a person to what the line beside it told them to do. */
+.showme{margin-left:var(--sp-2)}
+/* What a number may be, at the end of its label rather than on a line of its own. */
+.fbounds{float:right;font-size:var(--fs-xs);color:var(--dim);font-weight:400;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.fhelp{margin:0;font-size:var(--fs-sm);color:var(--ink);line-height:var(--lh);background:var(--wait);
+  border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);font-weight:400}
+.fhelp p{margin:0}
+.panel > .fhelp{margin:var(--sp-2) 0 var(--sp-3)}
+.fhelp dl{margin:var(--sp-2) 0 0}
+.fhelp p:empty + dl,.fhelp dl:first-child{margin-top:0}
+.fhelp dt{font-weight:600}
+.fhelp dd{margin:0 0 var(--sp-1);color:var(--dim)}
+.box,.pick{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--wait);color:var(--ink);
+  padding:0 var(--sp-2);min-height:var(--ctl-h-sm);font-size:var(--fs-md);outline:0;width:100%;min-width:0}
+.box{font-variant-numeric:tabular-nums}
+.box:focus,.pick:focus{border-color:var(--teal)}
+.tick{width:calc(17px * var(--ui-scale));height:calc(17px * var(--ui-scale));accent-color:var(--teal);
+  align-self:flex-start;margin:2px 0}
+.slide{width:100%;accent-color:var(--teal)}
+.readout{font-size:var(--fs-sm);color:var(--dim);font-variant-numeric:tabular-nums}
+.why2{font-size:var(--fs-xs);color:var(--dim);line-height:var(--lh)}
+/* the fold in a card's settings: a quiet line rather than a button that competes with Launch */
+.panel .btn.more{width:100%;margin:var(--sp-2) 0 var(--sp-3);border-style:dashed;color:var(--dim)}
+.panel .btn.more:hover{color:var(--teal);border-color:var(--teal)}
+
+/* the drawing's zoom, over its bottom-left corner and outside the part that scrolls */
+.canvasarea{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+/* Two controls on one screen both reading "- 100 +" is one control too many: nobody could say
+   which made the words bigger. The one in the head is the text size, in a pill; this one is the
+   drawing, and it says so, in a bar with a magnifier and the word Drawing in front of it. */
+.zoombar{position:absolute;left:var(--sp-3);bottom:22px;display:flex;align-items:center;gap:var(--sp-1);
+  padding:var(--sp-1) var(--sp-2);background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius-sm);box-shadow:0 2px 10px rgba(0,0,0,.08);z-index:5;max-width:calc(100% - 24px)}
+.zoombar .zoomico{width:calc(16px * var(--ui-scale));height:calc(16px * var(--ui-scale));color:var(--dim);
+  margin:0 2px 0 0;flex:0 0 auto}
+.zoombar .zoomwhat{font-size:var(--fs-xs);font-weight:600;color:var(--dim);margin-right:var(--sp-1);
+  white-space:nowrap}
+.zoombar .btn{min-width:calc(32px * var(--ui-scale));padding:0 var(--sp-2)}
+.zoomlabel{font-variant-numeric:tabular-nums;min-width:calc(52px * var(--ui-scale))}
+/* Out of the way of the cards when the drawing's own pane is short: it sits on the ground the
+   drawing scrolls over, and at the larger text sizes that ground is a strip. */
+@container hub (max-width:57.9em){.zoombar{bottom:var(--sp-2);left:var(--sp-2)}}
+
+/* A laptop, or large text. Three columns do not fit: at 150% on a 1366 screen they left the
+   drawing a strip about 150px tall with its own zoom bar sitting on the cards. So the settings
+   come off the grid and slide over the drawing instead, as a drawer with its own Close, and
+   only while a card is picked. The drawing then keeps the whole of the room, which is what a
+   drawing is for, and nothing is stacked into a sliver. */
+@container hub (max-width:57.9em){
+  .flowwrap{grid-template-columns:var(--palw,calc(184px * var(--ui-scale))) minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr)}
+  .panedrag{display:none}
+  /* Down to the bar that holds Launch and the line about what to do next, and no further:
+     under it, a setting in the drawer's last hundred pixels could not be reached, and a press
+     on Launch was taken by the drawer. flow.js measures the bar into --probh. */
+  .panel{position:absolute;top:0;right:0;bottom:var(--probh,0px);z-index:8;
+    width:min(calc(340px * var(--ui-scale)),88%);border-left:1px solid var(--line);
+    box-shadow:-10px 0 28px rgba(0,0,0,.18)}
+  /* Nothing picked: the drawer is not a gray column standing open with one line in it. */
+  .panel.empty{display:none}
+  .panel .pclose{display:inline-flex}
+  /* The drawing never collapses: whatever is left after the head and the bar, but never less
+     than this, and the view scrolls to it rather than squeezing it away. */
+  .canvasbox{min-height:clamp(240px,46vh,420px)}
+  /* The bar that says what to do next, and holds Launch, stays on top of the drawer and out of
+     the dimming: the drawer covered it at 150% on a laptop, and a press on Launch was taken by
+     the settings instead. The drawer scrolls under it. */
+  .probbar{max-height:none;position:relative;z-index:9;background:var(--card)}
+}
+@container hub (max-width:40em){
+  .flowwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .palette{border-right:0;border-bottom:1px solid var(--line);max-height:34vh}
+  .palette #palette{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+  .palhead{flex:1 0 100%}
+  .pcard{width:auto;margin:0}
+  .palette .phint{display:none}
+}
+/* Over the drawing the settings are on top of, and no further: the cards on the left are still
+   there to be added, and dimming them would be saying they were not. */
+.paneback{display:none;position:absolute;top:0;right:0;bottom:0;z-index:7;
+  left:var(--palw,calc(184px * var(--ui-scale)));background:rgba(10,18,20,.35)}
+@container hub (max-width:57.9em){.paneback:not([hidden]){display:block;bottom:var(--probh,0px)}}
+@container hub (max-width:40em){.paneback{left:0}}
+/* The drawer's own Close, drawn only where the settings are a drawer. */
+.panel .pclose{display:none;position:absolute;top:var(--sp-2);right:var(--sp-2);border:0;
+  background:var(--card);color:var(--dim);font-size:var(--fs-lg);line-height:1;padding:var(--sp-1) var(--sp-2);
+  border-radius:var(--radius-sm);align-items:center;justify-content:center}
+.panel .pclose:hover{background:var(--wait);color:var(--ink)}
+
+/* ------------------------------------------------------------------ the plan, and a flow running */
+/* Both stand where the canvas stands, and both put what commits something in a bar along the
+   bottom, where Launch is on the canvas: the button that costs money is always in the same place. */
+.sheet{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--ground)}
+.sheetbody{flex:1;min-height:0;overflow:auto;padding:var(--sp-5) var(--sp-5) var(--sp-6)}
+/* a plan is read rather than scanned, so its column stops short of a wide screen's full width */
+.sheetwide{max-width:calc(860px * var(--ui-scale));margin:0 auto}
+.sheetbar{flex:0 0 auto;display:flex;align-items:center;gap:var(--sp-3);border-top:1px solid var(--line);
+  background:var(--card);padding:var(--sp-3) var(--sp-4);flex-wrap:wrap;row-gap:var(--sp-2)}
+.sheetbar .probs{flex:1;min-width:calc(150px * var(--ui-scale))}
+.sheethead h2,.runhead h2{font-size:var(--fs-xl);margin:0 0 var(--sp-1);font-weight:600;line-height:1.25;
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.sheetwhy{margin:0 0 var(--sp-4);font-size:var(--fs-md);color:var(--dim);line-height:var(--lh)}
+.plab{font-size:var(--fs-sm);font-weight:600;color:var(--dim)}
+.pathrow{display:flex;align-items:center;gap:var(--sp-2);min-width:0;flex-wrap:wrap}
+.pathrow code{font-family:var(--sans);font-size:var(--fs-sm);color:var(--dim);overflow-wrap:anywhere;min-width:0}
+.runbad{margin:0;font-size:var(--fs-md);color:var(--rust);line-height:var(--lh)}
+
+.planwhere{display:flex;flex-direction:column;gap:var(--sp-1);margin:0 0 var(--sp-4)}
+.planotes,.planbad{border:1px solid var(--line);border-radius:var(--radius);padding:var(--sp-3) var(--sp-4);
+  margin:0 0 var(--sp-4)}
+.planotes{background:rgba(176,122,28,.11);border-color:var(--amber)}
+.planbad{background:var(--rust-soft);border-color:var(--rust)}
+.notelist{margin:var(--sp-1) 0 0;padding-left:var(--sp-5);font-size:var(--fs-md);line-height:1.6}
+.planotes .notelist li::marker{color:var(--amber)}
+.planbad .notelist li::marker{color:var(--rust)}
+.plansteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-3)}
+.planstep{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:var(--sp-3) var(--sp-4)}
+.psthead{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-2)}
+.pstn{display:inline-flex;align-items:center;justify-content:center;width:calc(24px * var(--ui-scale));
+  height:calc(24px * var(--ui-scale));border-radius:50%;background:var(--teal);color:var(--on-accent);
+  font-size:var(--fs-xs);font-weight:700;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.pstname{font-size:var(--fs-lg);font-weight:600}
+.pstafter{font-size:var(--fs-sm);color:var(--dim)}
+.pstfacts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:var(--sp-1) var(--sp-4);margin:0;
+  font-size:var(--fs-md)}
+.pstfacts dt{font-size:var(--fs-sm);color:var(--dim);font-weight:600;padding-top:1px}
+.pstfacts dd{margin:0;min-width:0;overflow-wrap:anywhere;line-height:var(--lh)}
+
+.runhead{flex:0 0 auto;background:var(--card);border-bottom:1px solid var(--line);padding:var(--sp-3) var(--sp-5)}
+.runline{display:flex;align-items:center;gap:var(--sp-2) var(--sp-3);flex-wrap:wrap}
+.runhow{font-size:var(--fs-sm);color:var(--dim)}
+/* The stage beside the drawing holds its results - pictures, structures, tables - so it is given
+   room for them; the drawing shrinks to fit whatever is left. */
+.runsplit{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(calc(360px * var(--ui-scale)),40%)}
+.runcards{border-left:1px solid var(--line);background:var(--card);overflow:auto;padding:var(--sp-4);
+  display:flex;flex-direction:column;gap:var(--sp-3);min-width:0}
+.rcard{border:1px solid var(--line);border-left:3px solid var(--line);border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.rcard.queued{border-left-color:var(--amber)}
+.rcard.running{border-left-color:var(--teal)}
+.rcard.done{border-left-color:var(--green)}
+.rcard.failed,.rcard.stopped{border-left-color:var(--rust)}
+.rchead{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.rcnote{margin:0;font-size:var(--fs-md);line-height:var(--lh)}
+.rcjobs,.rcwhere{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rcjobs code{font-size:var(--fs-sm);color:var(--dim);overflow-wrap:anywhere}
+.rcwhen{font-size:var(--fs-sm);color:var(--dim)}
+
+/* the state word, the same on a card in the drawing and in the list beside it */
+.sp{font-size:var(--fs-xs);font-weight:600;padding:0 var(--sp-2);border-radius:999px;line-height:1.6;
+  background:var(--wait);color:var(--dim);white-space:nowrap;flex:0 0 auto;text-transform:capitalize}
+.sp.ready,.sp.running{background:var(--teal-soft);color:var(--teal)}
+.sp.queued{background:rgba(176,122,28,.15);color:var(--amber)}
+.sp.done{background:rgba(76,191,148,.16);color:var(--green)}
+.sp.failed,.sp.stopped{background:var(--rust-soft);color:var(--rust)}
+.node .sp{font-size:var(--nd-text);padding:0 7px}
+
+/* a watched card: read rather than rewired, with its state on its own edge */
+.node.watched,.node.watched .nhead,.node.watched .sock{cursor:default}
+.node.watched.queued{border-color:var(--amber)}
+.node.watched.running{border-color:var(--teal);box-shadow:0 6px 20px rgba(13,92,107,.14)}
+.node.watched.done{border-color:var(--green)}
+.node.watched.failed,.node.watched.stopped{border-color:var(--rust)}
+.nrun{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 10px 7px}
+.nrun .njobs{font-size:var(--nd-text);color:var(--dim);font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;min-width:0}
+.node .nnote{font-size:var(--nd-text);color:var(--rust);line-height:1.4;padding:0 10px 7px;
+  overflow-wrap:anywhere}
+/* On the drawing of a flow being watched, a few lines of the note: the whole is in its tooltip, and
+   a card made tall by a traceback pushed every other card off a drawing fitted to its space. */
+.node.watched .nnote{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;
+  line-clamp:4;overflow:hidden;padding-bottom:0;margin-bottom:7px}
+/* a link goes solid once what it carries exists, so the drawing fills in as the flow runs */
+.wires .wire.ran{stroke:var(--green)}
+.wires .wire.pending{opacity:.3;stroke-dasharray:5 5}
+
+@container hub (max-width:57.9em){
+  /* Stacked, the drawing and the stage were each too short to read as two panes of a laptop's
+     height, so the run view scrolls as one page instead: the drawing at a height of its own, the
+     stage at its natural height under it, and the bar of buttons held at the bottom. */
+  #flowrun{overflow-y:auto}
+  .runsplit{flex:0 0 auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}
+  #runcanvasgrid{flex:none;height:clamp(220px,42vh,380px)}
+  .runcards{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  #flowrun .sheetbar{position:sticky;bottom:0;z-index:4}
+}
+/* The same treatment for a window that is short rather than narrow. Side by side, the drawing
+   takes whatever height the window leaves it, and on a 1280 by 720 laptop that was 200 pixels for
+   a flow 585 tall: below the smallest scale allowed, the bottom row of cards was cut off at the
+   drawing's edge, which reads as cards missing. A height query rather than a container one,
+   because the container is declared on inline-size and nothing beside the run view takes its
+   height the way the rail takes its width. The threshold is the height at which both panes still
+   work: a drawing needs about 320 pixels to hold a five-card flow at a size its names can be read
+   at, and the headers and the bar of buttons take the rest. */
+@media (max-height:53em){
+  #flowrun{overflow-y:auto}
+  .runsplit{flex:0 0 auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}
+  #runcanvasgrid{flex:none;height:clamp(220px,42vh,380px)}
+  .runcards{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  #flowrun .sheetbar{position:sticky;bottom:0;z-index:4}
+}
+/* With no drawing to show - a flow whose folder could not be read - the stage takes the whole
+   width, rather than the drawing's column with an empty gray one beside it. */
+.runsplit > .canvasgrid[hidden] + .runcards{grid-column:1/-1;border-left:0}
+@container hub (max-width:40em){
+  .sheetbody{padding:var(--sp-3) var(--sp-3) var(--sp-5)}
+  .pstfacts{grid-template-columns:minmax(0,1fr);gap:1px 0}
+  .pstfacts dt{padding-top:var(--sp-2)}
+}
+
+/* a caution, which the flow can be queued with */
+.problist.warn li{color:var(--rust)}
+.problist.warn li::marker{color:var(--rust)}
+
+/* ------------------------------------------------------------------ dialogs */
+/* Over the page rather than beside it. Called dsheet and not sheet: .sheet is already the plan
+   view and the run view, and giving the dialog that name put a 760px box round both of them. */
+.sheetback{position:fixed;inset:0;background:rgba(10,18,20,.45);display:flex;align-items:center;
+  justify-content:center;padding:var(--sp-5);z-index:50}
+.dsheet{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 18px 48px rgba(0,0,0,.28);width:min(calc(760px * var(--ui-scale)),100%);max-height:90vh;
+  overflow:auto;padding:var(--sp-5) var(--sp-5)}
+.dsheet.wide{width:min(calc(980px * var(--ui-scale)),100%)}
+.sheettitle{margin:0 0 var(--sp-1);font-size:var(--fs-lg);font-weight:600;line-height:1.3}
+.sheetlead{margin:0 0 var(--sp-3);color:var(--dim);font-size:var(--fs-md)}
+.sheettext,.sheetline{width:100%;box-sizing:border-box;background:var(--ground);color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);font:inherit;
+  font-size:var(--fs-md)}
+.sheettext{resize:vertical;min-height:calc(110px * var(--ui-scale))}
+.sheetline{margin-top:var(--sp-2);min-height:var(--ctl-h)}
+.sheettext:focus,.sheetline:focus{outline:2px solid var(--teal);outline-offset:1px}
+.sheetnote{margin:var(--sp-3) 0 0;color:var(--dim);font-size:var(--fs-sm);line-height:var(--lh)}
+.sheetpre{margin:var(--sp-3) 0 0;max-height:40vh;overflow:auto;background:var(--wait);
+  border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--sp-3);font-family:var(--mono);
+  font-size:var(--fs-xs);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.sheetacts{display:flex;gap:var(--sp-2);justify-content:flex-end;margin-top:var(--sp-4);flex-wrap:wrap}
+.sheetsays{margin:var(--sp-2) 0 0;font-size:var(--fs-sm);color:var(--dim);min-height:1em}
+
+/* Numbers and walltimes, with their own arrows. The wrapper is .numbox and not .spin: .spin is
+   the loading spinner above, and giving a number field that name turned every one of them into a
+   small circle with no box in it. The browser's own spinner is a few pixels of target, and on a
+   touchpad it is unhittable, so the arrows are drawn. */
+.numbox{position:relative;display:flex}
+/* Never shorter than its two arrows at the smallest text, which stays at 13px when the box would
+   shrink with the rest. */
+.numbox .box{flex:1 1 auto;padding-right:calc(30px * var(--ui-scale));min-width:0;
+  min-height:max(32px, var(--ctl-h-sm))}
+/* Firefox's spinner and WebKit's come off separately; neither honors the other's rule. */
+.numbox .box[type=number]{appearance:textfield;-moz-appearance:textfield}
+.numbox .box::-webkit-outer-spin-button,
+.numbox .box::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
+.numbox .arrows{position:absolute;top:1px;right:1px;bottom:1px;width:calc(26px * var(--ui-scale));display:flex;
+  flex-direction:column;border-left:1px solid var(--line);border-radius:0 7px 7px 0;overflow:hidden}
+.numbox .arrows button{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;
+  border:0;background:var(--wait);color:var(--dim);font-size:var(--fs-xs);line-height:1;padding:0;
+  cursor:pointer}
+.numbox .arrows button:hover{background:var(--teal-soft);color:var(--teal)}
+
+/* A field the card answers for itself: shown, so the answer is visible, and not offered, so
+   nobody fills in something the run will ignore. */
+.field.fixed .box,.field.fixed .pick,.field.fixed .tick{opacity:.6;cursor:not-allowed}
+
+/* Ticks, for a list of names that have to be spelled the way the tool spells them. */
+.ticklist{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--wait);padding:var(--sp-2);
+  max-height:calc(230px * var(--ui-scale));overflow:auto}
+.tickrow{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);cursor:pointer;min-height:calc(26px * var(--ui-scale))}
+.tickrow .tick{align-self:center;flex:0 0 auto;margin:0}
+.tickname{font-weight:500}
+.tickacts{display:flex;gap:var(--sp-2);margin-top:var(--sp-1);flex-wrap:wrap}
+
+/* Looking inside a run folder. Wider than the report sheet because a listing with sizes and
+   dates on it needs the room, and because a table read in place is the point of it. */
+.crumbs{display:flex;gap:var(--sp-2);margin:var(--sp-2) 0 2px}
+/* The path box, with Up before it: any folder can be typed, and Up goes one folder at a time. */
+.pathbar{align-items:center;margin:var(--sp-3) 0 var(--sp-2)}
+.pathbox{flex:1 1 auto;min-width:0;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--ground);color:var(--ink);padding:0 var(--sp-3);min-height:var(--ctl-h-sm);
+  font-family:var(--sans);font-size:var(--fs-sm)}
+.pathbox:focus{outline:2px solid var(--teal);outline-offset:1px}
+.pathbar .btn:disabled{opacity:.45;cursor:default}
+/* The one line worth reading in the browser: where Up stops, or why a path did not open. */
+.pathnote{margin:0 0 var(--sp-2);padding:var(--sp-2) var(--sp-3);border-left:3px solid var(--teal);
+  border-radius:0 6px 6px 0;background:var(--teal-soft);color:var(--ink);font-size:var(--fs-sm);font-weight:600}
+.pathnote.bad{border-left-color:var(--rust);background:var(--rust-soft)}
+.filelist{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:auto;max-height:46vh;
+  background:var(--wait)}
+.filerow{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) var(--sp-3);
+  border-bottom:1px solid var(--line-soft);min-height:calc(40px * var(--ui-scale))}
+.filerow:last-child{border-bottom:0}
+.filename{flex:1 1 auto;min-width:0;text-align:left;background:none;border:0;padding:0;
+  font:inherit;font-size:var(--fs-md);color:var(--ink);cursor:pointer;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.filename.isdir{font-weight:600;color:var(--teal)}
+.filename:disabled{cursor:default;color:var(--dim)}
+.filename:hover:not(:disabled){text-decoration:underline}
+.filesize,.filewhen{flex:0 0 auto;font-size:var(--fs-sm);color:var(--dim);font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.filesize{min-width:calc(66px * var(--ui-scale));text-align:right}
+.filewhen{min-width:calc(90px * var(--ui-scale));text-align:right}
+
+/* The fixer: what is left to fix, one at a time, with a way to each. */
+.fixhead{display:flex;align-items:center;gap:var(--sp-3);margin:2px 0 var(--sp-2);flex-wrap:wrap}
+.fixcount{font-weight:600;font-size:var(--fs-md)}
+.fixlist{margin:0;padding-left:var(--sp-5);font-size:var(--fs-sm);max-height:calc(160px * var(--ui-scale));overflow:auto}
+.fixrow{display:flex;align-items:baseline;gap:var(--sp-2);padding:3px 0}
+.fixrow .fixtext{flex:1 1 auto;min-width:0}
+.fixrow .btn{flex:0 0 auto}
+.fixrow.on .fixtext{font-weight:600}
+.fixrow.failure .fixtext{color:var(--rust)}
+.fixdone{font-weight:600}
+/* Where the eye should land. Fades on its own, so it never stays to be mistaken for an error. */
+@keyframes fixme{0%{box-shadow:0 0 0 0 rgba(13,92,107,.55)}
+  70%{box-shadow:0 0 0 7px rgba(13,92,107,0)}100%{box-shadow:0 0 0 0 rgba(13,92,107,0)}}
+.fixme{animation:fixme 1.2s ease-out 2;outline:2px solid var(--teal);outline-offset:2px;
+  border-radius:var(--radius-sm)}
+@media (prefers-reduced-motion:reduce){.fixme{animation:none}}
+.fixwhy{margin:0 0 var(--sp-2);padding:var(--sp-2) var(--sp-3);border-left:3px solid var(--rust);
+  background:var(--rust-soft);border-radius:0 6px 6px 0;font-size:var(--fs-sm)}
+.fixwhy .btn{margin-left:var(--sp-2)}
+
+/* A run's results, under its row and on a flow card. */
+.runrow{cursor:pointer}
+.runrow:hover td{background:var(--teal-soft)}
+.chev{display:inline-block;width:1em;color:var(--teal);flex:0 0 auto}
+.resrowwrap td{padding:0 var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line)}
+.respanel{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:var(--sp-3) var(--sp-4)}
+.resacts{margin-bottom:var(--sp-2)}
+.respart{margin-top:var(--sp-4)}
+.reshead{font-size:var(--fs-sm);font-weight:600;color:var(--ink);margin-bottom:var(--sp-2)}
+.reshead .n{font-weight:400;color:var(--dim)}
+.reslist{display:flex;flex-direction:column;gap:2px}
+.resrow{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) 0;border-bottom:1px solid var(--line-soft)}
+.resrow:last-child{border-bottom:0}
+.resrow .btn{flex:0 0 auto;white-space:nowrap}
+.resname{flex:1 1 auto;min-width:0;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resdir{color:var(--dim)}
+.thumbs{display:flex;flex-wrap:wrap;gap:var(--sp-3)}
+.thumb{width:calc(156px * var(--ui-scale));border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--wait);padding:var(--sp-2);cursor:zoom-in;display:flex;flex-direction:column;gap:var(--sp-1);
+  text-align:left}
+.thumb img{width:100%;height:calc(100px * var(--ui-scale));object-fit:contain;background:#fff;border-radius:4px}
+.thumbname{font-size:var(--fs-xs);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thumbnone{height:calc(100px * var(--ui-scale));display:flex;align-items:center;justify-content:center;
+  border-radius:4px;background:var(--card);color:var(--dim);font-size:var(--fs-xs);text-align:center}
+.thumb:hover{border-color:var(--teal)}
+
+/* Shown large. */
+.bighead{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.bighead .sheettitle{flex:1 1 auto;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bigbody{display:flex;flex-direction:column;gap:var(--sp-2)}
+.molstage{position:relative;width:100%;height:min(62vh,560px);border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:#fff;overflow:hidden}
+.molbar{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.bigpic{max-width:100%;max-height:70vh;object-fit:contain;align-self:center;background:#fff;border-radius:6px}
+.bigvideo{width:100%;max-height:70vh;background:#000;border-radius:6px}
+.tablewrap{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius-sm)}
+.datatable th{position:sticky;top:0;background:var(--card);z-index:1}
+.datatable th.sortable{cursor:pointer;user-select:none}
+.datatable td{font-family:var(--mono);font-size:var(--fs-xs)}
+
+/* A run card, compact: what it is and how it stands, where its work went, what can be done. */
+.rchead .rcwhen{margin-left:auto}
+.rcmeta{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;min-width:0;font-size:var(--fs-sm);
+  color:var(--dim)}
+.rcjob{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rcmeta .pathrow{min-width:0;flex:1 1 calc(220px * var(--ui-scale));flex-wrap:nowrap}
+.rcmeta .pathrow code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+
+/* The run view's head: what it is, how far it has got, and the stages in the order they run. */
+.runtitle{display:flex;align-items:center;gap:var(--sp-3)}
+.runtitle h2{margin:0;font-size:var(--fs-xl)}
+.runread{margin-left:auto;font-size:var(--fs-sm);color:var(--dim)}
+.progrow{display:flex;align-items:center;gap:var(--sp-3);margin:var(--sp-2) 0 var(--sp-2)}
+.progress{position:relative;flex:1 1 auto;height:8px;border-radius:999px;background:var(--wait);overflow:hidden}
+.progfill{position:absolute;left:0;top:0;bottom:0;background:var(--green);border-radius:999px;
+  transition:width .4s ease}
+.progfill.held{background:var(--amber)}
+/* The stage working now: striped, and moving, so it reads as under way rather than as done. */
+.progpart{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,
+  var(--teal) 0 6px,var(--teal-soft) 6px 12px);background-size:17px 17px;
+  animation:progmove 1s linear infinite;opacity:.85}
+@keyframes progmove{from{background-position:0 0}to{background-position:17px 0}}
+@media (prefers-reduced-motion:reduce){.progpart{animation:none}}
+/* A stage whose job is waiting for a node: the amber its word is drawn in, and still. */
+.progqueued{position:absolute;top:0;bottom:0;background:var(--amber);opacity:.5}
+.progtext{font-size:var(--fs-sm);color:var(--dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+.stepper{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-1);margin:2px 0 var(--sp-2)}
+.stepjoin{width:calc(14px * var(--ui-scale));height:1px;background:var(--line)}
+.step{display:inline-flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-3) 0 var(--sp-1);
+  min-height:var(--ctl-h-sm);border-radius:999px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font:inherit;font-size:var(--fs-sm);cursor:pointer;user-select:none}
+.step:hover{border-color:var(--teal)}
+.step.on{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-soft)}
+.stepmark{display:inline-flex;align-items:center;justify-content:center;width:calc(22px * var(--ui-scale));
+  height:calc(22px * var(--ui-scale));border-radius:50%;font-size:var(--fs-xs);line-height:1;
+  background:var(--wait);color:var(--dim)}
+.step.done .stepmark{background:var(--green);color:var(--on-accent)}
+.step.failed .stepmark,.step.stopped .stepmark{background:var(--rust);color:var(--on-accent)}
+.step.running .stepmark{background:var(--teal);color:var(--on-accent);
+  animation:steppulse 1.6s ease-in-out infinite}
+/* Queued is waiting for a node, not working: amber like its word, and it does not pulse. */
+.step.queued .stepmark{background:var(--amber);color:var(--on-accent)}
+@keyframes steppulse{50%{box-shadow:0 0 0 4px var(--teal-soft)}}
+@media (prefers-reduced-motion:reduce){.step.running .stepmark{animation:none}}
+.stepname{white-space:nowrap}
+
+/* The banner: what broke and what to do, or that it has all finished. */
+.runbanner{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin:var(--sp-3) var(--sp-5) 0;
+  padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-sm);border:1px solid var(--rust);
+  background:var(--rust-soft);font-size:var(--fs-md)}
+.runbanner.good{border-color:var(--green);background:var(--teal-soft)}
+.runbannertext{flex:1 1 calc(360px * var(--ui-scale));line-height:var(--lh)}
+/* What broke, kept to three lines: a note can be a traceback, and the banner sits over the drawing.
+   The whole of it is in the tooltip and in the stage beside the drawing. */
+.runbannerwhy{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;
+  overflow:hidden}
+
+/* The stage chosen, on the drawing and beside it. */
+.node.picked{box-shadow:0 0 0 3px var(--teal)}
+
+/* ------------------------------------------------------------------ the drawing zoomed out */
+/* Below .85 of full size a card's own text would be drawn under 13px, so it is not drawn small:
+   it is not drawn. What is left is the card's name, held at 13px on the screen by --nd-name, and
+   the dots, so the shape of the flow and every link in it still read. Clicking a card still opens
+   its settings, and Fit, + and the wheel bring the detail back. */
+/* The class sits on the drawing itself, because there are two drawings: the canvas, which has
+   its own zoom, and the run view's stage, which is fitted to its pane. Both shrink the same way
+   and both carry --flow-eff, so both read these. */
+.canvas.overview .ntag,
+.canvas.overview .sock .sl,
+.canvas.overview .node .nnote,
+.canvas.overview .node .njobs,
+.canvas.overview .node .sp,
+.canvas.overview .nx{display:none}
+.canvas.overview .nname{white-space:normal;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.canvas.overview .nhead{padding:8px 10px}
+.canvas.overview .socks{padding:2px 0 4px}
+.canvas.overview .sock{padding:2px 10px;min-height:14px}
+/* One quiet line over the drawing while it is small, so nobody takes the shape for the whole. */
+.overviewsays{position:absolute;left:50%;transform:translateX(-50%);top:var(--sp-2);
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  padding:2px var(--sp-3);font-size:var(--fs-xs);color:var(--dim);z-index:5;pointer-events:none;
+  white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.stagehead{margin-bottom:var(--sp-1)}
+.stagegallery{margin-top:var(--sp-3)}
+.stagegallery .resacts{flex-wrap:wrap}
+.stagelog{margin-top:var(--sp-3)}
+.runcards .why,.respanel .why,.bigbody .why{margin:var(--sp-1) 0;font-size:var(--fs-sm);color:var(--dim)}
+.logtail{margin:var(--sp-1) 0 var(--sp-2);max-height:calc(240px * var(--ui-scale));overflow:auto;
+  background:var(--wait);border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);
+  font-family:var(--mono);font-size:var(--fs-xs);line-height:1.45;white-space:pre-wrap;word-break:break-word}
+
+/* ------------------------------------------------------------------ a cluster new to HOPE Labs */
+.newcluster{max-width:calc(760px * var(--ui-scale));border:1px solid var(--line);border-left:4px solid var(--teal);
+  border-radius:var(--radius);background:var(--card);padding:var(--sp-5);display:flex;flex-direction:column;
+  gap:var(--sp-3)}
+.newcluster h2{margin:0;font-size:var(--fs-lg);font-weight:600;line-height:1.3}
+.newcluster .why{margin:0;line-height:var(--lh);color:var(--dim);font-size:var(--fs-sm)}
+.newcluster .why.lead{color:var(--ink);font-size:var(--fs-md)}
+.ncrow{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.ncinput{flex:1;min-width:calc(220px * var(--ui-scale));border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--card);color:var(--ink);padding:0 var(--sp-3);min-height:var(--ctl-h);
+  font-family:var(--sans);font-size:var(--fs-md)}
+.ncinput:focus{outline:2px solid var(--teal);outline-offset:1px}
+.nclog{margin:0;max-height:calc(220px * var(--ui-scale));overflow:auto;background:var(--wait);border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);font-family:var(--mono);font-size:var(--fs-xs);
+  line-height:1.5;white-space:pre-wrap}
+#nc-ask{display:flex;flex-direction:column;gap:var(--sp-3)}
+.ncmore{font-size:var(--fs-sm)}
+.ncmore summary{cursor:pointer;color:var(--teal);margin-bottom:var(--sp-2);font-weight:600}
+/* The spaces found on the cluster: one row each, the folder, its room, and what can be done. */
+.ncspaces{display:flex;flex-direction:column;gap:var(--sp-2)}
+.ncspace{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);background:var(--card)}
+.ncspace.has{border-left:4px solid var(--green)}
+.ncspace.off{opacity:.65}
+.ncspace .where{font-size:var(--fs-md);flex:1;min-width:calc(200px * var(--ui-scale));overflow-wrap:anywhere}
+.ncspace .room{font-size:var(--fs-sm);color:var(--dim);font-variant-numeric:tabular-nums}
+.ncspace .room.low{color:var(--rust)}
+/* The warning's own Dismiss button, readable on the red. After .btn and .btn.sm so it wins. */
+.oldlauncher .btn{background:transparent;color:var(--on-alert);border-color:var(--on-alert);font-weight:600}
+.oldlauncher .btn:hover{background:rgba(255,255,255,.15);color:var(--on-alert)}
+.oldlauncher .btn:focus-visible{outline:2px solid var(--on-alert);outline-offset:2px}
+
+/* ------------------------------------------------------------------ the text-size control */
+/* Smaller, the size now (press it to go back to 100%), larger: the same control every page of
+   the lab's carries in its header. */
+.hlzoom{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);overflow:hidden;flex:0 0 auto}
+.hlzoom button{border:0;background:none;color:var(--ink);font-size:var(--fs-sm);
+  min-height:var(--ctl-h-sm);padding:0 var(--sp-2);line-height:1}
+.hlzoom .hlzoom-out,.hlzoom .hlzoom-in{font-size:var(--fs-lg);font-weight:600;
+  min-width:calc(32px * var(--ui-scale))}
+.hlzoom .hlzoom-pct{min-width:calc(56px * var(--ui-scale));font-variant-numeric:tabular-nums;
+  color:var(--dim);border-left:1px solid var(--line-soft);border-right:1px solid var(--line-soft)}
+.hlzoom button:hover:not(:disabled){background:var(--teal-soft);color:var(--teal)}
+.hlzoom button:disabled{color:var(--dim);opacity:.4;cursor:default}
+.hlzoom button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+
+/* ------------------------------------------------------------------ the bar along the bottom */
+/* The bar is the documentation kit's (hope_labs/docskit.py), put into the page by the launcher,
+   and on its own it rolls the credits across the window when they do not fit. Here it is one
+   still line instead, cut where the window ends, and Credits opens the whole statement above it
+   (stillCredits in app.js and tool.js). Its own rules come after this sheet, so these are a
+   step more particular than they are. The roll measures the credits before anything else runs,
+   and they are wrapped here so that it finds they fit: the line is cut by the clamp, not by a
+   width the roll would see. */
+body .creditbar{height:auto;min-height:calc(32px * var(--ui-scale));line-height:var(--lh);font-size:var(--fs-xs);
+  padding:var(--sp-1) var(--sp-4);gap:0 var(--sp-2);flex-wrap:wrap;align-items:center;color:var(--dim)}
+.creditbar span.credittext{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:1;line-clamp:1;overflow:hidden;flex:1 1 0;min-width:0;text-overflow:ellipsis}
+.creditbar .hlc-more{flex:0 0 auto;border:0;background:none;color:var(--teal);font-size:var(--fs-xs);
+  font-weight:600;padding:2px var(--sp-1);text-decoration:underline;border-radius:4px}
+.creditbar .hlc-more:hover{color:var(--ink)}
+.creditbar .hlc-all{flex:1 0 100%;order:-1;max-height:45vh;overflow:auto;padding:var(--sp-2) 0 var(--sp-3);
+  margin-bottom:var(--sp-1);border-bottom:1px solid var(--line-soft);color:var(--ink);line-height:1.55}
+.creditbar .hlc-all p{margin:0 0 var(--sp-1)}
+.creditbar .hlc-all ul{margin:var(--sp-2) 0 0;padding-left:var(--sp-5);color:var(--dim)}
+/* No room kept clear along the foot. The bar is the last row of this grid, not a strip laid
+   over the page, so a page that also held 34px clear left a dead band under the bar: the dark
+   column and the main column both ended above it, the last tool in the column and the last row
+   of a table were drawn into it, and on a laptop they could not be reached at all. The inlined
+   rules ask for that room for a bar of their own that is fixed; this outranks them. */
+html body{padding-bottom:0}
+
+/* ------------------------------------------------------------------ the structure browser */
+/* The dialog is one module shared by every page of ours, and its script was copied into app.js
+   without its styles: in the hub it drew black blobs for icons, no two panes, and the folders
+   scattered down the page. This is that block from hope_labs/pages/web/style.css, so the hub's
+   browser is the browser people have already used on the tool pages. tests/test_page_source.py
+   holds the two together; hope_labs/web is served by the launcher and cannot link to the file. */
+.inp{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);
+  padding:var(--sp-2) var(--sp-3);font-size:var(--fs-md);line-height:1.3;color:var(--ink);
+  min-height:var(--ctl-h)}
+select.inp{font-family:var(--sans)}
+.inp:focus{outline:2px solid var(--teal-soft);border-color:var(--teal)}
+.inp.bad{border-color:var(--rust);box-shadow:0 0 0 1px var(--rust)}
+.inp::placeholder{color:var(--dim);opacity:.8}
+
+/* ---------------------------------------------------------------- a modal dialog
+   The shape every <dialog> of ours takes: a title bar, a body that scrolls, a foot of buttons. */
+dialog.hlmodal{border:1px solid var(--line);border-radius:var(--radius);padding:0;background:var(--card);
+  color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.25);max-height:calc(100vh - 32px)}
+dialog.hlmodal::backdrop{background:rgba(8,14,16,.45)}
+.hlmodal .mhead{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--line)}
+.hlmodal .mhead h2{font-size:var(--fs-lg);margin:0;font-weight:600;flex:1 1 auto}
+.hlmodal .mbody{padding:var(--sp-3) var(--sp-4);font-size:var(--fs-md);line-height:1.6;overflow:auto}
+.hlmodal .mbody p{margin:0 0 var(--sp-2)}
+.hlmodal .mfoot{display:flex;gap:var(--sp-2);align-items:center;justify-content:space-between;
+  padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line)}
+.hlmodal .mx,.hlp .hlp-x{border:0;background:none;color:var(--dim);font-size:var(--fs-xl);line-height:1;
+  width:calc(34px * var(--ui-scale));height:calc(34px * var(--ui-scale));border-radius:var(--radius-sm)}
+.hlmodal .mx:hover,.hlp .hlp-x:hover{background:var(--wait);color:var(--ink)}
+
+/* ---------------------------------------------------------------- the structure browser
+   /static/picker.js. Places down the left, the folder on show on the right. */
+dialog.hlp{width:min(calc(880px * var(--ui-scale)),calc(100vw - 32px));
+  height:min(calc(600px * var(--ui-scale)),calc(100vh - 32px))}
+dialog.hlp[open]{display:flex;flex-direction:column}
+.hlp .hlp-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+.hlp .hlp-head h2{font-size:var(--fs-lg);font-weight:600;margin:0;flex:1 1 auto}
+.hlp .hlp-body{display:grid;grid-template-columns:calc(230px * var(--ui-scale)) minmax(0,1fr);
+  flex:1 1 auto;min-height:0}
+.hlp .hlp-places{border-right:1px solid var(--line);padding:var(--sp-2);overflow-y:auto;
+  background:var(--ground)}
+.hlp .hlp-place{display:flex;align-items:center;gap:var(--sp-2);width:100%;border:0;background:none;
+  text-align:left;padding:var(--sp-2);border-radius:var(--radius-sm);font-size:var(--fs-md);color:var(--ink);
+  line-height:1.3}
+.hlp .hlp-place:hover{background:var(--wait)}
+.hlp .hlp-place.on{background:var(--teal-soft);color:var(--teal);font-weight:600}
+.hlp .hlp-place:focus-visible,.hlp .hlp-row:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.hlp .hlp-pl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlp .hlp-sep{height:1px;background:var(--line);margin:var(--sp-2) var(--sp-1)}
+.hlp .hlp-sec{display:flex;align-items:center;gap:var(--sp-2);width:100%;border:0;background:none;
+  text-align:left;font-size:var(--fs-xs);font-weight:600;color:var(--dim);padding:var(--sp-3) var(--sp-2) var(--sp-1);
+  border-radius:6px}
+.hlp .hlp-sec::after{content:"\25BE";margin-left:auto;font-size:var(--fs-xs)}
+.hlp .hlp-sec[aria-expanded=false]::after{content:"\25B8"}
+.hlp .hlp-sec:hover{color:var(--ink)}
+.hlp .hlp-sec:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.hlp .hlp-count{font-weight:500;background:var(--wait);border-radius:999px;padding:0 var(--sp-2)}
+.hlp .hlp-ic{width:calc(18px * var(--ui-scale));height:calc(18px * var(--ui-scale));flex:0 0 auto;
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:var(--dim)}
+.hlp .hlp-place.on .hlp-ic{color:var(--teal)}
+.hlp .hlp-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.hlp .hlp-bar{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);
+  border-bottom:1px solid var(--line-soft);flex:0 0 auto}
+.hlp .hlp-crumbs{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-1);
+  flex-wrap:wrap;font-size:var(--fs-sm);color:var(--dim)}
+.hlp .hlp-c{border:0;background:none;padding:2px var(--sp-1);border-radius:6px;color:var(--teal);
+  font-size:var(--fs-sm);text-decoration:underline}
+.hlp .hlp-c:hover{background:var(--teal-soft)}
+.hlp .hlp-c.here{color:var(--ink);font-weight:600;text-decoration:none}
+.hlp .hlp-cs{color:var(--dim)}
+.hlp .hlp-filter{flex:0 0 calc(160px * var(--ui-scale));min-width:0;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);padding:var(--sp-1) var(--sp-2);
+  font-size:var(--fs-sm);min-height:var(--ctl-h-sm)}
+.hlp .hlp-list{flex:1 1 auto;overflow-y:auto;padding:var(--sp-1) 0}
+.hlp .hlp-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;border:0;background:none;
+  text-align:left;padding:var(--sp-2) var(--sp-4);font-size:var(--fs-md);color:var(--ink);line-height:1.3}
+.hlp .hlp-row:hover:not(:disabled){background:var(--wait)}
+.hlp .hlp-row.up .hlp-name{color:var(--dim)}
+.hlp .hlp-row.userun{background:var(--teal-soft);color:var(--teal);font-weight:600;margin:var(--sp-1) 0}
+.hlp .hlp-row.userun .hlp-ic{color:var(--teal)}
+.hlp .hlp-row.file .hlp-ic{color:var(--teal)}
+.hlp .hlp-row.off{color:var(--dim);cursor:default}
+.hlp .hlp-row.dir .hlp-ic:last-child{margin-left:auto;width:calc(14px * var(--ui-scale))}
+.hlp .hlp-name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlp .hlp-size{margin-left:auto;flex:0 0 auto;color:var(--dim);font-size:var(--fs-sm);
+  font-variant-numeric:tabular-nums}
+.hlp .hlp-empty{color:var(--dim);font-size:var(--fs-md);padding:var(--sp-3) var(--sp-4);margin:0}
+.hlp .hlp-empty.bad{color:var(--rust)}
+.hlp .hlp-pane{padding:var(--sp-5) var(--sp-4);display:flex;flex-direction:column;align-items:flex-start;
+  gap:var(--sp-3)}
+.hlp .hlp-lead{font-size:var(--fs-md);font-weight:600;margin:0}
+.hlp .hlp-hint{font-size:var(--fs-sm);color:var(--dim);margin:0}
+.hlp .hlp-codeline{display:flex;gap:var(--sp-2)}
+.hlp .hlp-code{width:calc(140px * var(--ui-scale))}
+.hlp .hlp-foot{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-top:1px solid var(--line);flex:0 0 auto}
+.hlp .hlp-says{flex:1 1 auto;min-width:0;font-size:var(--fs-sm);color:var(--dim)}
+.hlp .hlp-says.bad{color:var(--rust)}
+.hlp.busy .hlp-list,.hlp.busy .hlp-places{opacity:.55;pointer-events:none}
+.hlp.over{outline:3px dashed var(--teal);outline-offset:-6px}
+@media (max-width:640px){
+  .hlp .hlp-body{grid-template-columns:1fr}
+  .hlp .hlp-places{max-height:30vh;border-right:0;border-bottom:1px solid var(--line)}
+}
+/* The hub's own, after the block above and a step more particular than it. Only here do the
+   places say whose folder each is - "HOPE-MD runs, sflab's" beside "HOPE-MD runs, yours" - and
+   held to one line those names were cut in the middle of a word in a 156px column. They wrap. */
+.hlp .hlp-place{align-items:flex-start}
+.hlp .hlp-place .hlp-ic{margin-top:2px}
+.hlp .hlp-pl{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}

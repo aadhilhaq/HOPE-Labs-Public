@@ -1,0 +1,117 @@
+<h1>The binder</h1>
+<p class="lead">What kind of binder to design, how long it should be, how many to make, how many
+of those to keep, and the settings that change how the model generates them.</p>
+
+<h2 id="what-to-design">What to design</h2>
+<p><b>What to design</b> is BoltzGen's protocol, and it is the whole of what the model is being
+asked. It is the first thing to choose and the one setting a run cannot be queued without a
+decision on.</p>
+<table>
+<tr><th>Protocol</th><th>What it designs</th></tr>
+<tr><td><code>protein-anything</code></td><td>A protein binder against a target of any kind. The
+default, and the right answer for a protein receptor.</td></tr>
+<tr><td><code>peptide-anything</code></td><td>A peptide binder. Use a short length range with
+this, and see <b>Cyclic peptide</b> below.</td></tr>
+<tr><td><code>nanobody-anything</code></td><td>A nanobody, with the framework the model knows and
+the loops designed.</td></tr>
+<tr><td><code>antibody-anything</code></td><td>An antibody, in the same way.</td></tr>
+<tr><td><code>protein-small_molecule</code></td><td>A protein binder against a small molecule
+target rather than a protein one. <b>Refused here and in a flow</b>, because the target it would
+need is not one this page can hand over: see below.</td></tr>
+<tr><td><code>protein-redesign</code></td><td>Redesign of a binder that is already there, rather
+than a new one.</td></tr>
+</table>
+<p>A peptide and a nanobody against the same target are two different runs. There is no setting
+that turns one into the other, which is why this is a protocol and not a tick box.</p>
+
+<h2 id="the-length-range">The length range</h2>
+<p><b>Shortest</b> and <b>Longest</b> are the binder's own length, and they go into the
+specification as a range the model samples inside, written <code>70..100</code>.</p>
+<div class="note"><b>This is the binder's length, not the complex's.</b> BoltzGen also has a
+setting for the length of the whole complex, target included, which it satisfies by resampling
+until something fits. That is not what this form sets, and it is deliberately left out: a number
+that includes the target is a number nobody can reason about, and the run leaves it to the model.</div>
+<p>The default 70 to 100 residues is a small folded miniprotein. For a peptide protocol, something
+like 12 to 20 is more appropriate.</p>
+
+<h2 id="how-many-designs">How many designs, and how many you keep</h2>
+<p><b>Designs to generate</b> is the size of the run. Each design is generated, inverse folded,
+re-folded with the target and scored, so the cost per design is higher here than in a tool that
+only generates. Ten is the default.</p>
+<p>The ranking at the end comes from an analysis step over all of them, and that step is the part
+that has been reported running out of card memory at a hundred designs. Several runs of twenty are
+safer than one of a hundred, and they can be read together.</p>
+<p><b>Designs to keep</b> is the other half of the same question, and BoltzGen's pipeline is built
+around the pair: it generates many, then a filtering stage picks a set out of them spread for
+variety rather than taking the top of one list. BoltzGen's own default for the first number is ten
+thousand, which is the figure its documentation uses, and the ceiling on the box here is that.
+What a run can actually reach is the walltime.</p>
+<p>Empty keeps every design that passed, which is what a run with ten designs wants. Fill it in
+when the first number is large: two thousand designs kept down to thirty is the shape the tool
+was written for.</p>
+
+<h2 id="the-model-s-own-settings">The model's own settings</h2>
+<p>These sit behind <b>More settings</b>, because the protocol's own defaults are the considered
+answer for almost every run.</p>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td><b>Cyclic peptide</b></td><td>Asks for a cyclic binder, by adding one line to the
+specification. It applies to the peptide protocols; on a protein protocol it is ignored by the
+model rather than refused.</td></tr>
+<tr><td><b>Step scale</b></td><td>BoltzGen's <code>--step_scale</code>. It scales the diffusion
+step, and despite how it reads it is not a count of steps. 0 leaves the protocol's own value
+alone, which is what almost every run should do.</td></tr>
+<tr><td><b>Fold and score designs</b></td><td>On by default, and the ranking comes from it:
+the designs are re-folded with the target and scored, and that score is the order they come out
+in. Turning it off stops the run after generation and inverse folding, which is faster and leaves
+the designs unranked and <code>designs.json</code> in no meaningful order.</td></tr>
+<tr><td><b>Noise scale</b></td><td>The companion to the step scale, and the same shape: BoltzGen
+uses a schedule for both unless it is given a fixed figure. Its own example is 0.98. Empty leaves
+the schedule alone.</td></tr>
+<tr><td><b>Model</b></td><td>BoltzGen ships two design models and uses both by default, half the
+designs from each. <code>diverse</code> gives more varied designs and <code>adherence</code> ones
+that stick closer to what was asked.</td></tr>
+</table>
+<div class="note"><b>Turning off folding turns off the only filter in the run.</b> Without it,
+what you get is whatever the model generated, with no check that it folds that way. It is useful
+for seeing quickly whether a target and a protocol produce anything at all, and it is not a
+shortcut to designs worth taking further.</div>
+
+<h2 id="the-sequences">The sequences</h2>
+<p><b>Sequences per design</b> is how many sequences the inverse-folding step writes for each
+backbone. One is BoltzGen's own default and is what this page always used, whatever the sister
+tools were set to.</p>
+<p><b>Excluded amino acids</b> are letters the sequences may not use, written as
+<code>KEC</code>. Empty takes the protocol's own answer, which is nothing for protein design and
+cysteine for the peptide, nanobody and antibody protocols.</p>
+<div class="note"><b>It replaces the protocol's list rather than adding to it.</b> On a peptide,
+nanobody or antibody protocol, typing <code>KE</code> here allows cysteine back in, because the
+<code>C</code> the protocol would have excluded is no longer in the list. Include it yourself:
+<code>KEC</code>. The job says so in its log when the letters it is given leave cysteine in on
+one of those protocols.</div>
+
+<h2 id="the-filtering-stage">The filtering stage</h2>
+<p>What <b>Designs to keep</b> sets in motion, and two settings that shape it.</p>
+<p><b>Quality against variety</b> is the trade the selection makes: 0 picks the best designs by
+the ranking and 1 the most different ones from each other. Empty takes the protocol's own figure,
+which is close to 0 for everything but peptides. It is worth moving only when a kept set comes
+back looking like thirty copies of one answer.</p>
+<p><b>Drop lopsided sequences</b> is on, which is BoltzGen's own default: it takes out designs
+made mostly of alanine, glycine, glutamate, leucine or valine, which is what a model does when it
+has nothing better to say. Turn it off only to see what was taken out.</p>
+
+<h2 id="what-the-form-does-not-offer">What the form does not offer</h2>
+<p><b>The small-molecule protocol.</b> It is on the menu and it is refused, on this page and in a
+flow. It designs against the target's own ligand, and every design run is given the receptor
+cleaned to its polymer residues, so by the time the target arrives the ligand is not in the file.
+A run would write a specification naming a molecule nobody handed over and spend a card finding
+out. BoltzGen can do this from a specification of its own; it is not something this form can
+feed it.</p>
+<p><b>Nucleic-acid targets.</b> The cleaned receptor keeps DNA and RNA residues, so a nucleic
+target reaches the page, but the chains of a structure are read here by their amino acids: a DNA
+chain is no chain of the target and the run stops saying so. That is a change to the job rather
+than a setting, and until it is made this page designs against protein targets.</p>
+<p><b>The three list-valued filters.</b> BoltzGen takes extra hard filters, per-metric ranking
+weights and size buckets, each as a list of expert expressions such as
+<code>design_ALA&gt;0.3</code>. They are real and they are not one-line answers; a run that needs
+them is a run to start from BoltzGen's own command line.</p>

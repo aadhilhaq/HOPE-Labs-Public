@@ -1,0 +1,38 @@
+<h1>RFD4-Proteina on Grace</h1>
+<p class="lead">Designs a binder by stating what has to be in the right place and letting the
+model build to it. This page queues that run on a GPU node and records every design with its own
+sequence.</p>
+
+<h2 id="what-it-is">What it is</h2>
+<p>RFD4-Proteina is a generative model for biomolecules from the Institute for Protein Design and
+NVIDIA. A design problem is written as a <b>condition spec</b>: a starting structure, a statement
+of which parts of it to keep, and a set of conditions saying what the model is allowed to know
+about them. Everything this page does is build that spec from the boxes on the form, which is why
+the preview under them is worth reading before you submit.</p>
+<p>The conditions are the point. The target's backbone can be held rigid while its side chains
+stay free, its sequence can be revealed or withheld, and particular residues can be marked as
+ones the binder must reach. Those are three separate statements rather than one setting, and the
+model obeys only what it is given.</p>
+
+<h2 id="beside-the-others">It stands beside the other design tools</h2>
+<p>RFdiffusion, RFdiffusion3, BoltzGen and this one are all on the Tools page, all have a card on
+the canvas, and all hand on the same thing: a complex with the binder placed on the target, and
+the binder's sequence. Nothing has been retired and no saved flow has changed.</p>
+<p>What makes this one different in practice is how it is installed. It runs from a single
+container image rather than from an environment, so there is no package tree to maintain and
+nothing of it in your scratch. <a href="resources.html#the-image">Resources and submitting</a>
+says what that means for a run.</p>
+
+<h2 id="what-a-run-does">What a run does</h2>
+<ol>
+<li>Converts the target to an annotated mmCIF, which is the only form a condition spec reads.</li>
+<li>Writes the spec: the contig naming the binder's length and the target's residues, and the
+conditions holding the target and marking the hotspots.</li>
+<li>Generates the designs on the GPU, inside the tool's own image.</li>
+<li>Reads each design back, works out which chain is the binder, and writes
+<code>designs.json</code>, which is what the next card reads.</li>
+</ol>
+<div class="note"><b>Nothing scores these designs.</b> The run is composed without the refolding
+oracles, so no design comes back with a confidence, an interface score or a ranking. That is
+deliberate: scoring needs AlphaFold or OpenFold3 beside the model, and a design run that waited
+on them would be a folding run as well. Fold the designs afterwards to rank them.</div>

@@ -1,0 +1,99 @@
+# Builds the tool images in images/ and publishes them on GitHub's registry, where a cluster pulls
+# each as one file (images/README.md). Only in the public repository: it is the one whose packages
+# anyone may pull, and the lab's own repository has nothing to publish that this one does not.
+#
+# Runs when a recipe changes on main, and from the Actions tab. A new package starts private on
+# GitHub whatever the repository is; its owner makes it public once, from the package's settings,
+# and it stays public for every version after.
+name: tool images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "images/**"
+      - ".github/workflows/images.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  rfd4-proteina:
+    if: github.repository == 'aadhilhaq/HOPE-Labs-Public'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/aadhilhaq/hope-labs-rfd4-proteina
+      UPSTREAM: RosettaCommons/RFD4-Proteina
+      # The tool as released (pyproject 0.0.3), built with its own Dockerfile. CUDA 12, because
+      # that is what the drivers on the clusters HOPE Labs runs on take.
+      COMMIT: aaccdd2ad0720c180468df5f9cf037a713d403e5
+      VERSION: 0.0.3
+      ACCELERATOR: cu12
+    steps:
+      - name: Room for a CUDA image
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ env.COMMIT }}
+          path: upstream
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: upstream
+          file: upstream/Dockerfile
+          platforms: linux/amd64
+          build-args: RFD4_ACCELERATOR=${{ env.ACCELERATOR }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}-${{ env.ACCELERATOR }}
+            ${{ env.IMAGE }}:${{ env.ACCELERATOR }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=RFD4-Proteina ${{ env.VERSION }} (${{ env.ACCELERATOR }})
+            org.opencontainers.image.description=RFD4-Proteina by the Baker Lab and NVIDIA, built from ${{ env.UPSTREAM }} at ${{ env.COMMIT }} for HOPE Labs. No weights.
+            org.opencontainers.image.licenses=BSD-3-Clause
+            org.opencontainers.image.version=${{ env.VERSION }}
+
+  bioemu:
+    if: github.repository == 'aadhilhaq/HOPE-Labs-Public'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/aadhilhaq/hope-labs-bioemu
+      VERSION: 1.4.1
+    steps:
+      - name: Room for a CUDA image
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: images/bioemu
+          platforms: linux/amd64
+          build-args: BIOEMU_VERSION=${{ env.VERSION }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=BioEmu ${{ env.VERSION }}
+            org.opencontainers.image.description=BioEmu by Microsoft Research, from PyPI, for HOPE Labs. No weights.
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ env.VERSION }}

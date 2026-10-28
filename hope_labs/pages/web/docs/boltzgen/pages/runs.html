@@ -1,0 +1,52 @@
+<h1>The Runs screen</h1>
+<p class="lead">Every run you can read, newest first, with its Slurm state, what it has written so
+far, the ranked designs once it has finished, and the log.</p>
+
+<h2 id="the-list">The list</h2>
+<p><b>Mine</b> lists the runs you submitted or own; <b>Everyone</b> lists every run in the folders
+this page was started with, which on a shared install is how you find a colleague's run. The dot
+on the left is the Slurm state: amber queued, teal and blinking running, green finished, rust
+stopped, and hollow for a run with no job, which is what a dry run looks like.</p>
+<p>The list reads the run folders and the queue again every twenty five seconds while the screen
+is open, and not at all while it is put away. The circular arrow at the top right reads them at
+once.</p>
+
+<h2 id="what-the-tiles-say">What the tiles say</h2>
+<table>
+<tr><th>Tile</th><th>What it counts</th></tr>
+<tr><td><b>designs</b></td><td>How many designs are in <code>designs.json</code>. That file is
+written when the run finishes, so a run still going shows a dash here rather than a zero: none
+written yet and none found are different things.</td></tr>
+<tr><td><b>designs</b> (on disk)</td><td>How many structures are in the final ranked folder. This
+fills only at the end, after the analysis step, because that is when BoltzGen writes it.</td></tr>
+<tr><td><b>considered</b></td><td>How many structures are in the intermediate ranked folder. This
+is the honest measure of progress during the middle of a run.</td></tr>
+<tr><td><b>asked for</b></td><td>What was asked for when the run was submitted, with the card and
+the walltime beside it.</td></tr>
+</table>
+<p>A BoltzGen run is quiet for a long stretch and then produces everything at once, which is worth
+knowing before you conclude it has stalled. The log is the better guide while it is in the middle
+of generating.</p>
+
+<h2 id="what-was-asked-for">What was asked for</h2>
+<p>Under the tiles is the target, the hotspots, the binder length, where the results are and who
+submitted it, read from <code>submission.json</code> in the run folder. The buttons beside it
+download the files worth having: <code>designs.json</code>, the plan the job was given, the job
+script itself and the full log.</p>
+
+<h2 id="cancel-and-queue-again">Cancel and Queue again</h2>
+<p>While a job is queued or running, <b>Cancel the job</b> runs <code>scancel</code> on it. Slurm
+decides whether you may: it is your job or it is not. What is already on disk stays in the run
+folder.</p>
+<p>Once a job is over, the button becomes <b>Queue again</b>, which sends the same job script back
+to Slurm. It starts from the beginning: there is no checkpoint, so queueing again after a timeout
+repeats the work rather than continuing it.</p>
+
+<h2 id="the-log">The log</h2>
+<p>The last couple of hundred lines of the job's Slurm output, newest at the bottom, read fresh
+each time the run is opened. <b>Full log</b> downloads the whole file.</p>
+<p>The log is where the run says what it is doing: the hotspot conversion and the line confirming
+it survived into the specification, the BoltzGen command line it ran, then the pipeline's own
+progress through its steps, then how many rows it read out of the metrics table and which designs
+were dropped. <a href="messages.html">What the messages mean</a> covers the lines worth
+knowing.</p>

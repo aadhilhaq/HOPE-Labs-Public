@@ -1,0 +1,4103 @@
+{
+ "rules": 4,
+ "kinds": {
+  "target": "a receptor, with the chains and the residues a binder should touch",
+  "receptor": "a prepared receptor, with the chains and the residues a binder should touch",
+  "structure": "a predicted structure, with no site named on it yet",
+  "sequences": "named peptide or protein sequences, without structures",
+  "complexes": "structures of a binder already placed on the target",
+  "poses": "docked poses, ranked, in a run folder",
+  "prepared": "structures prepared molecule by molecule, ready to build",
+  "trajectories": "simulated complexes, with their binding energies"
+ },
+ "dockable_max_length": 30,
+ "linker_families": {},
+ "cards": [
+  {
+   "key": "target",
+   "name": "Target",
+   "tagline": "what everything is aimed at",
+   "tool": "",
+   "note": "",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "structure",
+     "label": "a folded structure",
+     "kinds": [
+      "structure"
+     ],
+     "required": false,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "source",
+     "label": "Where it comes from",
+     "kind": "choice",
+     "default": "rcsb",
+     "choices": [
+      "rcsb",
+      "file",
+      "folded"
+     ],
+     "why": "a four-character RCSB id, a file on the cluster, or the structure a folding card hands in",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "assembly",
+     "label": "Which copy to fetch",
+     "kind": "choice",
+     "default": "asu",
+     "choices": [
+      "asu",
+      "1",
+      "2",
+      "3",
+      "4"
+     ],
+     "why": "an assembly is built from the deposited coordinates and the symmetry, and comes only as mmCIF, which is converted to PDB for the flow",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "asu": "the asymmetric unit, as deposited",
+      "1": "the first biological assembly, built from the symmetry",
+      "2": "the second, where the entry has one",
+      "3": "the third",
+      "4": "the fourth"
+     },
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "why": "the structure comes from a file, so this is left alone"
+        },
+        "folded": {
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "pdb_id",
+     "label": "PDB id",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fetched on a login node and copied into the flow. An entry too large for the PDB format is fetched as mmCIF and converted, and refused where it cannot be",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "optional": true,
+         "placeholder": "not read: the structure comes from the file below",
+         "why": "the structure comes from a file, so this is left alone"
+        },
+        "folded": {
+         "optional": true,
+         "placeholder": "not read: the structure is folded for this card",
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "path",
+     "label": "Structure file",
+     "kind": "path",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "source",
+       "cases": {
+        "file": {
+         "optional": false,
+         "why": "the file the flow reads the receptor from, on the cluster"
+        },
+        "rcsb": {
+         "placeholder": "not read: the structure is fetched by its id",
+         "why": "the structure is fetched by its PDB id, so this is left alone"
+        },
+        "folded": {
+         "placeholder": "not read: the structure is folded for this card",
+         "why": "the structure arrives from a folding card, so this is left alone"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "chains",
+     "label": "Chains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "empty takes every chain in the file",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "hotspots",
+     "label": "Hotspots",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residue numbers of this structure, as 54,56,66-70 or A54,B12-16. Needed by the cards that aim at a site, which here is the design tools. A folded structure is numbered by the sequence it was folded from, so 54 is its 54th residue and the chains are named from A",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "binder_min",
+     "label": "Shortest binder",
+     "kind": "number",
+     "default": 70,
+     "choices": [],
+     "why": "how many residues, at the shortest",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 4,
+     "most": 500,
+     "step": 5
+    },
+    {
+     "key": "binder_max",
+     "label": "Longest binder",
+     "kind": "number",
+     "default": 100,
+     "choices": [],
+     "why": "how many residues, at the longest",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 4,
+     "most": 500,
+     "step": 5
+    }
+   ]
+  },
+  {
+   "key": "structurefile",
+   "name": "Structure file",
+   "tagline": "a structure you already have, on the cluster",
+   "tool": "",
+   "note": "The structure as it stands, for the cards below to prepare and simulate. Everything in the file is handed on and prepared as one molecule: where a file holds a receptor and a separate partner that have to be prepared apart from each other, say so on the target card instead, which is the card that names chains.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "structure",
+     "label": "the structure in that file",
+     "kinds": [
+      "structure"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "path",
+     "label": "Structure file",
+     "kind": "path",
+     "default": "",
+     "choices": [],
+     "why": "a PDB or mmCIF file on the cluster. It is copied into the flow's own inputs as the flow starts, so every card below reads one file in one place - and tidying the folder it came from later cannot take the structure of a finished flow with it",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    }
+   ]
+  },
+  {
+   "key": "boltz2",
+   "name": "Boltz-2",
+   "tagline": "fold a sequence, or co-fold a complex",
+   "tool": "boltz2",
+   "note": "One sequence folds one structure, for a target card to take. Fill in a second sequence and the two are folded together as a complex - a receptor with the DNA, RNA or peptide that binds it - which goes on to be prepared and simulated. A structure of more chains than five is a job for the Boltz-2 page.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "structure",
+     "label": "folded structure or complex",
+     "kinds": [
+      "structure",
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "sequence",
+     "label": "Sequence",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "one chain, in one-letter codes. Case does not matter - neither tool makes the distinction, so a sequence pasted in lower case is read as upper - but a letter that is not a residue does, and is refused here rather than folded as nothing",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "entity",
+       "cases": {
+        "ligand": {
+         "label": "Ligand",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "entity",
+     "label": "What it is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna",
+      "ligand",
+      "ion",
+      "ccd",
+      "smiles"
+     ],
+     "why": "the alphabet the sequence is checked against, and the model used for it",
+     "optional": false,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "copies",
+     "label": "Copies",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more than one folds a homo-oligomer: the same sequence again as chains A, B, C",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "modifications",
+     "label": "Modified residues",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written",
+     "varies": [
+      {
+       "on": "entity",
+       "cases": {
+        "ligand": {
+         "value": "",
+         "placeholder": "not read: this row is a ligand"
+        },
+        "ion": {
+         "value": "",
+         "placeholder": "not read: this row is an ion"
+        },
+        "ccd": {
+         "value": "",
+         "placeholder": "not read: this row is a component by its CCD code"
+        },
+        "smiles": {
+         "value": "",
+         "placeholder": "not read: this row is a molecule as SMILES"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "sequence_2",
+     "label": "Sequence of the second chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "empty folds without it",
+     "varies": [
+      {
+       "on": "entity_2",
+       "cases": {
+        "ligand": {
+         "label": "Ligand of the second chain",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion of the second chain",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code of the second chain",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES of the second chain",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "entity_2",
+     "label": "What the second one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna",
+      "ligand",
+      "ion",
+      "ccd",
+      "smiles"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "copies_2",
+     "label": "Copies of the second chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "modifications_2",
+     "label": "Modified residues of the second chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written",
+     "varies": [
+      {
+       "on": "entity_2",
+       "cases": {
+        "ligand": {
+         "value": "",
+         "placeholder": "not read: this row is a ligand"
+        },
+        "ion": {
+         "value": "",
+         "placeholder": "not read: this row is an ion"
+        },
+        "ccd": {
+         "value": "",
+         "placeholder": "not read: this row is a component by its CCD code"
+        },
+        "smiles": {
+         "value": "",
+         "placeholder": "not read: this row is a molecule as SMILES"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "sequence_3",
+     "label": "Sequence of the third chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "empty folds without it",
+     "varies": [
+      {
+       "on": "entity_3",
+       "cases": {
+        "ligand": {
+         "label": "Ligand of the third chain",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion of the third chain",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code of the third chain",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES of the third chain",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "entity_3",
+     "label": "What the third one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna",
+      "ligand",
+      "ion",
+      "ccd",
+      "smiles"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "copies_3",
+     "label": "Copies of the third chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "modifications_3",
+     "label": "Modified residues of the third chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written",
+     "varies": [
+      {
+       "on": "entity_3",
+       "cases": {
+        "ligand": {
+         "value": "",
+         "placeholder": "not read: this row is a ligand"
+        },
+        "ion": {
+         "value": "",
+         "placeholder": "not read: this row is an ion"
+        },
+        "ccd": {
+         "value": "",
+         "placeholder": "not read: this row is a component by its CCD code"
+        },
+        "smiles": {
+         "value": "",
+         "placeholder": "not read: this row is a molecule as SMILES"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "sequence_4",
+     "label": "Sequence of the fourth chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "empty folds without it",
+     "varies": [
+      {
+       "on": "entity_4",
+       "cases": {
+        "ligand": {
+         "label": "Ligand of the fourth chain",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion of the fourth chain",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code of the fourth chain",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES of the fourth chain",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "entity_4",
+     "label": "What the fourth one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna",
+      "ligand",
+      "ion",
+      "ccd",
+      "smiles"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "copies_4",
+     "label": "Copies of the fourth chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "modifications_4",
+     "label": "Modified residues of the fourth chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written",
+     "varies": [
+      {
+       "on": "entity_4",
+       "cases": {
+        "ligand": {
+         "value": "",
+         "placeholder": "not read: this row is a ligand"
+        },
+        "ion": {
+         "value": "",
+         "placeholder": "not read: this row is an ion"
+        },
+        "ccd": {
+         "value": "",
+         "placeholder": "not read: this row is a component by its CCD code"
+        },
+        "smiles": {
+         "value": "",
+         "placeholder": "not read: this row is a molecule as SMILES"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "sequence_5",
+     "label": "Sequence of the fifth chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "fill this in to fold a complex rather than one chain: the two are folded together, in the order of the boxes, and what comes out is a complex",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "empty folds without it",
+     "varies": [
+      {
+       "on": "entity_5",
+       "cases": {
+        "ligand": {
+         "label": "Ligand of the fifth chain",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion of the fifth chain",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code of the fifth chain",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES of the fifth chain",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "entity_5",
+     "label": "What the fifth one is",
+     "kind": "choice",
+     "default": "protein",
+     "choices": [
+      "protein",
+      "dna",
+      "rna",
+      "ligand",
+      "ion",
+      "ccd",
+      "smiles"
+     ],
+     "why": "the alphabet it is checked against, and the model used for it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "copies_5",
+     "label": "Copies of the fifth chain",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "modifications_5",
+     "label": "Modified residues of the fifth chain",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as 12 SEP, 40 TPO: the residue's position in the sequence above and the code it becomes. A code that is not a modification of that residue is refused as the flow is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none: every residue as written",
+     "varies": [
+      {
+       "on": "entity_5",
+       "cases": {
+        "ligand": {
+         "value": "",
+         "placeholder": "not read: this row is a ligand"
+        },
+        "ion": {
+         "value": "",
+         "placeholder": "not read: this row is an ion"
+        },
+        "ccd": {
+         "value": "",
+         "placeholder": "not read: this row is a component by its CCD code"
+        },
+        "smiles": {
+         "value": "",
+         "placeholder": "not read: this row is a molecule as SMILES"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "alignments",
+     "label": "Alignments",
+     "kind": "choice",
+     "default": "fetch",
+     "choices": [
+      "fetch",
+      "single"
+     ],
+     "why": "fetch asks the alignment server for one per protein chain while the flow is being queued, on the login node, which is the only place that can reach it. single folds from the sequence alone: nothing is fetched, and both the structure and its confidence fall away - measured here, a complex scoring 0.80 fell to about 0.12, far enough that a wrong answer can outscore the right one. Choose it to see a shape, never to rank anything",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "fetch": "one alignment per protein chain, from the MSA server",
+      "single": "no alignment: much worse, and the confidence with it"
+     }
+    },
+    {
+     "key": "diffusion_samples",
+     "label": "Structures to fold",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "each is a separate sample of the same model, and five takes about five times as long. They are handed on best first, and the card below takes the best few of them",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 25,
+     "step": 1
+    },
+    {
+     "key": "recycling_steps",
+     "label": "Recycling steps",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "Boltz-2's own default. More costs time roughly in proportion",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "sampling_steps",
+     "label": "Sampling steps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "steps in the diffusion. 200 is Boltz-2's own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10,
+     "most": 1000,
+     "step": 10
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a number makes the sampling repeatable, so the same card folds the same structure twice",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 2147483647,
+     "step": 1,
+     "placeholder": "no seeding, which is Boltz-2's own"
+    },
+    {
+     "key": "use_potentials",
+     "label": "Steering potentials",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "off is Boltz-2's own. On is slower, and upstream reports structures that make better physical sense",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4",
+      "h100",
+      "a30"
+     ],
+     "why": "auto takes the largest card this cluster has. A card the cluster has not got is refused before anything is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "04:00:00",
+     "choices": [],
+     "why": "importing the tool takes the first five minutes of it. A job that ends early is charged for what it used, so round up rather than cut it fine",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "colabfold",
+   "name": "ColabFold",
+   "tagline": "fold a protein chain into a structure",
+   "tool": "colabfold",
+   "note": "Folds the sequence on the card with AlphaFold 2 and hands the best-ranked model to a target card, which is where the chains and the hotspots are named.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "structure",
+     "label": "folded structure",
+     "kinds": [
+      "structure"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "sequence",
+     "label": "Sequence",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "one chain, in one-letter codes. Case does not matter - neither tool makes the distinction, so a sequence pasted in lower case is read as upper - but a letter that is not a residue does, and is refused here rather than folded as nothing",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "varies": [
+      {
+       "on": "entity",
+       "cases": {
+        "ligand": {
+         "label": "Ligand",
+         "placeholder": "a CCD code, for example HEM or ATP",
+         "why": "one small molecule, by its Chemical Component Dictionary code. The common ones are listed on the Boltz-2 page, and any code this install has a component for is taken here"
+        },
+        "ion": {
+         "label": "Ion",
+         "placeholder": "a CCD code, for example MN, FE, CU or ZN",
+         "why": "one ion, by its Chemical Component Dictionary code. Several of the same ion are copies of this row rather than a row each"
+        },
+        "ccd": {
+         "label": "CCD code",
+         "placeholder": "a code, for example FE2 or HEM",
+         "why": "any component in the Chemical Component Dictionary, by its code. This is the row for one the ion and ligand lists have not got: ferrous iron is FE2, and those lists carry FE, which is ferric"
+        },
+        "smiles": {
+         "label": "SMILES",
+         "placeholder": "SMILES, for example CC(=O)Oc1ccccc1C(=O)O",
+         "why": "one small molecule as SMILES. Boltz-2 reads it with RDKit and standardizes it itself, so it is taken as written"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "copies",
+     "label": "Copies",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more than one folds a homo-oligomer: the same sequence again as chains A, B, C",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "alignments",
+     "label": "Alignments",
+     "kind": "choice",
+     "default": "fetch",
+     "choices": [
+      "fetch",
+      "single"
+     ],
+     "why": "fetch asks the alignment server for one per protein chain while the flow is being queued, on the login node, which is the only place that can reach it. single folds from the sequence alone: nothing is fetched, and both the structure and its confidence fall away - measured here, a complex scoring 0.80 fell to about 0.12, far enough that a wrong answer can outscore the right one. Choose it to see a shape, never to rank anything",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "fetch": "one alignment per protein chain, from the MSA server",
+      "single": "no alignment: much worse, and the confidence with it"
+     }
+    },
+    {
+     "key": "num_models",
+     "label": "Models",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "all five is ColabFold's own default. They are ranked and the best is the one handed on",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 5,
+     "step": 1
+    },
+    {
+     "key": "num_recycle",
+     "label": "Recycling steps",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "what the lab's co-folding has always asked for",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "num_seeds",
+     "label": "Seeds",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "more seeds is more samples per model, and more time in proportion",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 20,
+     "step": 1
+    },
+    {
+     "key": "rank",
+     "label": "Rank by",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "plddt",
+      "ptm",
+      "iptm",
+      "multimer"
+     ],
+     "why": "which model is handed on as the best: auto is multimer for a complex and pLDDT for one chain",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "auto": "multimer for a complex, pLDDT for one chain",
+      "plddt": "the model's own confidence, per residue",
+      "ptm": "predicted TM-score for the whole structure",
+      "iptm": "predicted TM-score across the interface",
+      "multimer": "0.8 iptm and 0.2 ptm, which is AlphaFold-Multimer's own"
+     }
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4",
+      "h100",
+      "a30"
+     ],
+     "why": "auto takes the largest card this cluster has. A card the cluster has not got is refused before anything is queued",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "04:00:00",
+     "choices": [],
+     "why": "importing the tool takes the first five minutes of it. A job that ends early is charged for what it used, so round up rather than cut it fine",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "rfdiffusion",
+   "name": "RFdiffusion",
+   "tagline": "design a binder backbone, then its sequence",
+   "tool": "rfdiffusion",
+   "note": "Designs come out placed on the target, so they go straight on to be prepared and simulated.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Backbones to generate",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "each is a separate diffusion, and the whole run is this many",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 500,
+     "step": 1
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per backbone",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "ProteinMPNN designs this many for each backbone, and the best is kept",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "GPU",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx"
+     ],
+     "why": "auto takes the largest GPU this cluster has",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "0 is what the binder-design example uses, and is a real answer rather than an empty one. Higher is more varied and fewer of them fold",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.1
+    },
+    {
+     "key": "diffuser_T",
+     "label": "Diffusion steps",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "fewer is faster and rougher, and RFdiffusion itself asserts at least 15",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 15,
+     "most": 200,
+     "step": 5
+    },
+    {
+     "key": "ckpt",
+     "label": "Checkpoint",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "Complex_base_ckpt.pt",
+      "Complex_beta_ckpt.pt"
+     ],
+     "why": "empty takes the binder-design default",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "Complex_base, which is what RFdiffusion picks itself once hotspots are given",
+      "Complex_base_ckpt.pt": "the same one, named outright",
+      "Complex_beta_ckpt.pt": "the beta complex model: more varied binders, and fewer of them hold up"
+     }
+    },
+    {
+     "key": "noise_schedule",
+     "label": "Noise schedule",
+     "kind": "choice",
+     "default": "constant",
+     "choices": [
+      "constant",
+      "linear"
+     ],
+     "why": "constant holds the noise where it is set; linear walks it to the figure below over the run",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "constant": "the one scale, every step. RFdiffusion's own default",
+      "linear": "from the scale above at the first step to the one below at the last"
+     }
+    },
+    {
+     "key": "final_noise_scale",
+     "label": "Final noise scale",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "where the linear schedule ends up",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "noise_schedule",
+       "cases": {
+        "constant": {
+         "why": "not read on a constant schedule, which holds the noise scale above all the way through"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "potential",
+     "label": "Pull on the design",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "binder_ROG",
+      "binder_ncontacts",
+      "interface_ncontacts"
+     ],
+     "why": "a force on the binder while it diffuses. Empty is what the binder-design example uses, and RFdiffusion's own notes say these sit badly with hotspots: start without one",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "none, as RFdiffusion's own default is",
+      "binder_ROG": "pulls the binder compact, by its radius of gyration",
+      "binder_ncontacts": "more contacts inside the binder",
+      "interface_ncontacts": "more contacts between the binder and the target"
+     }
+    },
+    {
+     "key": "potential_weight",
+     "label": "How hard it pulls",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "1 is each potential's own weight",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "guide_scale",
+     "label": "Guide scale",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "how much of the pull reaches the diffusion; 10 is RFdiffusion's own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "guide_decay",
+     "label": "Guide decay",
+     "kind": "choice",
+     "default": "constant",
+     "choices": [
+      "constant",
+      "linear",
+      "quadratic",
+      "cubic"
+     ],
+     "why": "how the pull fades as the structure settles",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "constant": "the same at every step. RFdiffusion's own default",
+      "linear": "fades with the step count",
+      "quadratic": "fades faster, so late steps are nearly free",
+      "cubic": "faster still"
+     },
+     "varies": [
+      {
+       "on": "potential",
+       "cases": {
+        "": {
+         "why": "not read until a pull is chosen above"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "write_trajectory",
+     "label": "Keep the diffusion trajectories",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "two files per design showing every step, for looking at the diffusion itself",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "deterministic",
+     "label": "Repeat the same designs",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "seeds each design from its own number, so the same run made twice gives the same backbones",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "mpnn_model",
+     "label": "ProteinMPNN model",
+     "kind": "choice",
+     "default": "v_48_020",
+     "choices": [
+      "v_48_002",
+      "v_48_010",
+      "v_48_020",
+      "v_48_030"
+     ],
+     "why": "the figure is the backbone noise it was trained with, in hundredths of an angstrom",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "v_48_002": "0.02 A: closest to the backbone it is given",
+      "v_48_010": "0.10 A",
+      "v_48_020": "0.20 A. ProteinMPNN's own default",
+      "v_48_030": "0.30 A: most forgiving of a rough backbone"
+     }
+    },
+    {
+     "key": "mpnn_soluble",
+     "label": "Soluble ProteinMPNN",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "weights trained on soluble proteins only, which is what a binder has to be",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "mpnn_temperature",
+     "label": "Sequence temperature",
+     "kind": "number",
+     "default": 0.1,
+     "choices": [],
+     "why": "higher is more varied; ProteinMPNN suggests 0.1 to 0.3",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 1.0,
+     "step": 0.05
+    },
+    {
+     "key": "mpnn_seed",
+     "label": "Sequence seed",
+     "kind": "number",
+     "default": 37,
+     "choices": [],
+     "why": "0 picks a new one each run; any other number gives the same sequences again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2000000000,
+     "step": 1
+    },
+    {
+     "key": "mpnn_omit",
+     "label": "Excluded amino acids",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "letters the designed sequence may not use, as C to keep cysteines out",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "none"
+    },
+    {
+     "key": "mpnn_backbone_noise",
+     "label": "Backbone noise",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "noise on the backbone while the sequence is designed; the released models were trained at up to 0.30 A",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 0.3,
+     "step": 0.05
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "rfd3",
+   "name": "RFdiffusion3",
+   "tagline": "design a binder, every atom at once",
+   "tool": "rfd3",
+   "note": "Designs come out placed on the target, as RFdiffusion's do.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Designs to generate",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "generated together in one pass, so this costs GPU memory rather than time",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per design",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "RFdiffusion3 writes a sequence of its own, and MPNN is still what the authors' own pipeline redesigns protein backbones with before ordering",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "GPU",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40"
+     ],
+     "why": "auto takes the largest GPU this cluster has. An rtx is not offered: this model does not run on one",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "step_scale",
+     "label": "Step scale",
+     "kind": "number",
+     "default": 1.5,
+     "choices": [],
+     "why": "the diversity knob. Higher is less varied and more of them hold up",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.5,
+     "most": 3.0,
+     "step": 0.1
+    },
+    {
+     "key": "num_timesteps",
+     "label": "Diffusion steps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "fewer is faster and rougher",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 20,
+     "most": 500,
+     "step": 10
+    },
+    {
+     "key": "cfg",
+     "label": "Classifier-free guidance",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "holds a design closer to what was asked of it. Off is the model's own default, and it is turned on for conditioning that must be obeyed",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "cfg_strength",
+     "label": "How closely held",
+     "kind": "number",
+     "default": 1.5,
+     "choices": [],
+     "why": "1.5 is the model's own; 1 is no guidance at all",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 5,
+     "step": 0.1,
+     "varies": [
+      {
+       "on": "cfg",
+       "cases": {
+        "false": {
+         "why": "not read until the guidance above is on"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "batches",
+     "label": "Passes",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "the run makes this many passes, so a campaign is the designs above times this",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the same number gives the same designs again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2000000000,
+     "step": 1,
+     "placeholder": "a new one each run"
+    },
+    {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": 1.003,
+     "choices": [],
+     "why": "the noise put back at each step; 0 takes it out altogether",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2,
+     "step": 0.001
+    },
+    {
+     "key": "gamma_0",
+     "label": "Churn",
+     "kind": "number",
+     "default": 0.6,
+     "choices": [],
+     "why": "how much each step is re-noised before it is denoised again; 0 samples the diffusion as a plain equation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1,
+     "step": 0.1
+    },
+    {
+     "key": "cyclic",
+     "label": "Cyclic peptide",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "joins the binder's ends, which RFdiffusion3 takes for one designed chain",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "non_loopy",
+     "label": "Fewer loops",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "asks for a binder with less loop in it, which is the one that folds",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "rfd4",
+   "name": "RFD4-Proteina",
+   "tagline": "design to what has to be in the right place",
+   "tool": "rfd4",
+   "note": "Designs come out placed on the target, as the other design cards' do. Nothing here scores them: fold them to rank them.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "designs",
+     "label": "Designs to generate",
+     "kind": "number",
+     "default": 8,
+     "choices": [],
+     "why": "replicates of the same design problem, so this costs time rather than GPU memory",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "gpu",
+     "label": "GPU",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40"
+     ],
+     "why": "auto takes the largest GPU this cluster has. An rtx is not offered: this model does not run on one",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "the model loads in the first few minutes of it. A job that ends early is charged for what it used, so round up rather than cut it fine",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "nsteps",
+     "label": "Sampling steps",
+     "kind": "number",
+     "default": 60,
+     "choices": [],
+     "why": "fewer is faster and rougher; 60 is the model's own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10,
+     "most": 200,
+     "step": 10
+    },
+    {
+     "key": "recycling",
+     "label": "Recycling",
+     "kind": "choice",
+     "default": "medium/front_loaded",
+     "choices": [
+      "low/front_loaded",
+      "medium/front_loaded",
+      "high/front_loaded"
+     ],
+     "why": "how much the model reconsiders its own answer as it goes. These are its own presets for designing a protein against a protein",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "low/front_loaded": "120 trunk passes: the cheapest",
+      "medium/front_loaded": "180, which the model's own validation uses for this task",
+      "high/front_loaded": "300: the most thorough, and the slowest"
+     }
+    },
+    {
+     "key": "batch_size",
+     "label": "Designs per batch",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "generated together on the GPU. The tool's own advice is to try your longest input at 1 first",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 16,
+     "step": 1
+    },
+    {
+     "key": "compile",
+     "label": "Compile the model first",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a warm-up costing minutes that makes every design after it faster: worth it over a campaign, not over a handful",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the same number gives the same designs again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2000000000,
+     "step": 1,
+     "placeholder": "a new one each run"
+    },
+    {
+     "key": "fold_back",
+     "label": "Fold and rank designs",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "Boltz-2 folds each design from its sequence alone and the result is measured onto the design: under about 2 A at pLDDT 70 the sequence folds into the shape it was designed for. Adds about 20 minutes to the same job",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "hold_target",
+     "label": "Hold the target's shape",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "its backbone keeps its geometry and its side chains stay free, so the binder is not designed to mimic them (C_CRDGRP)",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "reveal_sequence",
+     "label": "Show the target's sequence",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "the model knows which residues it is designing against, not only where they are (C_SEQ)",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "use_hotspots",
+     "label": "Reach the site",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "off, the condition naming the marked residues is left out of the spec and the model is not told to reach them (C_HOT)",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "boltzgen",
+   "name": "BoltzGen",
+   "tagline": "generate a binder against the target",
+   "tool": "boltzgen",
+   "note": "Generates binders against a protein target and leaves them already placed on it. The small-molecule protocol needs a ligand a flow does not carry, and is refused.",
+   "ready": true,
+   "site": "always",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "complexes",
+     "label": "designed complexes",
+     "kinds": [
+      "complexes"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    },
+    {
+     "key": "sequences",
+     "label": "design sequences",
+     "kinds": [
+      "sequences"
+     ],
+     "required": true,
+     "many": false,
+     "sized": true
+    }
+   ],
+   "settings": [
+    {
+     "key": "protocol",
+     "label": "What to design",
+     "kind": "choice",
+     "default": "protein-anything",
+     "choices": [
+      "protein-anything",
+      "peptide-anything",
+      "nanobody-anything",
+      "antibody-anything",
+      "protein-small_molecule",
+      "protein-redesign"
+     ],
+     "why": "the model's own protocols; the binder kind is chosen here",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "notes": {
+      "protein-anything": "a miniprotein against the target",
+      "peptide-anything": "a short peptide, cysteine-free by default",
+      "nanobody-anything": "a VHH",
+      "antibody-anything": "a paired Fv",
+      "protein-small_molecule": "needs the target's ligand, which a flow has taken out of the receptor before this card; it is refused rather than run without it",
+      "protein-redesign": "the binder already on the target, designed again"
+     }
+    },
+    {
+     "key": "designs",
+     "label": "Designs to generate",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "BoltzGen is built to generate many and keep the best few, which is the box below",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 10000,
+     "step": 1
+    },
+    {
+     "key": "budget",
+     "label": "Designs to keep",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the filtering stage picks this many out of the designs above, spread for variety rather than taking the top of one list",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 10000,
+     "step": 1,
+     "placeholder": "every one that passes"
+    },
+    {
+     "key": "gpu",
+     "label": "GPU",
+     "kind": "choice",
+     "default": "a100",
+     "choices": [
+      "a100",
+      "a40"
+     ],
+     "why": "BoltzGen needs 40 GB or more; the smaller GPUs run out",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "12:00:00",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1800,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "cyclic",
+     "label": "Cyclic peptide",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "peptide protocols only",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "sampling_steps",
+     "label": "Step scale",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "it scales the diffusion step, and is not a count of steps",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.1,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "noise_scale",
+     "label": "Noise scale",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a fixed noise scale instead of the schedule BoltzGen would use",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.1,
+     "most": 10,
+     "step": 0.01,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "fold",
+     "label": "Fold and score designs",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "the ranking comes from this; off leaves designs unranked",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "seqs_per_backbone",
+     "label": "Sequences per design",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "BoltzGen's inverse folding writes this many for each backbone",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 64,
+     "step": 1
+    },
+    {
+     "key": "avoid",
+     "label": "Excluded amino acids",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "letters the sequences may not use. This replaces the protocol's own list, and the peptide, nanobody and antibody protocols leave cysteine out: keep the C in",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "coldspots",
+     "label": "Coldspots",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "residues the binder should keep clear of; BoltzGen is told they are not binding, the opposite of a hotspot",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "alpha",
+     "label": "Quality against variety",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "0 picks the best designs, 1 the most different ones",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1,
+     "step": 0.01,
+     "placeholder": "the protocol's own"
+    },
+    {
+     "key": "filter_biased",
+     "label": "Drop lopsided sequences",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "takes out designs made mostly of alanine, glycine, glutamate, leucine or valine. On is BoltzGen's own default",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "checkpoints",
+     "label": "Model",
+     "kind": "choice",
+     "default": "both",
+     "choices": [
+      "both",
+      "diverse",
+      "adherence"
+     ],
+     "why": "BoltzGen ships two design models and uses both by default, half the designs each",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "both": "half the designs from each. BoltzGen's own default",
+      "diverse": "more varied designs",
+      "adherence": "designs that stick closer to what was asked"
+     }
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  },
+  {
+   "key": "prepare",
+   "name": "Prepare",
+   "tagline": "prepare the receptor and the partner each on its own, then rejoin them",
+   "tool": "",
+   "note": "Put in by the canvas on every link that carries a structure into the simulation, and part of that link rather than a card of its own: it splits what arrives into the receptor and the partner, prepares each on its own - protonation at the pH above, termini, disulfides, gaps - puts them back together and checks the net charge. A side of several chains is prepared whole, so the bonds between its chains are kept. What it decided is listed on the card when it has run.",
+   "ready": true,
+   "site": "",
+   "fixed": true,
+   "inputs": [
+    {
+     "key": "structure",
+     "label": "what to prepare",
+     "kinds": [
+      "structure",
+      "complexes",
+      "poses"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "prepared",
+     "label": "prepared structures",
+     "kinds": [
+      "prepared"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "ph",
+     "label": "pH",
+     "kind": "number",
+     "default": 7.4,
+     "choices": [],
+     "why": "every molecule is protonated at this pH, and one flow has one pH",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 14,
+     "step": 0.1
+    },
+    {
+     "key": "protonation",
+     "label": "How the hydrogens are decided",
+     "kind": "choice",
+     "default": "propka",
+     "choices": [
+      "propka",
+      "pdbfixer",
+      "none"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "propka": "pdb2pqr with propka at the pH above: each titratable residue gets the state its own surroundings call for",
+      "pdbfixer": "PDBFixer's rules at the pH above, which are the standard states and no more",
+      "none": "the hydrogens in the file, or the engine's own defaults where there are none"
+     }
+    },
+    {
+     "key": "model_loops_max",
+     "label": "Longest gap to model, residues",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "a gap inside a chain up to this long, found from the sequence the file records, is built, relaxed and its joins checked; a longer one is left open and its two ends capped (Cap the breaks). 12 at most, 0 builds none, and a chain's missing ends are never built",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "trim_plddt",
+     "label": "Trim predicted tails below pLDDT",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "for a predicted model: terminal residues under this confidence are trimmed; 0 keeps every one, and a structure with no pLDDT in it is untouched",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 100.0,
+     "step": 5
+    },
+    {
+     "key": "altloc",
+     "label": "Alternate location to keep",
+     "kind": "text",
+     "default": "A",
+     "choices": [],
+     "why": "a crystal structure that models two positions for a side chain keeps this one; the atoms of the others are dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "model",
+     "label": "Model to take",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "for an NMR ensemble or any multi-model file: which model is prepared. The first unless you say otherwise",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "drop_waters",
+     "label": "Crystal waters",
+     "kind": "choice",
+     "default": "all",
+     "choices": [
+      "all",
+      "far",
+      "none"
+     ],
+     "why": "for the simulation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "all": "drop every one",
+      "far": "keep those within 5 Å of the partner",
+      "none": "keep every one"
+     }
+    },
+    {
+     "key": "keep_cofactors",
+     "label": "Keep metals and cofactors",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "into the simulation they ride through at their own coordinates, and it listed as dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "drop_buffers",
+     "label": "Drop the crystallization buffers",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "glycerol, sulfate, PEG, acetate, DMSO and the rest of what the crystallographer added; off, each one has to be covered by a force field or the run is refused by name",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "keep_other_hetero",
+     "label": "Keep the hetero groups that are neither",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a group that is not a buffer, a metal or a known cofactor: kept only if a force field here covers it, and named in the refusal if not",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "drop_hetero",
+     "label": "Also drop, by residue name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "residue names dropped whatever their class, separated by commas: NAD, HEM. This is what a refusal naming a group it cannot cover asks for",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "nothing beyond the classes above"
+    },
+    {
+     "key": "cap_breaks",
+     "label": "Cap the breaks",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a gap left open has its two ends capped, an NME on the residue before it and an ACE on the residue after it, so neither is a charged terminus the protein does not have; the chain's own termini stay charged. Off, each piece ends in charged termini, an OXT before the gap and NH3+ after it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise",
+     "label": "Minimize each molecule",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "restrained, in vacuum: it takes the clashes out and moves nothing else",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimization steps",
+     "kind": "number",
+     "default": 500,
+     "choices": [],
+     "why": "L-BFGS steps on each molecule; 0 skips the minimization as surely as the switch above",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Minimization restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "held on the heavy atoms the file already had, so only the modeled residues move; 0 lets everything move",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "implicit_solvent",
+     "label": "Minimize in implicit solvent",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "GBn2 instead of vacuum: a better answer for a modeled loop, and about ten times slower",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "02:00:00",
+     "choices": [],
+     "why": "one job prepares everything that arrives, a few minutes a molecule",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 86400,
+     "step": 600
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "the queue the one preparation job goes to; empty takes the short one, which is where it belongs",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the cluster's short queue"
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "the Slurm account this job is charged to, for a flow being run against one allocation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
+    }
+   ]
+  },
+  {
+   "key": "prepare_receptor",
+   "name": "Prepare receptor",
+   "tagline": "prepare the target's receptor once, for the docking",
+   "tool": "",
+   "note": "Put in by the canvas between a target and every docking card it feeds, once per target: the target's chains alone, through HOPE-MD's Prepare - protonation at the flow's pH, AMBER names, termini and breaks, gaps up to the length above built back from the sequence the file records - with the waters and hetero groups dropped, except the ions the docking can use. The hotspots are checked against what comes out: one on a built residue is flagged on the card, and one that is missing stops the docking, by name.",
+   "ready": true,
+   "site": "",
+   "fixed": true,
+   "inputs": [
+    {
+     "key": "target",
+     "label": "target",
+     "kinds": [
+      "target"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "receptor",
+     "label": "prepared receptor",
+     "kinds": [
+      "receptor"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "ph",
+     "label": "pH",
+     "kind": "number",
+     "default": 7.4,
+     "choices": [],
+     "why": "the receptor is protonated at this pH, and one flow has one pH",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 14,
+     "step": 0.1
+    },
+    {
+     "key": "protonation",
+     "label": "How the hydrogens are decided",
+     "kind": "choice",
+     "default": "propka",
+     "choices": [
+      "propka",
+      "pdbfixer",
+      "none"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "propka": "pdb2pqr with propka at the pH above: each titratable residue gets the state its own surroundings call for",
+      "pdbfixer": "PDBFixer's rules at the pH above, which are the standard states and no more",
+      "none": "the hydrogens in the file, or the engine's own defaults where there are none"
+     }
+    },
+    {
+     "key": "model_loops_max",
+     "label": "Longest gap to model, residues",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "a gap inside a chain up to this long, found from the sequence the file records, is built, relaxed and its joins checked; a longer one is left open and its two ends capped (Cap the breaks). 12 at most, 0 builds none, and a chain's missing ends are never built",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 0,
+     "most": 12,
+     "step": 1
+    },
+    {
+     "key": "trim_plddt",
+     "label": "Trim predicted tails below pLDDT",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "for a predicted model: terminal residues under this confidence are trimmed; 0 keeps every one, and a structure with no pLDDT in it is untouched",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 100.0,
+     "step": 5
+    },
+    {
+     "key": "altloc",
+     "label": "Alternate location to keep",
+     "kind": "text",
+     "default": "A",
+     "choices": [],
+     "why": "a crystal structure that models two positions for a side chain keeps this one; the atoms of the others are dropped",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "model",
+     "label": "Model to take",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "for an NMR ensemble or any multi-model file: which model is prepared. The first unless you say otherwise",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1
+    },
+    {
+     "key": "cap_breaks",
+     "label": "Cap the breaks",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a gap left open has its two ends capped, an NME on the residue before it and an ACE on the residue after it, so neither is a charged terminus the protein does not have; the chain's own termini stay charged. Off, each piece ends in charged termini, an OXT before the gap and NH3+ after it",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise",
+     "label": "Minimize each molecule",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "restrained, in vacuum: it takes the clashes out and moves nothing else",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimization steps",
+     "kind": "number",
+     "default": 500,
+     "choices": [],
+     "why": "L-BFGS steps on each molecule; 0 skips the minimization as surely as the switch above",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Minimization restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "why": "held on the heavy atoms the file already had, so only the modeled residues move; 0 lets everything move",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "implicit_solvent",
+     "label": "Minimize in implicit solvent",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "GBn2 instead of vacuum: a better answer for a modeled loop, and about ten times slower",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "minimise",
+       "cases": {
+        "false": {
+         "why": "not read: the minimization is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "02:00:00",
+     "choices": [],
+     "why": "one job prepares the receptor once",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 86400,
+     "step": 600
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "the queue the one preparation job goes to; empty takes the short one, which is where it belongs",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the cluster's short queue"
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "the Slurm account this job is charged to, for a flow being run against one allocation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
+    }
+   ]
+  },
+  {
+   "key": "hopemd",
+   "name": "HOPE-MD",
+   "tagline": "simulate what arrives",
+   "tool": "hopemd",
+   "note": "",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [
+    {
+     "key": "structures",
+     "label": "prepared structures",
+     "kinds": [
+      "prepared"
+     ],
+     "required": true,
+     "many": true,
+     "sized": false
+    }
+   ],
+   "outputs": [
+    {
+     "key": "trajectories",
+     "label": "trajectories",
+     "kinds": [
+      "trajectories"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "pick",
+     "label": "Which of what arrives to simulate",
+     "kind": "choice",
+     "default": "rank",
+     "choices": [
+      "rank",
+      "name"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "rank": "the best few, by the score the tool that made them gave them, ranked across all of its partners together",
+      "name": "the ones named below, whatever their rank"
+     }
+    },
+    {
+     "key": "top_n",
+     "label": "Simulate the best of what arrives",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "per track, best score first across all of that track's partners. Each one is a full simulation, so this is what the flow costs",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "pick",
+       "cases": {
+        "name": {
+         "why": "not read: the structures named below are the ones simulated"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "names",
+     "label": "Structures to simulate, by name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as the preparation named them, separated by commas",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "placeholder": "not read: the best few are taken by rank",
+     "varies": [
+      {
+       "on": "pick",
+       "cases": {
+        "name": {
+         "optional": false,
+         "placeholder": "",
+         "why": "the names as they arrive here, separated by commas: a fold's are <card>_model<n>. A name nothing answers to is said before anything is queued"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "overrides",
+     "label": "Settings for one structure",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "a group per structure, as name: key=value, key=value, with a semicolon between groups. The keys are this card's own, so \"3cc1_cluster2: length_ns=200, engine=openmm\" runs that one structure for longer on another engine and leaves the rest alone. A value that is itself a list, as the restrained residues are, is separated by spaces here, because the commas separate the settings",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "every run takes the settings on this card"
+    },
+    {
+     "key": "poses_each",
+     "label": "Poses per peptide",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "the best few poses of each partner, not only its first; the best of what arrives still caps the whole",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 10,
+     "step": 1
+    },
+    {
+     "key": "engine",
+     "label": "Engine",
+     "kind": "choice",
+     "default": "amber",
+     "choices": [
+      "amber",
+      "openmm",
+      "gromacs",
+      "namd",
+      "desmond"
+     ],
+     "why": "the same system on any of the five; Amber is the fastest here and what the lab's benchmarks are in",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "notes": {
+      "amber": "pmemd.cuda: the fastest on these cards, and the engine the lab's timings are measured on",
+      "openmm": "a Python engine on the same Amber topology",
+      "gromacs": "the Amber topology converted by ParmEd",
+      "namd": "NAMD 3, reading the prmtop itself; no four-site water",
+      "desmond": "Schrödinger's, with its own OPLS force field and box"
+     }
+    },
+    {
+     "key": "environment",
+     "label": "What it is simulated in",
+     "kind": "choice",
+     "default": "water",
+     "choices": [
+      "water",
+      "membrane"
+     ],
+     "why": "",
+     "optional": false,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "water": "a periodic water box around the complex",
+      "membrane": "a lipid bilayer, with water above and below it. The force field, the water, the box shape and the salt follow the bilayer build and are written for you"
+     }
+    },
+    {
+     "key": "length_ns",
+     "label": "Length, ns",
+     "kind": "number",
+     "default": 100,
+     "choices": [],
+     "why": "production, per replicate; past the queue's limit it is chained as segments",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 1,
+     "most": 5000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "most": 10.0,
+         "why": "a CPU check is at most 10 ns: it answers whether the pose holds at the start, not how it behaves"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "frames",
+     "label": "Frames to keep",
+     "kind": "number",
+     "default": 5000,
+     "choices": [],
+     "why": "over the whole production, so the interval is the length divided by this: 5000 of 100 ns is one every 20 ps, which is HOPE-MD's own. It has to be a whole number of steps and no longer than the 200 ps MM-GBSA takes its frames at, and the canvas says which number to type instead",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 10,
+     "most": 100000,
+     "step": 50,
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "most": 500,
+         "why": "a CPU check keeps at most 500 frames"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "replicates",
+     "label": "Replicates",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "independent repeats, each with its own seed; 5 is the most HOPE-MD runs",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 5,
+     "step": 1
+    },
+    {
+     "key": "mmgbsa",
+     "label": "Binding energy by MM-GBSA",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "GB-Neck2 over the frames below, per replicate: the number a flow is usually drawn to get. Off for a run of one molecule, which has no interface",
+     "optional": true,
+     "needed": false,
+     "advanced": false
+    },
+    {
+     "key": "lipid",
+     "label": "Lipid",
+     "kind": "choice",
+     "default": "POPC",
+     "choices": [
+      "POPC",
+      "POPE",
+      "DLPC",
+      "DLPE",
+      "DMPC",
+      "DOPC",
+      "DPPC"
+     ],
+     "why": "the bilayer is tiled from a pre-equilibrated patch of this lipid",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      },
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "why": "Desmond's System Builder ships POPC, POPE, DPPC, DMPC bilayers"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "membrane_padding_A",
+     "label": "Water above and below the bilayer, Å",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "why": "under 5 Å the head groups see their own image, over 40 Å is water for nothing",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 5.0,
+     "most": 40.0,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "center_z_A",
+     "label": "Bilayer center along z, Å",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "where the middle of the bilayer sits; 0 is the OPM convention and what an oriented structure expects",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": -100,
+     "most": 100,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "orientation",
+     "label": "How the structure is oriented",
+     "kind": "choice",
+     "default": "as_imported",
+     "choices": [
+      "as_imported",
+      "opm",
+      "annotation"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "as_imported": "the structure's membrane normal is already z, as an OPM file's is. A folded or docked model is not: say its segments below, or orient it before the flow",
+      "opm": "fetch the OPM orientation, which needs the internet and so a login node",
+      "annotation": "orient on the transmembrane segments, from the ones typed below or the ones UniProt annotates"
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "segments",
+     "label": "Transmembrane segments",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "as chain:start-end, separated by commas: A:30-56, A:71-96. Typed ones are used in place of whatever was found",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "found from the sequence",
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "water": {
+         "why": "not read: the run is in a water box"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "box_shape",
+     "label": "Box shape",
+     "kind": "choice",
+     "default": "compact",
+     "choices": [
+      "compact",
+      "cubic",
+      "rectangular"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "compact": "a truncated octahedron: the fewest waters for the same minimum image distance, and the default",
+      "cubic": "a cube, for comparison with work that used one",
+      "rectangular": "an orthorhombic box, which is what a bilayer takes"
+     },
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "value": "rectangular",
+         "why": "Desmond's System Builder builds an orthorhombic box whatever is asked"
+        }
+       }
+      },
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "value": "rectangular",
+         "why": "a bilayer is periodic in x and y, so the box is rectangular"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "padding_A",
+     "label": "Padding, Å",
+     "kind": "number",
+     "default": 12,
+     "choices": [],
+     "why": "water between the solute and the box edge; under the 10 Å cutoff the complex sees its own periodic image",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 10.0,
+     "most": 40.0,
+     "step": 1,
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "not read: a bilayer's water is the padding above and below it"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "salt",
+     "label": "Salt",
+     "kind": "choice",
+     "default": "NaCl",
+     "choices": [
+      "NaCl",
+      "KCl",
+      "MgCl2"
+     ],
+     "why": "the box is neutralized first, then brought to the concentration below",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "NaCl": "physiological, and the default",
+      "KCl": "for work done in potassium buffer",
+      "MgCl2": "for a nucleic acid, which binds Mg2+; not for a bilayer, which takes a monovalent pair"
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build places a monovalent pair: NaCl or KCl"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "salt_mM",
+     "label": "Salt concentration, mM",
+     "kind": "number",
+     "default": 150,
+     "choices": [],
+     "why": "150 mM is physiological. It is also the salt MM-GBSA is computed at, so it changes the binding energy as well as the box",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0.0,
+     "most": 1000.0,
+     "step": 10
+    },
+    {
+     "key": "restrain",
+     "label": "Residues held still in production",
+     "kind": "residues",
+     "default": "",
+     "choices": [],
+     "why": "as 54,56,66-70 or A54,B12-16, in the numbering the preparation kept. For a run meant to answer what the rest does while these stay put",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "nothing is held: the whole complex is free"
+    },
+    {
+     "key": "restraint_kcal",
+     "label": "Production restraint, kcal/mol/Å²",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "why": "how hard those residues are held, and the first rung of the equilibration ladder either way",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 1,
+     "varies": [
+      {
+       "on": "restrain",
+       "cases": {
+        "": {
+         "why": "the first rung of the equilibration ladder; no residue is held in production"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_from_ns",
+     "label": "Score from, ns",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "why": "skip the start, where the complex is still settling; 0 scores from the first frame",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 5000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_to_ns",
+     "label": "Score to, ns",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "empty scores to the end",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 5000,
+     "step": 10,
+     "placeholder": "the end of the run",
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "mmgbsa_stride_ps",
+     "label": "Score every, ps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "how often a frame of that window is scored; it can be no finer than the interval the frames above are kept at",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100000,
+     "step": 10,
+     "varies": [
+      {
+       "on": "mmgbsa",
+       "cases": {
+        "false": {
+         "why": "not read: MM-GBSA is off"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "report",
+     "label": "Write each run's report when it finishes",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "the run's own report, as the Runs screen would write it: one job per run, behind the simulation",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "videos",
+     "label": "Make each run's videos when it finishes",
+     "kind": "yesno",
+     "default": false,
+     "choices": [],
+     "why": "a job of its own per run, cut from the trajectory",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "tidy",
+     "label": "Tidy each run when it finishes",
+     "kind": "yesno",
+     "default": true,
+     "choices": [],
+     "why": "a last job packs away the small files a finished run no longer needs; the results still load. Off, a batch of runs is a great many files",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "viewer_stride",
+     "label": "Frames the viewer shows, one in",
+     "kind": "number",
+     "default": 20,
+     "choices": [],
+     "why": "the trajectory the Results viewer loads is thinned by this, so 20 of the 5000 frames kept is 250 to scrub through",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 1000,
+     "step": 5
+    },
+    {
+     "key": "temperature_K",
+     "label": "Temperature, K",
+     "kind": "number",
+     "default": 300,
+     "choices": [],
+     "why": "the thermostat's target through heating, equilibration and production",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 250.0,
+     "most": 400.0,
+     "step": 5
+    },
+    {
+     "key": "pressure_bar",
+     "label": "Pressure, bar",
+     "kind": "number",
+     "default": 1.0,
+     "choices": [],
+     "why": "the barostat's target once the box is equilibrated at constant pressure",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000,
+     "step": 1
+    },
+    {
+     "key": "timestep_fs",
+     "label": "Timestep, fs",
+     "kind": "number",
+     "default": 4.0,
+     "choices": [],
+     "why": "2 fs, or 4 fs with hydrogen mass repartitioning",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 2.0,
+     "most": 4.0,
+     "step": 2.0,
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "value": 2.0,
+         "why": "Desmond runs its RESPA scheme: the timestep is fixed at 2 fs and there is no hydrogen mass repartitioning"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "equil_ps",
+     "label": "Equilibration, ps",
+     "kind": "number",
+     "default": 1000,
+     "choices": [],
+     "why": "over the restraint ladder",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 100000,
+     "step": 100
+    },
+    {
+     "key": "heat_ps",
+     "label": "Heating, ps",
+     "kind": "number",
+     "default": 200,
+     "choices": [],
+     "why": "from 0 K to the temperature above, restrained, before the ladder",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 10000,
+     "step": 50
+    },
+    {
+     "key": "minimise_steps",
+     "label": "Minimization steps",
+     "kind": "number",
+     "default": 5000,
+     "choices": [],
+     "why": "on the built box, before any heating: it takes the clashes out of the solvation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 1000000,
+     "step": 500
+    },
+    {
+     "key": "seed",
+     "label": "Random seed",
+     "kind": "number",
+     "default": -1,
+     "choices": [],
+     "why": "-1 lets each replicate pick its own",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": -1,
+     "most": 2000000000,
+     "step": 1
+    },
+    {
+     "key": "water",
+     "label": "Water",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "OPC",
+      "TIP3P",
+      "TIP4P-Ew",
+      "TIP4P",
+      "SPC"
+     ],
+     "why": "empty takes what the force field was fitted to",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the force field's own pairing: OPC with ff19SB, TIP3P with ff14SB, SPC with Desmond's OPLS",
+      "OPC": "ff19SB's own, and not for NAMD or Desmond",
+      "TIP3P": "every engine takes it",
+      "TIP4P-Ew": "not for NAMD, which cannot run a four-site water from the Amber topology",
+      "TIP4P": "Desmond's OPLS4 only",
+      "SPC": "Desmond"
+     },
+     "varies": [
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build has one water and it is written for you: TIP3P, or SPC on Desmond, whose lipid patches come hydrated with it"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "protein",
+     "label": "Protein force field",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "ff19SB",
+      "ff14SB",
+      "OPLS_2005",
+      "OPLS4"
+     ],
+     "why": "empty takes the engine's own: ff19SB on the four Amber-topology engines, OPLS_2005 on Desmond",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the engine's own",
+      "ff19SB": "Amber, OpenMM, GROMACS, NAMD",
+      "ff14SB": "the same four, for comparison with older work",
+      "OPLS_2005": "Desmond, which types the whole system with its own OPLS",
+      "OPLS4": "Desmond, with the OPLS license"
+     },
+     "varies": [
+      {
+       "on": "engine",
+       "cases": {
+        "desmond": {
+         "why": "Desmond types the whole system with its own OPLS: OPLS_2005 or OPLS4"
+        }
+       }
+      },
+      {
+       "on": "environment",
+       "cases": {
+        "membrane": {
+         "why": "a bilayer build has one force field and it is written for you: ff14SB, which is the only one OpenMM ships lipid17 alongside, or Desmond's own OPLS"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "nucleic",
+     "label": "DNA and RNA force field",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "OL21+OL3",
+      "OL15+OL3",
+      "bsc1+OL3"
+     ],
+     "why": "for a strand in the run; empty takes the engine's usual",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "OL21+OL3, or OL15+OL3 on OpenMM",
+      "OL21+OL3": "Amber, GROMACS and NAMD",
+      "OL15+OL3": "OpenMM",
+      "bsc1+OL3": "any engine but Desmond, which types DNA and RNA with its own OPLS and takes no choice"
+     }
+    },
+    {
+     "key": "device",
+     "label": "Run on",
+     "kind": "choice",
+     "default": "gpu",
+     "choices": [
+      "gpu",
+      "cpu"
+     ],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "gpu": "one card per replicate, which is how these engines are meant to be run",
+      "cpu": "one whole node, for a short check while the GPU queue is full: Amber or GROMACS, at most 10 ns and 500 frames"
+     }
+    },
+    {
+     "key": "gpu",
+     "label": "GPU type",
+     "kind": "choice",
+     "default": "",
+     "choices": [
+      "",
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4"
+     ],
+     "why": "empty takes the cluster's usual card",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "notes": {
+      "": "the cluster's default, which on Grace is a100",
+      "auto": "the fastest type with a free card at submit, which is what keeps a run out of the a100 queue when a40s are idle",
+      "a100": "40 GB, the fastest here and the default",
+      "a40": "48 GB, on its own partition and often free",
+      "rtx": "24 GB",
+      "t4": "16 GB, for a small system"
+     },
+     "varies": [
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "why": "not read: the run is on CPU"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "gpus_per_replicate",
+     "label": "GPUs per replicate",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "why": "one is what Amber, OpenMM and Desmond each run a replicate on, however many are asked for; NAMD uses them all",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 4,
+     "step": 1,
+     "varies": [
+      {
+       "on": "gpu",
+       "cases": {
+        "a100": {
+         "most": 2,
+         "why": "a Grace a100 node has 2 cards"
+        },
+        "a40": {
+         "most": 3,
+         "why": "a Grace a40 node has 3 cards"
+        },
+        "rtx": {
+         "most": 2,
+         "why": "a Grace rtx node has 2 cards"
+        },
+        "t4": {
+         "most": 4,
+         "why": "a Grace t4 node has 4 cards"
+        }
+       }
+      },
+      {
+       "on": "device",
+       "cases": {
+        "cpu": {
+         "why": "not read: the run is on CPU"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "key": "cpus",
+     "label": "CPU cores per replicate",
+     "kind": "number",
+     "default": 4,
+     "choices": [],
+     "why": "beside the card, for the parts that are not on it; a CPU check takes a whole node whatever this says",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 48,
+     "step": 2
+    },
+    {
+     "key": "mem_gb",
+     "label": "Memory per replicate, GB",
+     "kind": "number",
+     "default": 16,
+     "choices": [],
+     "why": "Grace refuses a job that asks for none; raise it for a system of many hundreds of thousands of atoms",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 180,
+     "step": 4
+    },
+    {
+     "key": "max_concurrent",
+     "label": "Replicates running at once",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "a throttle for a batch of runs against one allocation: empty queues them all and lets the cluster decide",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 1,
+     "most": 100,
+     "step": 1,
+     "placeholder": "every one at once"
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "",
+     "choices": [],
+     "why": "left empty, the simulation works one out from the length, the replicates and the size of the system, which is the number to beat. A typed one is each production job's limit, so a shorter one cuts a long run into more segments",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 3600,
+     "most": 604800,
+     "step": 3600,
+     "placeholder": "from the estimate"
+    },
+    {
+     "key": "partition",
+     "label": "Partition",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "empty takes the partition the GPU type lives on, which is what you want unless you are aiming at a reservation",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "the one that carries the card"
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "the Slurm account every job of every run is charged to, the preparation included",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "placeholder": "whatever you are charged by default"
+    }
+   ]
+  },
+  {
+   "key": "bioemu",
+   "name": "BioEmu",
+   "tagline": "sample the shapes one chain takes",
+   "tool": "bioemu",
+   "note": "Samples the structures this chain takes, as a spread rather than one answer, and hands on the most populated of them. The alignment it needs is fetched while the flow is queued, on the login node, because a compute node here reaches no network at all. What comes out is not a trajectory: the shapes are independent draws from a distribution, so nothing below this card may read a rate or a pathway off them.",
+   "ready": true,
+   "site": "",
+   "fixed": false,
+   "inputs": [],
+   "outputs": [
+    {
+     "key": "shapes",
+     "label": "the shapes sampled, one structure each",
+     "kinds": [
+      "structure"
+     ],
+     "required": true,
+     "many": false,
+     "sized": false
+    }
+   ],
+   "settings": [
+    {
+     "key": "sequence",
+     "label": "Sequence",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "one protein chain, in one-letter codes. Case does not matter; a letter that is not one of the twenty amino acids does, and is refused here rather than sampled into something that means nothing",
+     "optional": false,
+     "needed": true,
+     "advanced": false
+    },
+    {
+     "key": "num_samples",
+     "label": "Structures to sample",
+     "kind": "number",
+     "default": 100,
+     "choices": [],
+     "why": "a distribution, not a structure: ten says nothing about how wide it is. The cost is close to linear in this number",
+     "optional": false,
+     "needed": true,
+     "advanced": false,
+     "least": 10,
+     "most": 10000,
+     "step": 10
+    },
+    {
+     "key": "model_name",
+     "label": "Model",
+     "kind": "choice",
+     "default": "bioemu-v1.1",
+     "choices": [
+      "bioemu-v1.1",
+      "bioemu-v1.0",
+      "bioemu-v1.2"
+     ],
+     "why": "v1.1 is what the paper reports, so it is what a number taken from a run can be compared against. Runs made on different checkpoints cannot be compared with one another",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "notes": {
+      "bioemu-v1.1": "the checkpoint of the published paper",
+      "bioemu-v1.0": "the earlier preprint's",
+      "bioemu-v1.2": "trained on more simulation and on measured folding free energies"
+     }
+    },
+    {
+     "key": "shapes_out",
+     "label": "Shapes to hand on",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "why": "most populated first, each a structure the model drew. Whatever takes them prepares and simulates one run per shape, so this is what the rest of the flow costs",
+     "optional": true,
+     "needed": false,
+     "advanced": false,
+     "least": 1,
+     "most": 8,
+     "step": 1
+    },
+    {
+     "key": "seed",
+     "label": "Seed",
+     "kind": "number",
+     "default": null,
+     "choices": [],
+     "why": "the same number gives the same samples again",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 0,
+     "most": 2147483647,
+     "step": 1,
+     "placeholder": "a new one each run"
+    },
+    {
+     "key": "gpu",
+     "label": "Card",
+     "kind": "choice",
+     "default": "auto",
+     "choices": [
+      "auto",
+      "a100",
+      "a40",
+      "rtx",
+      "t4",
+      "h100",
+      "a30"
+     ],
+     "why": "auto takes the largest card this cluster has. Sampling holds the whole chain on the card, so a long sequence wants the largest there is",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    },
+    {
+     "key": "walltime",
+     "label": "Walltime",
+     "kind": "duration",
+     "default": "02:00:00",
+     "choices": [],
+     "why": "a few hundred samples of a small protein is minutes. A job killed at its walltime leaves nothing: the samples are written only once every batch has been drawn",
+     "optional": true,
+     "needed": false,
+     "advanced": true,
+     "least": 600,
+     "most": 172800,
+     "step": 1800
+    },
+    {
+     "key": "account",
+     "label": "Account to charge",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "why": "",
+     "optional": true,
+     "needed": false,
+     "advanced": true
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+<h1>What a run leaves</h1>
+<p class="lead">The files in a finished run folder, what each is for, and which of them you want
+when you take the results somewhere else.</p>
+
+<h2>The folder</h2>
+<pre>sequence.fasta            the sequence as you gave it
+submission.json           what was asked for, and what the job was told
+job.sbatch                the job script, exactly as it was queued
+slurm_&lt;job&gt;.out           the job's own log
+inputs/alignment.a3m      the alignment phase one fetched
+out/samples.xtc           the samples, as one trajectory file
+out/topology.pdb          the topology they are read with
+out/batch_*.npz           the per batch arrays, packed away when the run tidies itself
+analysis/analysis.json    everything reading the samples found
+analysis/ensemble.pdb     one model per shape, most populated first
+analysis/rg.dat           every sample: radius of gyration, distance from the mean shape
+analysis/rmsf.dat         every residue: how much it moves about the mean shape
+compare/&lt;run&gt;/compare.json  a comparison against one HOPE-MD run</pre>
+
+<h2>The samples themselves</h2>
+<p>A trajectory file and a topology, which is how every tool that reads ensembles expects them:
+MDTraj, MDAnalysis, VMD, PyMOL and the rest will all open <code>out/samples.xtc</code> with
+<code>out/topology.pdb</code>. The file format is the one simulations use because it is the
+efficient way to hold many structures of one molecule, and not because what is in it is a
+trajectory. <a href="shapes.html">The shapes, and what they are not</a> is the page about
+that.</p>
+<p>The model writes a backbone and one side chain atom per residue. That is enough for a cartoon,
+for secondary structure and for every number on this page, and it is not a full atom structure:
+nothing here can tell you about a side chain rotamer.</p>
+
+<h2>What reading them found</h2>
+<p><code>analysis/analysis.json</code> holds the lot, and it is the file the page, the report and
+a flow all read:</p>
+<ul>
+  <li><strong>the spread</strong>: the radius of gyration of each sample, with its mean and width,
+  and the distance of each sample from the mean shape;</li>
+  <li><strong>the shapes</strong>: the groups the samples fall into, each with the share of the
+  samples it holds, how wide it is, and which sample is its representative;</li>
+  <li><strong>the residues</strong>: how much each one moves about the mean shape, and what share
+  of the samples holds it as helix, as sheet or as neither;</li>
+  <li><strong>the sequence</strong> read back out of the structures, which is the check that the
+  run sampled what you think it sampled.</li>
+</ul>
+
+<h2>The structures to show somebody</h2>
+<p><code>analysis/ensemble.pdb</code> is one model per shape, up to eight of them, most populated
+first, aligned onto one another. It is what the viewer draws and what belongs in a figure: eight
+structures that are each a real draw from the model, rather than an average of anything.</p>
+<p>A shape holding less than one sample in a hundred is left out of that file. It is still in
+<code>analysis.json</code>, with its share, so nothing is hidden.</p>
+
+<h2>Taking the results somewhere</h2>
+<p>Copy, on the run's screen, writes into a folder on the cluster rather than through your
+browser, because the lab's work stays on Grace. Three choices:</p>
+<ul>
+  <li><strong>the shapes</strong>: <code>ensemble.pdb</code> and <code>analysis.json</code>, which
+  is what a slide or a colleague needs;</li>
+  <li><strong>the ensemble</strong>: those two, the samples, the topology and the per sample
+  files, which is what another analysis needs;</li>
+  <li><strong>the run</strong>: the whole folder.</li>
+</ul>
+<p>Copying into your home folder is refused: home on this cluster is 10 GB and 10,000 files.</p>

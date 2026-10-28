@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__APP__</title>
+<!-- The palette, the type scale and the shell are the shared stylesheet, which also dresses the
+     structure browser, the text-size control, the Next bar and the Submit area: this page is
+     those pieces arranged, and carries no sizes of its own. -->
+<link rel="stylesheet" href="/static/style.css">
+<!-- In the head, so the text size somebody chose is applied before anything is drawn. -->
+<script src="/static/zoom.js" data-page="__TOOL__"></script>
+<link rel="icon" href="__FAVICON__">
+</head>
+<body data-tool="__TOOL__">
+<header class="apphead">
+  <span class="mark">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm" id="appname">__APP__</span>
+  </span>
+  <!-- One muted line: the cluster, and where the runs go. Everything else about this install is
+       in the bar along the bottom and in the docs. -->
+  <span class="bd" id="where"></span>
+  <span class="headtools">
+    <span class="tabs" role="tablist" aria-label="Screens">
+      <button class="tab on" data-screen="setup" role="tab" aria-selected="true">Design</button>
+      <button class="tab" data-screen="runs" role="tab" aria-selected="false">Runs <em id="runcount" hidden></em></button>
+    </span>
+    <span data-hl-zoom></span>
+    <button class="pill theme" id="theme" type="button" title="Switch between light and dark">Dark</button>
+    <!-- Docs last, so it sits in the corner where a documentation link is looked for. It opens in
+         a tab of its own and carries no token: the documentation is the same for everyone. -->
+    <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+       title="How this page works, box by box, with what to do when something goes wrong">Docs</a>
+  </span>
+</header>
+
+<!-- ============================== DESIGN ============================== -->
+<main id="screen-setup" class="screen">
+  <section class="stage" id="stage">
+
+    <ol class="steprail" id="steps" aria-label="Steps">
+      <li><button class="st" type="button" data-goto="target"><span class="n">1</span><b>Target</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="site"><span class="n">2</span><b>Site</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="binder"><span class="n">3</span><b>Binder</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="submit"><span class="n">4</span><b>Submit</b></button></li>
+    </ol>
+
+    <!-- 1. The target. One button opens the structure browser, which reaches this computer, the
+         cluster and the other tools' runs; the chains and the sequence are read off whatever it
+         brings back. -->
+    <section class="box" id="step-target">
+      <h2>Target <button class="q" type="button" data-help="target" aria-label="About the target">?</button>
+        <span class="cstate need" id="st-target">Needed</span></h2>
+
+      <div class="pickzone" id="pickzone">
+        <div class="pickbtns">
+          <button class="btn pri" id="choose" type="button">Choose a structure</button>
+          <button class="btn quiet" id="codebtn" type="button">PDB code</button>
+        </div>
+        <p class="hint">or drop a .pdb or .cif file here</p>
+        <input type="file" id="file" accept=".pdb,.ent,.cif,.mmcif" hidden>
+      </div>
+
+      <div class="srcpane" id="codepane" hidden>
+        <label class="f" for="pdbid"><span class="fname">PDB code</span></label>
+        <div class="withbtn short">
+          <input class="inp" id="pdbid" placeholder="1YCR" maxlength="8" autocomplete="off" spellcheck="false">
+          <button class="btn sm pri" id="fetch" type="button">Fetch</button>
+          <button class="btn sm quiet" id="codecancel" type="button">Cancel</button>
+        </div>
+      </div>
+
+      <p class="errmsg" id="terr" hidden></p>
+
+      <!-- What was chosen: its name, where it came from, its chains as chips, and the start of
+           the sequence read off it. Press a chip to leave a chain out of the target. -->
+      <div class="picked" id="targetout" hidden>
+        <div class="picked-head">
+          <svg class="pic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+               stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>
+          <b id="tname"></b>
+          <span class="why" id="tsays"></span>
+          <span class="picked-from" id="tpath"></span>
+          <button class="btn sm quiet" id="changetarget" type="button">Change</button>
+        </div>
+        <div class="pchains" id="chainchips"></div>
+        <p class="seqpeek all" id="tseq" hidden></p>
+        <!-- What the page read that this tool's own reader cannot see: a converted mmCIF, a chain
+             of DNA, a residue it has no name for. -->
+        <div id="tnotes" hidden></div>
+      </div>
+      <p class="errmsg" id="chains-err" hidden></p>
+
+      <!-- What the model is told about the target: one line per condition, each with its own ?,
+           beside the target it is about rather than in a card of its own. RFD4-Proteina is the
+           only tool told this, so the rows are built only for it. -->
+      <div class="tellrows" id="tellbox" hidden></div>
+    </section>
+
+    <!-- 2. The site: pressed onto the chain or onto the structure, or typed as a paper gives it. -->
+    <section class="box" id="step-site">
+      <h2>Site <button class="q" type="button" data-help="site" aria-label="What marking a residue does">?</button>
+        <span class="cstate need" id="st-site">Needed</span></h2>
+      <!-- Until a structure is in, there is nothing to press: drawRuler writes this line
+           again whenever the chains change, and it starts as the chains start. -->
+      <p class="hint" id="sitehint">Choose a structure and its chains are drawn here.</p>
+
+      <!-- Whether the job is told to reach them. RFD4-Proteina's own condition, on the card it is
+           about; hidden for the tools that have no such switch. -->
+      <div class="tellrows" id="siteswitch" hidden></div>
+
+      <!-- The chain, drawn, with the site pressed onto it. Every residue is a button so the site
+           can be marked from the keyboard as well as the pointer. -->
+      <div id="siteruler"></div>
+
+      <div class="sitebar">
+        <!-- The one press this card exists for: most targets worth designing against arrive bound
+             to something, and the residues it touches are the site. The second button is for a
+             structure of three chains, where there may be no chain left out and the chains still
+             touch each other. -->
+        <button class="btn sm" id="takeiface" type="button" hidden></button>
+        <button class="btn sm" id="takeany" type="button" hidden></button>
+        <button class="btn sm quiet" id="clearsite" type="button" hidden>Clear</button>
+        <span class="sitesays" id="sitesays"></span>
+      </div>
+      <div class="hotchips" id="hotchips"></div>
+
+      <div class="sfields">
+        <div class="fld wide">
+          <label class="f" for="hotspots"><span class="fname">Or type them</span>
+            <button class="q" type="button" data-help="hotspots" aria-label="How the box is read">?</button></label>
+          <input class="inp mono" id="hotspots" placeholder="54,56,66-70" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <p class="errmsg" id="hotspots-err" hidden></p>
+
+      <div class="vwrap" id="vwrap" hidden>
+        <div class="vbar">
+          <button class="pill on" id="vcartoon" type="button">Cartoon</button>
+          <button class="pill" id="vsticks" type="button">Sticks</button>
+          <button class="pill" id="vsurface" type="button">Surface</button>
+          <button class="pill" id="vspin" type="button">Spin</button>
+          <button class="pill" id="vreset" type="button">Reset</button>
+          <span class="lb">Press a residue to mark it</span>
+        </div>
+        <div class="viewer" id="viewer"></div>
+        <div class="vlegend">
+          <span><i style="background:#9fb7c8"></i>held rigid</span>
+          <span><i style="background:#c2603a"></i>the site</span>
+          <span id="vpartnerleg" hidden><i style="background:#86a98f"></i>left out</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. The binder and the run: how long, how many, and the tool's own settings. -->
+    <section class="box" id="step-binder">
+      <h2>Binder <button class="q" type="button" data-help="binder" aria-label="How long a binder to ask for">?</button>
+        <span class="cstate done" id="st-binder">Ready</span></h2>
+
+      <!-- A length as a range with the scale under it, rather than two numbers to hold in your
+           head. The boxes stay for an exact figure, and each moves its own handle. -->
+      <div class="lenbar">
+        <div class="lentrack"></div>
+        <div class="lenfill" id="lenfill"></div>
+        <input type="range" id="len_lo" min="20" max="200" step="1" aria-label="Shortest binder, residues">
+        <input type="range" id="len_hi" min="20" max="200" step="1" aria-label="Longest binder, residues">
+      </div>
+      <div class="lenscale"><span>20</span><span id="lennow"></span><span>200</span></div>
+
+      <div class="sfields">
+        <div class="fld num">
+          <label class="f" for="binder_min"><span class="fname">Shortest</span></label>
+          <input class="inp" id="binder_min" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="fld num">
+          <label class="f" for="binder_max"><span class="fname">Longest</span></label>
+          <input class="inp" id="binder_max" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <p class="errmsg" id="binder_min-err" hidden></p>
+      <p class="errmsg" id="binder_max-err" hidden></p>
+
+      <!-- The tool's own settings, built from the card the server sends, so the page offers what
+           the canvas offers. -->
+      <div class="sfields" id="fields-main"></div>
+      <details class="more" id="moreopts">
+        <summary>More settings <span class="why" id="morecount"></span></summary>
+        <div class="sfields" id="fields-more"></div>
+      </details>
+      <p class="note" id="notes" hidden></p>
+    </section>
+
+  </section>
+
+  <!-- What to do now, in one line, under the form rather than over it: a row of the page's own
+       grid, so the form scrolls above it and the bar covers no control. -->
+  <div class="nextbar" id="nextbar" role="status" aria-live="polite">
+    <span class="nextlab">Next</span>
+    <span class="nexttext" id="nexttext">Choose a structure to design against.</span>
+    <button class="btn sm" id="nextgo" type="button">Show me</button>
+  </div>
+
+  <!-- ------------------------------- the rail -------------------------------
+       Resources, where it goes, and Submit. Nothing here is on the form as well. -->
+  <aside class="rail" id="railside">
+    <!-- The rail is a column: the settings scroll in the top of it and the Submit area is the
+         foot of it, always on the screen. Held there by the layout rather than by a sticky box
+         over the settings, which is what used to cover Run folder and Browse. -->
+    <div class="railscroll" id="railscroll">
+      <div class="grp" id="g-res">Resources</div>
+      <div id="fields-res"></div>
+      <!-- The queue and the account: real settings, and not the first thing anybody needs. -->
+      <details class="more" id="moreres" hidden>
+        <summary>Queue and account <span class="why" id="morerescount"></span></summary>
+        <div id="fields-res-more"></div>
+      </details>
+
+      <div class="grp" id="g-where">Where it goes</div>
+      <label class="f" for="name"><span class="fname">Run name</span></label>
+      <input class="inp" id="name" placeholder="Named for you" autocomplete="off">
+      <label class="f" for="out"><span class="fname">Run folder</span></label>
+      <div class="withbtn">
+        <input class="inp" id="out" placeholder="Chosen for you" autocomplete="off">
+        <button class="btn sm" id="outbrowse" type="button" title="Choose a folder on the cluster, or make one">Browse</button>
+      </div>
+      <p class="errmsg" id="out-err" hidden></p>
+    </div>
+
+    <section class="submitbox" id="step-submit">
+      <!-- The run plan: what will happen, where, and roughly how long, in plain numbered steps.
+           It appears once there is a target, directly above the button that commits to it. -->
+      <div class="runplan" id="plan" hidden>
+        <div class="runplan-head">Run plan
+          <button class="q" type="button" data-help="plan" aria-label="How the plan is worked out">?</button></div>
+        <ol class="runplan-steps" id="phases"></ol>
+        <p class="runplan-where" id="planwhere"></p>
+        <button class="linkbtn" id="showjob" type="button">Show the job</button>
+      </div>
+      <div class="gobar" id="gobar">
+        <div class="btns">
+          <button class="btn pri" id="go" type="button" disabled>Submit</button>
+          <button class="btn quiet" id="dry" type="button" disabled
+                  title="Write the run folder and the job script, and queue nothing">Dry run</button>
+        </div>
+        <!-- One line under the button, saying why it cannot be pressed. Said once: the list of
+             refusals that used to sit above it said the same thing in more words. -->
+        <p class="gowhy" id="gowhy">Choose a structure first.</p>
+        <button class="linkbtn" id="morewhy" type="button" hidden></button>
+        <p class="note" id="golast" hidden></p>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<!-- ============================== RUNS ============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <section class="rrail">
+    <div class="row" style="justify-content:space-between">
+      <span class="modes" id="scope">
+        <button data-scope="mine" class="on" type="button">Mine</button>
+        <button data-scope="all" type="button">Everyone</button>
+      </span>
+      <button class="pill" id="refresh" type="button" title="Read the run folders and the queue again" aria-label="Refresh">&#8635;</button>
+    </div>
+    <div class="legend"><span><span class="dot q"></span>queued</span><span><span class="dot run"></span>running</span><span><span class="dot fin"></span>finished</span><span><span class="dot stop"></span>stopped</span></div>
+    <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+  </section>
+  <section class="rmain" id="rundetail">
+    <p class="empty">Pick a run on the left.</p>
+  </section>
+</main>
+
+<!-- The reason behind a ?, in the words the card already uses, with a link into the tool's own
+     documentation. Nothing is dropped: the sentences that used to sit under every box open here. -->
+<dialog id="helpdlg" class="hlmodal" aria-labelledby="helptitle">
+  <div class="mhead"><h2 id="helptitle"></h2>
+    <button class="mx" id="helpx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody" id="helpbody"></div>
+  <div class="mfoot">
+    <a id="helpdocs" href="/docs/index.html" target="_blank" rel="noopener">More in the docs</a>
+    <button class="btn sm" id="helpclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The job, for the curious: what the model will be told about this target, and the spec the
+     switches write. Opened from Show the job under the run plan, never a panel on the form. -->
+<dialog id="jobdlg" class="hlmodal" aria-labelledby="jobtitle">
+  <div class="mhead"><h2 id="jobtitle">The job</h2>
+    <span class="modes" id="toldmodes">
+      <button data-told="input" class="on" type="button">Inputs</button>
+      <button data-told="spec" type="button" hidden>Spec</button>
+    </span>
+    <button class="mx" id="jobx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody">
+    <p class="why" id="toldwhat"></p>
+    <pre class="told" id="toldtext"></pre>
+  </div>
+  <div class="mfoot">
+    <span class="why">Written into the run folder as it is shown here.</span>
+    <button class="btn sm" id="jobclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The job's own output, for the curious and for a run that went wrong: Slurm's log, behind a
+     button on the Runs screen rather than poured down the page under the results. -->
+<dialog id="logdlg" class="hlmodal" aria-labelledby="logtitle">
+  <div class="mhead"><h2 id="logtitle">The log</h2>
+    <button class="mx" id="logx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody">
+    <p class="why" id="logsays"></p>
+    <pre class="told" id="logtext"></pre>
+  </div>
+  <div class="mfoot">
+    <span class="why">The last of what the job printed.</span>
+    <button class="btn sm" id="logclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- 3Dmol, from the copy this checkout vendors: the page is reached over a forwarded port, and a
+     viewer fetched from a content delivery network would be an empty box. -->
+<script src="/static/vendor/3Dmol-min.js"></script>
+<script src="/static/picker.js"></script>
+<script src="/static/app.js"></script>
+<!--__CREDITBAR__-->
+</body>
+</html>

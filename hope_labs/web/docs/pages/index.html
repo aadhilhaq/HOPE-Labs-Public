@@ -1,0 +1,106 @@
+<h1>HOPE Labs</h1>
+<p class="lead">One front for a set of tools for designing, folding and simulating molecules on a cluster. Sign in once, pick a tool, and it
+opens in a tab of its own: the page it always was, reached through one connection and one
+Duo approval.</p>
+
+
+<h2 id="what-it-does">What it does</h2>
+<p>HOPE Labs opens the tools below, in three categories, and every one of them is a page on a
+login node.</p>
+<table>
+<tr><th>Tool</th><th>Category</th><th>What it does</th><th>Leaves behind</th></tr>
+<tr><td><b>RFdiffusion</b></td><td>Design</td><td>Diffuses a binder backbone onto the target, then gives it a sequence with ProteinMPNN</td><td>designed binders</td></tr>
+<tr><td><b>RFdiffusion3</b></td><td>Design</td><td>Diffuses every atom at once rather than a frame per residue, so a design can be asked for by the atoms that must be in the right place</td><td>designed binders</td></tr>
+<tr><td><b>RFD4-Proteina</b></td><td>Design</td><td>Designs binders, enzymes and nucleic-acid binders from one model, asked for by what has to be in the right place: the target held, its sequence revealed, the residues a binder must reach marked</td><td>designed binders</td></tr>
+<tr><td><b>BoltzGen</b></td><td>Design</td><td>Generates binders against a target of any kind, then folds and ranks them</td><td>designed binders</td></tr>
+<tr><td><b>Boltz-2</b></td><td>Folding</td><td>Folds protein, DNA, RNA and small molecules together, from a list of sequences</td><td>folded complexes</td></tr>
+<tr><td><b>ColabFold</b></td><td>Folding</td><td>Folds one protein chain, or a complex of several, with ColabFold and AlphaFold 2</td><td>folded structures</td></tr>
+<tr><td><b>HOPE-MD</b></td><td>Simulation</td><td>Molecular dynamics of a complex on five engines</td><td>trajectories and binding energies</td></tr>
+<tr><td><b>BioEmu</b></td><td>Simulation</td><td>Samples the structures one protein chain takes, from its sequence, in minutes, and puts them against a HOPE-MD run of the same chain</td><td>sampled ensembles</td></tr>
+</table>
+<p>Folding is its own category rather than more Design because nothing is designed there: a
+sequence goes in and a structure comes out, which is what somebody who opens the launcher with a
+sequence in hand is looking for.</p>
+<p>HOPE-MD serves its own page, and HOPE Labs only starts it. The others never had one, so theirs
+is part of HOPE Labs: see
+<a href="own-installs.html#the-pages-that-are-ours">The tools whose page is ours</a>.</p>
+<p>Opening one of them by hand takes a terminal, an SSH session, the command that starts it, a
+second session that forwards its port, and a Duo approval for each session. HOPE Labs signs in
+once, holds that one connection, and does the rest for whichever tool you pick: it starts the
+tool on the login node, waits for it to say it is ready, forwards a port to it, and shows it in a
+tab of its own.</p>
+<p>The tools are not changed in any way. Each tab shows the tool's own page, with its own
+Docs and the bar along its bottom. Nothing of the tools is installed on your computer, and the
+only thing of HOPE Labs on the cluster is its folder: the checkout the pages of ours are served
+from, and the tools installed beside it.</p>
+
+<h2 id="the-page">The page</h2>
+<ol class="legend">
+<li><b>HOPE Labs</b>, and under it the account you signed in with and the login node it is
+on.</li>
+<li><b>Tools</b>, <b>Flows</b> and <b>Results</b>, the three views. Tools is where a session
+starts.</li>
+<li><b>The tools</b>, each with a dot that is green while it is running. Click a name to open
+that tool's tab, starting the tool first if it is not up.</li>
+<li>The one thing to remember about cost: every tool runs under your own account, and the jobs
+it submits are charged to you.</li>
+<li>The <b>categories</b>, one button for each of the four. Pick one to show only those tools;
+pick it again, or <b>All</b>, to show every one.</li>
+<li><b>Search the tools</b> matches what you type against each tool's name, what it does and
+its category.</li>
+<li><b>Docs</b>, in the top right corner, opens these pages in a tab of their own.</li>
+<li>A <b>block</b> for each tool: what it does, whether it is running, and what it takes from
+another tool or leaves for the next one.</li>
+<li><b>Launch</b> starts the tool and opens its tab. Once it is running the button says
+<b>Open</b>, and <b>Stop</b> appears beside it. The dashed buttons open the tool that usually
+comes next.</li>
+<li>The bar along the bottom: the version, the copyright, who does the work, and links to these
+pages and to <a href="citing.html">How to cite</a>.</li>
+</ol>
+
+<h2 id="flows">Flows</h2>
+<p><b>Flows</b> is the second view, and it is for the other way of working: a target, a tool to
+design against it and a tool to judge what comes back, drawn once as a graph and queued in one go.
+A card is a tool, its sockets say what it needs and what it leaves, and a link is allowed only
+where the two meet, so a target cannot be sent where sequences are wanted. The panel down the left
+of the canvas lists every card there is, which is the answer to which tools can be put in a flow.
+A card a flow cannot start yet is still drawn and still says what it would do, and it says on
+itself that it cannot: a flow holding one is refused before anything is queued rather than failing
+in a job twenty minutes later.</p>
+<p>The view is three stages, one at a time, because they follow one another. The canvas is where a
+flow is drawn. <b>Launch the flow</b> asks the cluster what the flow would do and shows it as a
+plan, read on the way to queueing and queueing nothing itself: <b>Queue it</b>, in the bar under
+the plan, is the only button on that page that commits an allocation. A flow that is running is
+then drawn as its own cards where they were put, colored by what has become of each, with the
+folders and job ids beside them. A flow is kept on your own computer rather than on the cluster,
+so <b>Save</b> and the list beside it are yours alone.</p>
+<p>A tool's page and its card queue the same run through the same code: the same job script, the
+same run folder and the same refusals for the same reasons. So a run started either way is found
+either way, on the tool's own Runs screen and in <a href="results.html">Results</a>.</p>
+
+<h2 id="a-session">A session, start to finish</h2>
+<ol class="steps">
+<li><b>Start HOPE Labs</b> on your computer and sign in to Grace with your NetID, your password
+and one Duo approval. The page opens in your browser by itself.</li>
+<li><b>The first time, set HOPE Labs up</b> in a folder of yours on the cluster, and tick the
+tools to install: see <a href="set-up.html">Setting up on a cluster</a>.</li>
+<li><b>Launch a tool.</b> Its tab opens at once and fills in when the tool is ready. The
+first start of the day can take a minute while the tool's environment loads.</li>
+<li><b>Work in it</b> exactly as you would without HOPE Labs: prepare, submit, follow, read the
+results.</li>
+<li><b>Hand the result on.</b> Results lists the runs of every tool together, and the button
+beside a run opens the tool that takes it next, with the run's folder ready to copy.</li>
+<li><b>Sign out</b> when you are done. The pages close and the connection ends; jobs already in
+the queue carry on.</li>
+</ol>
+
+<h2 id="where-to-go-next">Where to go next</h2>
+<div class="cards">
+<a class="card" href="getting-started.html"><span><b>Getting started</b>Download it, sign in, and open a tool.</span></a>
+<a class="card" href="tools.html"><span><b>The Tools page</b>The blocks, their buttons and the rail.</span></a>
+<a class="card" href="windows.html"><span><b>A tool's tab</b>How a tool opens, and handing a run on.</span></a>
+<a class="card" href="results.html"><span><b>Results</b>Every tool's runs, and handing one on.</span></a>
+<a class="card" href="set-up.html"><span><b>Setting up on a cluster</b>Set HOPE Labs up in a folder of yours and install the tools.</span></a>
+<a class="card" href="own-installs.html"><span><b>Installing by hand</b>A tool Set up does not install, and pointing HOPE Labs at it.</span></a>
+<a class="card" href="troubleshooting.html"><span><b>When something goes wrong</b>What each message means, and what to do.</span></a>
+</div>

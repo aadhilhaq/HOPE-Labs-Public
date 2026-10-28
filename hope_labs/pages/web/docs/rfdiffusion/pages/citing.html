@@ -1,0 +1,67 @@
+<h1>How to cite</h1>
+<p class="lead">The backbones are RFdiffusion's work and the sequences are ProteinMPNN's. Cite
+those two, and acknowledge the computing.</p>
+
+<h2 id="rfdiffusion">RFdiffusion</h2>
+<p>RFdiffusion is by the Institute for Protein Design at the University of Washington, and it is
+what designed your backbones. The published paper is:</p>
+<div class="tip">Watson, J. L. et al. De novo design of protein structure and function with
+RFdiffusion. <i>Nature</i> <b>620</b>, 1089 to 1100 (2023).
+<a href="https://doi.org/10.1038/s41586-023-06415-8" target="_blank" rel="noopener">doi:10.1038/s41586-023-06415-8</a></div>
+<p>The install's own README points instead at the preprint,
+<a href="https://www.biorxiv.org/content/10.1101/2022.12.09.519842" target="_blank" rel="noopener">bioRxiv
+10.1101/2022.12.09.519842</a>, which was published as the paper above under a different title. The
+two are the same work, so cite the journal version.</p>
+<p>The README also asks that RoseTTAFold be acknowledged, because RFdiffusion builds directly on
+its architecture and trained parameters. If your methods section goes into how the backbones were
+made, that belongs in it.</p>
+<p>The version this install runs is in the bar along the bottom of the page, read from the install
+itself rather than typed here, so it names what actually ran.</p>
+
+<h2 id="proteinmpnn">ProteinMPNN</h2>
+<p>Every design in the run got its sequence from ProteinMPNN, run with the target held fixed.</p>
+<div class="tip">Dauparas, J. et al. Robust deep learning based protein sequence design using
+ProteinMPNN. <i>Science</i> <b>378</b>, 49 to 56 (2022).</div>
+<p>ProteinMPNN is unpacked inside the lab's <code>dl_binder_design</code> checkout, which is
+where this run finds it. The run calls ProteinMPNN's own script directly and uses none of
+<code>dl_binder_design</code>'s other steps, so none of its AlphaFold or PyRosetta pieces are
+involved and none of them need citing for a run from this page.</p>
+
+<h2 id="the-viewer">The viewer</h2>
+<p>A run from this page can be opened in HOPE Labs' own viewer, under <b>Results</b>. A figure made
+there cites 3Dmol.js, which draws it, and one that shows a surface cites MSMS as well, which
+computed the surface:</p>
+<div class="tip">Rego, N. and Koes, D. 3Dmol.js: molecular visualization with WebGL.
+<i>Bioinformatics</i> <b>31</b>, 1322 to 1324 (2015).
+<a href="https://doi.org/10.1093/bioinformatics/btu829" target="_blank" rel="noopener">doi:10.1093/bioinformatics/btu829</a></div>
+<div class="tip">Sanner, M. F., Olson, A. J. and Spehner, J.-C. Reduced surface: an efficient way to
+compute molecular surfaces. <i>Biopolymers</i> <b>38</b>, 305 to 320 (1996).
+<a href="https://doi.org/10.1002/(SICI)1097-0282(199603)38:3%3C305::AID-BIP4%3E3.0.CO;2-Y" target="_blank" rel="noopener">doi:10.1002/(SICI)1097-0282(199603)38:3&lt;305::AID-BIP4&gt;3.0.CO;2-Y</a></div>
+
+<h2 id="the-computing">The computing</h2>
+<div class="tip">Please acknowledge Texas A&amp;M High Performance Research Computing (HPRC) for
+the computational resources.</div>
+<p>Every run from this page is on Grace, so this sentence belongs in the acknowledgments of
+anything that used it.</p>
+
+<h2 id="licences">Licenses</h2>
+<table>
+<tr><th>What</th><th>Terms</th></tr>
+<tr><td>RFdiffusion</td><td>A BSD license, which the file states covers both the source code and
+the model weights. Copyright 2023 University of Washington, developed at the Institute for
+Protein Design. Its README states that it is free for both non-profit and for-profit use.
+Attribution is required, and the University of Washington's name may not be used to endorse
+anything derived from it.</td></tr>
+<tr><td>ProteinMPNN</td><td>MIT. Copyright 2022 Justas Dauparas.</td></tr>
+<tr><td>dl_binder_design</td><td>MIT. Copyright 2023 Nathaniel R. Bennett. Only the ProteinMPNN
+copy inside it is used here.</td></tr>
+<tr><td>This page</td><td>The lab's, as the bar along the bottom states.</td></tr>
+</table>
+<p>The <code>LICENSE</code> file in each install is the full text, and is what to read rather than
+this table if the answer matters.</p>
+
+<h2 id="this-page">This page</h2>
+<p>The page, the code that queues the run and these documentation pages are by Aadhil Haq, HOPE
+Lab, PI Dr. Sandun Fernando, Texas A&amp;M University. They set a run up and read what comes back;
+they do none of the science, so a methods section rarely needs them. If yours does, name the page
+with the version in the bar along the bottom.</p>

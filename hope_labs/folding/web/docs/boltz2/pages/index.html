@@ -1,0 +1,37 @@
+<h1>Boltz-2 on Grace</h1>
+<p class="lead">The lab's page for folding protein chains, DNA strands, RNA strands, ligands and ions on the cluster, with the alignments fetched
+where there is a network and the prediction run where there is not.</p>
+
+<h2>What it does</h2>
+<p>Boltz-2 folds a complex. You give it a list of entities, one per chain or molecule, as on
+AlphaFold Server, and it predicts a single structure in which all of them sit together: a protein
+with its partner, a protein with a strand of DNA, a kinase with ATP and two magnesium ions in its
+pocket. Chains can carry modifications, such as a phosphoserine or a methylated base. It is the
+only tool on this launcher that will put a ligand and a nucleic acid into the same
+prediction.</p>
+<p>The page is part of HOPE Labs rather than part of Boltz-2. It serves the form, writes
+a YAML file, fetches the alignments, writes the job and queues it, and then reads the run folder
+back. The folding itself is Boltz-2 2.2.1, exactly as installed, run through its own
+command line.</p>
+
+<h2>The one thing worth knowing first</h2>
+<p>A compute node on this cluster has no route to the internet. It resolves names and every
+connection fails. Both folding tools want an alignment from a server on the internet, so a run
+cannot be one job: the alignments are fetched on the login node, before anything is queued, and
+the prediction runs in a GPU job with no network at all. The page does both for you, in that
+order, when you press Submit. <a href="alignments.html">The two phases</a> explains what happens
+where and what it means when something goes wrong in one of them.</p>
+
+<h2>What this page does not do</h2>
+<p>This page folds, and that is all it does in this first version. Boltz-2 can
+also predict binding affinity, be steered with pocket and bond constraints, and be given a
+template structure to fold against. None of those is offered here. Each is a separate argument
+about what a number means, and a page that offered them without that argument settled would
+produce numbers nobody should quote.</p>
+<p>ColabFold has a page of its own on this launcher, with the same form and the same two
+phases.</p>
+
+<h2>Where to start</h2>
+<p><a href="getting-started.html">Getting started</a> walks through one run from the beginning.
+<a href="entities.html">The sequences</a> is about the rows and what is checked in them, which is
+where most of a folding run's mistakes are made.</p>

@@ -1,0 +1,27 @@
+<h1>Signing out</h1>
+<p class="lead">Signing out closes the pages and the connection. Anything already in the queue
+carries on without them.</p>
+
+<h2 id="how">How</h2>
+<p>Press <b>Sign out</b> in the HOPE Labs window, or close that window. Either one stops every
+tool's page server on the login node, closes the ports forwarded to them, and ends the SSH
+connection. The tools' tabs in your browser stop answering and can be closed. The log says
+<b>Signed out</b>, and that anything already queued carries on.</p>
+
+<h2 id="what-carries-on">What carries on</h2>
+<p>HOPE Labs submits nothing itself. The tools submit jobs to Slurm from their own pages, and a
+job in the queue belongs to Slurm, not to the page that submitted it: it runs, finishes and writes
+its results whether or not anyone is signed in. Sign in again later and the runs are in each
+tool's own list and in <a href="results.html">Results</a>.</p>
+<div class="note"><b>A folding run has one step that is not a job.</b> Boltz-2 and ColabFold fetch
+their alignments on the login node before anything is queued, because a compute node here has no
+network, and that fetch belongs to the page rather than to Slurm. It is the minutes between
+pressing Submit and the page saying the job was queued. Signing out inside those minutes ends it,
+and the run has to be submitted again; after the job is queued, signing out changes nothing.</div>
+<p>The cost follows the same rule. Every job a tool submits runs under your account and is
+charged to you, whether or not you were watching it.</p>
+
+<h2 id="if-the-connection-drops">If the connection drops</h2>
+<p>A computer going to sleep, or a change of network, ends the SSH connection, and every tool's
+page with it, since each runs over that connection. Jobs already in the queue carry on. Sign in
+again; each tool starts afresh when you pick it.</p>

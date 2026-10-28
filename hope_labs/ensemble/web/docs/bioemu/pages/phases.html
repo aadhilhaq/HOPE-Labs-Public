@@ -1,0 +1,55 @@
+<h1>The two phases</h1>
+<p class="lead">Why a run is not one job on this cluster, what happens on the login node, and what
+happens on the card.</p>
+
+<h2>The fact everything here follows from</h2>
+<p>A compute node on this cluster has no route to the internet. Names resolve and every connection
+fails, and there is no proxy. It was measured rather than assumed: from a GPU node, the container
+registry, the Python package index and the model hub all answer nothing at all.</p>
+<p>So the work splits where the network is.</p>
+
+<h2>Phase one, on the login node</h2>
+<p>BioEmu does not read a sequence directly. It reads the embeddings AlphaFold 2 makes of that
+sequence, and those are made from an alignment: the thousands of related sequences that say which
+positions in this protein are conserved and which vary. BioEmu fetches that alignment from the
+ColabFold server the first time it sees a sequence.</p>
+<p>This page does that here, on the login node, with BioEmu's own client, so what is written is
+exactly what BioEmu would have fetched for itself. It lands in <code>inputs/alignment.a3m</code>
+in the run folder, and the job is then told to read that file.</p>
+<p>This is the one part of a run that is not on a compute node, and it is the reason the page has
+to be served on a login node rather than anywhere else.</p>
+
+<h2>Why that matters more than it sounds</h2>
+<p>Handed a bare sequence on a GPU node, BioEmu asks the alignment server, cannot reach it, and
+retries. It does not fail: it waits, holding a card, until the walltime runs out. That happened
+once here, on the tool's own installation check, and it is why both the check and every run on
+this page are handed an alignment file rather than a sequence.</p>
+
+<h2>Phase two, in the GPU job</h2>
+<p>The job runs the sampling inside BioEmu's container image, with:</p>
+<ul>
+  <li>the model weights that were fetched when it was installed, read from the HOPE Labs folder
+  rather than from a cache under your home folder;</li>
+  <li>AlphaFold 2's parameters, linked in from the same place, which is what the embeddings are
+  made with;</li>
+  <li>the model hub switched to offline, so a missing file is a plain failure rather than a job
+  that hangs on a socket;</li>
+  <li>every cache inside the run folder. Home on this cluster is 10 GB and 10,000 files, and this
+  tool writes caches by the thousand.</li>
+</ul>
+<p>The samples are then read in the same job, which takes seconds, so nothing is queued twice and
+a finished run is a run you can read.</p>
+
+<h2>What this means when a run fails</h2>
+<p>Because the alignment is already on disk, Queue again on the Runs screen needs no network. A
+run that ran out of walltime, or landed on a node whose card the driver disagreed with, can be
+queued again as it stands and will pick up the same alignment. That is the practical reward for
+splitting the phases.</p>
+<p>If phase one fails, nothing is queued at all and the page says why beside the Submit button.
+<a href="messages.html">What the messages mean</a> lists the rest.</p>
+
+<h2>Sampling the same sequence twice</h2>
+<p>The embeddings made from the alignment are kept in the run folder, so a second run of the same
+sequence in the same folder does not make them again. Across run folders they are made again from
+the alignment, which needs no network either: it is a few minutes of card time, and it keeps each
+run's folder complete on its own.</p>

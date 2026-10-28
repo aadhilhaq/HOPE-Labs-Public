@@ -1,0 +1,46 @@
+<h1>The two phases</h1>
+<p class="lead">Why a folding run is not one job on this cluster, what happens on the login node,
+and what happens on the card.</p>
+
+<h2>The fact everything here follows from</h2>
+<p>A compute node on this cluster has no route to the internet. Names resolve and every connection
+fails, and there is no proxy. This was learned the hard way: a real co-folding run died with
+"Network is unreachable" after its alignments had been fetched and its GPU allocated.</p>
+<p>So the work splits where the network is.</p>
+
+<h2>Phase one, on the login node</h2>
+<p>Boltz-2's own alignment client is run here, on the login node, once for each
+distinct protein sequence in the form. It asks the ColabFold MSA server, the same server
+<code>boltz predict --use_msa_server</code> would ask from inside the job, and writes what comes
+back into <code>msa/</code> in the run folder as a two column CSV, which is the format Boltz-2
+writes for itself. When there is more than one entity it fetches a paired alignment as well, so a
+complex is folded with the pairing that makes an alignment worth having.</p>
+<p>The YAML then names those files. Every protein chain carries an <code>msa</code> line, and that
+is not optional: Boltz-2 refuses to mix alignments it was given with alignments it would fetch
+itself, and a protein chain with no <code>msa</code> line at all is a chain it would fetch for.
+A chain with nothing fetched for it says <code>empty</code>, which is Boltz-2's own word for
+folding from the sequence alone.</p>
+<p>This is the one part of a folding run that is not on a compute node, and it is the reason the
+page has to be served on a login node rather than anywhere else.</p>
+
+<h2>Phase two, in the GPU job</h2>
+<p>The GPU job runs <code>boltz predict</code> on the YAML, with
+<code>--cache</code> pointing at the weights already in the install. That flag matters more than
+any other: without it Boltz-2 looks in a cache under your home folder, finds nothing, and tries to
+download about six gigabytes from a node that cannot reach anything.</p>
+<p>The job also moves every cache into the run folder, including the home folder itself. Home on
+this cluster is 10 GB and 10,000 files, and both tools write caches by the thousand.</p>
+
+<h2>Folding from the sequence alone</h2>
+<p>Setting Alignments to <b>Sequence only</b> skips phase one entirely. Nothing is
+fetched, the job is queued the moment you press Submit, and the structures are markedly worse,
+because an alignment is most of what these models know about a sequence. Use it for a quick look
+at something, not for a result.</p>
+
+<h2>What this means when a run fails</h2>
+<p>Because the alignments are already on disk, Queue again on the Runs screen needs no network. A
+run that ran out of walltime, or landed on a bad node, can be queued again as it stands and will
+pick up the same alignments. That is the practical reward for splitting the phases.</p>
+<p>If phase one fails, nothing is queued at all and the page says why under the Submit button.
+The alignment server rations its answers and queues when it is busy, so the usual answer is to
+try again later. <a href="messages.html">What the messages mean</a> lists the rest.</p>

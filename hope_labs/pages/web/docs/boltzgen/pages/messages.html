@@ -1,0 +1,105 @@
+<h1>What the messages mean</h1>
+<p class="lead">The sentences the page and the job can produce, what each one is telling you, and
+what to do about it.</p>
+
+<h2 id="before-anything-is-queued">Before anything is queued</h2>
+<table>
+<tr><th>What it says</th><th>What to do</th></tr>
+<tr><td>the target needs hotspots: the residues a binder should touch</td><td>Name a few
+residues. A run is not queued without them.</td></tr>
+<tr><td>the target has no residue A218</td><td>The number is not in the chain. The chips under the
+target show the range each chain actually uses, and plenty of entries do not start at 1.</td></tr>
+<tr><td>the target has no chain C</td><td>A chain was dropped, or the entry does not have it.</td></tr>
+<tr><td>BoltzGen needs what to design</td><td>Choose a protocol. It is the whole of what the model
+is being asked and there is no sensible default for a target the page has not seen.</td></tr>
+<tr><td>the structure has to be a .pdb or a .cif file</td><td>The upload box takes those two.
+Anything else would be copied in and then found to hold no chain.</td></tr>
+<tr><td>no chain was found in that file</td><td>The file has no <code>ATOM</code> records at all,
+or none carrying an alpha carbon.</td></tr>
+<tr><td>that file holds chain A, 212 protein residue(s), and no amino-acid chain BoltzGen's own
+reader can see</td><td>The file was read and what is in it is not protein: a nucleic acid
+structure, or a chain of ligands. The position count needs an amino-acid chain.</td></tr>
+<tr><td>that file is an mmCIF and it could not be written as a PDB here</td><td>The conversion
+needs gemmi, and the structure may also be past what a PDB can hold. The message says what the
+file holds. Convert it yourself and give the PDB.</td></tr>
+<tr><td>chain A holds 212 residue(s) and BoltzGen's own reader sees 210 of them: residue 54, 98
+are written as a hetero group or outside the twenty amino acids</td><td>Not a refusal. Those
+residues are in the file and are not ones a hotspot can be aimed at, so the ruler draws them
+without a letter and the box will not take them. A position count runs over the residues its own
+reader sees.</td></tr>
+<tr><td>the RCSB would not give 9ZZZ</td><td>The id does not exist, or the RCSB is not answering.
+The message carries what it said.</td></tr>
+<tr><td>home is 10 GB and 10 000 files on Grace</td><td>Put the run folder in your scratch.</td></tr>
+<tr><td>a walltime Slurm takes: 12:00:00, or 2-00:00:00 for two days</td><td>Slurm's own forms
+only. The <code>gpu</code> partition allows four days at most.</td></tr>
+</table>
+
+<h2 id="when-the-run-will-not-queue">When the run will not queue</h2>
+<table>
+<tr><th>What it says</th><th>What it means</th></tr>
+<tr><td>BoltzGen's weights are not in /scratch/.../boltzgen_cache</td><td>The 10 GB weight cache
+is missing, and a compute node cannot fetch it, so nothing is queued at all. It is fetched on a
+login node; this is not something the form can fix.</td></tr>
+<tr><td>sbatch refused the job</td><td>Slurm's own complaint, passed through. The usual causes are
+an account you are not a member of, a partition that has no such card, or a walltime over the
+partition's limit.</td></tr>
+<tr><td>there is no BoltzGen on the cluster</td><td>From the launcher, not the page: the install is
+not where it is expected. Check the path on the Tools screen.</td></tr>
+</table>
+
+<h2 id="in-the-log">In the log</h2>
+<table>
+<tr><th>What it says</th><th>What it means</th></tr>
+<tr><td>hotspots: chain A 54,56,66 to positions 37,39,49 (the chain is numbered 18 to 290)</td>
+<td>The conversion, written down. Read it: these are the residues the run will actually aim
+at.</td></tr>
+<tr><td>hotspots: 7 residue(s) confirmed in the spec</td><td>BoltzGen wrote the specification out
+as a structure, the marks were read back, and they are the positions that were asked for. Past
+this point the hotspots are proved.</td></tr>
+<tr><td>the hotspots did not survive conversion</td><td>The marks read back are not the ones asked
+for, so the run stops before anything expensive. Nothing has been queued beyond the check. Send
+the run folder on: this should not happen and the specification in it is the evidence.</td></tr>
+<tr><td>these hotspots are not residues of the target, so nothing was run</td><td>A hotspot
+named a residue the structure has not got: one in a gap in the chain, one off the end of it, or
+one on a chain that is not among those kept. Each is named, with where it falls, and the run stops
+before anything expensive. RFdiffusion and RFdiffusion3 refuse the same thing in the same words.</td></tr>
+<tr><td>these hotspots have an insertion code, which this tool cannot be aimed at, so nothing
+was run</td><td>A hotspot was written <code>60A</code> or <code>H60A</code>. The conversion to
+positions reads a chain, a number and at most a range, so the code is lost and the run would aim
+at residue 60, which a structure numbered this way has as well. RFdiffusion refuses it in these same words; RFdiffusion3 is
+the one of the three that keeps a code on its residue, so use that page when 60A is the
+site.</td></tr>
+<tr><td>none of the hotspots given are in the target</td><td>Every residue named is absent, so
+there is nothing to aim at and the run stops.</td></tr>
+<tr><td>BoltzGen left no metrics CSV</td><td>The run finished the generation but the analysis step
+produced no table, so there is no ranking to hand on. Usually the analysis step running out of
+card memory, which is the one to suspect at a high design count.</td></tr>
+<tr><td>pdl1_design_3: no chain in the structure carries the designed sequence</td><td>One design
+could not be split into binder and target by sequence, so it was dropped rather than handed on the
+wrong way round. One or two in a run is not a problem.</td></tr>
+<tr><td>pdl1_design_5: no structure among the ranked designs</td><td>The design is in the metrics
+table but BoltzGen wrote no structure for it in either ranked folder. It is dropped.</td></tr>
+<tr><td>wrote designs.json: 9 design(s)</td><td>The run finished. Nine designs came through with
+both a structure and a sequence.</td></tr>
+<tr><td>no design came through with both a structure and a sequence</td><td>The run finished and
+produced nothing usable. The lines above it say which designs were dropped and why.</td></tr>
+<tr><td>CUDA out of memory</td><td>The card ran out. Fewer designs, a shorter binder, or an A100
+rather than an A40.</td></tr>
+</table>
+
+<h2 id="slurm-states">Slurm states on the Runs screen</h2>
+<table>
+<tr><th>State</th><th>What it means</th></tr>
+<tr><td>PENDING</td><td>Waiting for a card. The reason beside it is Slurm's, and
+<code>Resources</code> or <code>Priority</code> both mean wait.</td></tr>
+<tr><td>RUNNING</td><td>On a node. The log is a better guide than the tiles for most of a BoltzGen
+run, because its output arrives at the end.</td></tr>
+<tr><td>COMPLETED</td><td>The job exited cleanly. Check the designs tile: a run can complete
+having dropped every design.</td></tr>
+<tr><td>TIMEOUT</td><td>Out of walltime. There is no checkpoint, so the run is lost; ask for
+longer or for fewer designs.</td></tr>
+<tr><td>OUT_OF_MEMORY</td><td>The host ran out, not the card. Unusual at 64 GB and worth
+reporting.</td></tr>
+<tr><td>DRY RUN</td><td>Not a Slurm state. The run folder, the specification and the job script
+were written and nothing was queued.</td></tr>
+</table>

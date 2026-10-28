@@ -1,0 +1,95 @@
+<h1>How it works</h1>
+<p class="lead">One SSH connection, held by the program on your computer, and every tool reached
+through it: started on the login node, found by the line it prints, and forwarded to a port on
+your own computer.</p>
+
+<h2 id="one-connection">One connection</h2>
+<p>Signing in opens one SSH connection to a login node of the cluster: on Grace, with your
+password and one Duo approval. Everything after that goes through it. Each tool is started as a process on that
+connection, and each tool's page reaches your browser through a port forwarded over it. That is
+why Duo is asked once however many tools you open, and why signing out, or the connection
+dropping, stops every tool's page together.</p>
+<p>Your password goes to the connection and nowhere else. It is not written down, logged, or
+offered back the next time.</p>
+
+<h2 id="starting-a-tool">Starting a tool</h2>
+<p>Each tool is started by one line of shell, kept with everything else HOPE Labs knows about the
+tools in <code>hope_labs/tools.py</code>. For the tools that serve their own page the line
+goes into the tool's install, enters its environment through the install's own
+<code>activate.sh</code>, or through the command its installer wrote, and starts the page server there. For the ones whose page is part
+of HOPE Labs it runs from the HOPE Labs checkout instead, looks for a Python of 3.8 or newer, and is
+handed the tool's install as a setting, which is how a copy of the tool in somebody's own scratch
+is still driven by the lab's page. Either way the server listens on the login node alone.</p>
+<p>The tool then says it is ready by printing its port and a token, and HOPE Labs reads that off
+the connection it already holds. Every tool says so in the same way.</p>
+<table>
+<tr><th>Tool</th><th>What it prints when it is ready</th></tr>
+<tr><td>Every tool</td>
+<td>One line with its own address, <code>http://127.0.0.1:</code> then its port and
+<code>/?t=</code> then its token. Each picks a free port itself.</td></tr>
+</table>
+<p>HOPE Labs then forwards a free port on your computer to that port on the login node, and the
+tool's tab shows the page through it. A tool that prints nothing of the kind within two
+minutes, or stops first, is reported with the reason: see
+<a href="troubleshooting.html#starting-a-tool">When something goes wrong</a>.</p>
+
+<h2 id="tokens">Tokens</h2>
+<p>None of the tools takes its token on the command line, and that is deliberate: a login node is
+shared, and <code>ps</code> shows every process's arguments to everybody on it. Each tool makes
+its own token and prints it, and HOPE Labs reads it off the connection, where nobody else can see
+it. Every request to a tool's page has to carry it.</p>
+<p>HOPE Labs' own page works the same way. It listens on your computer alone, and while the page
+itself loads without its token, every request for the session's state and every start or stop
+needs it. These docs are the one part that needs no token: they are the same for everyone.</p>
+
+<h2 id="the-same-port">The same port every time</h2>
+<p>The page is served on the same port of your computer every time you sign in, worked out from
+your account name. Chrome remembers what you allowed (the tabs reaching this computer, and pop-ups)
+per address, and the address includes the port, so a page that moved port every session would be
+asked again every session.
+If that port is busy, the next few above it are tried, then any free one, and the log says
+so.</p>
+
+<h2 id="what-runs-where">What runs where</h2>
+<table>
+<tr><th>Where</th><th>What</th></tr>
+<tr><td>Your computer</td><td>HOPE Labs itself: the sign in window, the one SSH connection, the
+page in your browser, and the ports forwarded to each tool.</td></tr>
+<tr><td>The login node</td><td>Each tool's page server, started when you pick the tool and stopped
+when you stop it or sign out. It submits the work rather than doing it. The surfaces the viewer
+under <b>Results</b> draws are computed here too, by MSMS from the HOPE Labs checkout, in a few
+seconds each.</td></tr>
+<tr><td>The compute nodes</td><td>The work: every job a tool submits, through Slurm, under your
+account.</td></tr>
+</table>
+<p>The tools are not changed by HOPE Labs, and each tab shows the tool's own page as it would be
+without it. The one thing of HOPE Labs on the cluster is its folder: the checkout the pages of
+ours are served from, and the tools beside it. The checkout submits nothing and holds no state of
+its own.</p>
+<div class="note"><b>The folding tools need the login node for more than the page.</b> Fetching an
+alignment is the one part of a folding run that wants the network, and a compute node on this
+cluster has none. So Boltz-2 and ColabFold fetch the alignments on the login node, before anything
+is queued, and the prediction runs in a GPU job with no network at all. Each page's own docs
+explain the two phases.</div>
+
+<h2 id="adding-a-tool">Adding a tool</h2>
+<p>Everything that differs between the tools is in <code>hope_labs/tools.py</code>: one entry per
+tool, giving where it is installed, the line that starts it, how it says it is ready, and where
+its runs are. A new tool either prints the ready line above or brings a reader of its own. Nothing else in HOPE Labs knows one tool from another.</p>
+<p>An entry alone is half a tool, though, so a tool goes everywhere it can go before it is
+considered added. Six places:</p>
+<table>
+<tr><th>Where</th><th>What it is</th></tr>
+<tr><td>A tile</td><td>Its entry in <code>hope_labs/tools.py</code>, with a category and the line
+that starts it.</td></tr>
+<tr><td>A page</td><td>Its own, inside the install, or one of ours when the project ships
+none.</td></tr>
+<tr><td>Its documentation</td><td>Served at that page's <code>/docs/</code>, and auditing clean:
+every page in the sidebar present, every link and picture resolving.</td></tr>
+<tr><td>A flow card</td><td>Its card in <code>hope_flow/cards.py</code>, with sockets saying what
+it needs and what it leaves.</td></tr>
+<tr><td>These pages</td><td>At the least a row in the tool table on the
+<a href="index.html#what-it-does">Overview</a>.</td></tr>
+<tr><td>A mark</td><td>A glyph of its own, which no other tool uses and which is not another
+tool's borrowed.</td></tr>
+</table>

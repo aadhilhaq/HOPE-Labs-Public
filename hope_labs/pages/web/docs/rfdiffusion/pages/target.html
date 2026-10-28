@@ -1,0 +1,123 @@
+<h1>The target and hotspots</h1>
+<p class="lead">The target is the receptor the binder is designed against, and the hotspots are
+the residues it should touch. Both are read off the structure you give, so the page can tell you
+at once whether a residue you have named is a residue that exists.</p>
+
+<h2 id="three-ways-to-give-a-target">Three ways to give a target</h2>
+<table>
+<tr><th>Where it comes from</th><th>What to do</th></tr>
+<tr><td><b>PDB id</b></td><td>Four characters. The entry is fetched from the RCSB on the login
+node, which has the internet, and copied into the run folder. A compute node has no internet, so
+a job cannot fetch its own target.</td></tr>
+<tr><td><b>Structure file</b></td><td>Drop a <code>.pdb</code> or <code>.cif</code> file on
+the page or choose one. It is uploaded, kept in the server's own scratch folder, and copied into
+the run folder when you submit. An mmCIF is written as a PDB first, because that is the form
+RFdiffusion reads, and the chains and the numbering you are shown come off that copy; where it
+cannot be written as one the page says so instead of queueing a run that would find out.</td></tr>
+<tr><td><b>Path on the cluster</b></td><td>A path to a file already on Grace. Use this for a file
+too large to upload, or for a structure a previous run or another tool left.</td></tr>
+</table>
+<div class="note"><b>The job always reads a PDB.</b> RFdiffusion is handed its target as
+<code>inference.input_pdb</code> and reads it by PDB column positions, so an mmCIF is written as
+one before anything is queued and the chains, the numbering and the contig you are shown are read
+off that copy. Where it cannot be written as one the page says so at the box rather than letting a
+job discover it twenty minutes in. The file's name is not what decides this: a PDB sent under a
+<code>.cif</code> name is read as the PDB it is, and an mmCIF sent as <code>.pdb</code> is
+converted, each with a line under the target saying which happened.</div>
+<p>Whichever way you give it, the structure is read once and that one copy is what goes into the
+run. The RCSB answering twice is two files, and a target you have looked at should be the target
+that is designed against.</p>
+
+<h2 id="chains">Chains</h2>
+<p>After the target is read, one chip appears per amino-acid chain, carrying the chain's letter,
+how many residues it has, and the first and last residue numbers it uses. Every chain is selected
+to begin with. Click a chip to drop that chain, and click it again to put it back.</p>
+<p>A chain that is dropped is not in the run at all. It is not kept as context and it is not
+written into the design: RFdiffusion is given only the chains you keep, so a receptor whose
+second chain matters should keep both.</p>
+
+<h2 id="hotspots">Hotspots</h2>
+<p>Hotspots are the residues on the target that the binder should make contact with. Write them in
+the numbering the chips show, which is the structure's own numbering:</p>
+<table>
+<tr><th>What you type</th><th>What it means</th></tr>
+<tr><td><code>54,56,66-70</code></td><td>residues 54, 56 and 66 to 70 of the first chain you
+kept</td></tr>
+<tr><td><code>A54,B12-16</code></td><td>residue 54 of chain A and residues 12 to 16 of chain B</td></tr>
+<tr><td><code>A54,56,57</code></td><td>54, 56 and 57 of chain A: a residue with no letter takes
+the chain from the token before it</td></tr>
+<tr><td><code>H60A</code></td><td>refused, and named. RFdiffusion keys a hotspot by its chain and
+its number alone and has nowhere to put an insertion code, so <code>60A</code> would reach it as
+residue 60, which is a different residue, and one a structure numbered this way has as well.
+RFdiffusion3 keeps the code on its residue, so use that page when 60A is the site</td></tr>
+</table>
+<p>A residue you name that the structure has not got turns the box red and names it, so a
+numbering that starts at 18 rather than 1 is caught while you are typing rather than hours later.
+A run is not queued without hotspots. Every design tool the lab runs works far better with
+them, and a binder with nowhere in particular to go will find the largest hydrophobic patch on
+the surface rather than the site you care about.</p>
+
+<h3 id="on-the-chain">Pressing the site onto the chain</h3>
+<p>Under the target the page draws each chain you are keeping in the structure's own numbering,
+ten residues to a group with the number above each, every residue a button. The box and the chain
+are one site, so typing in one marks the other. A number typed into a box cannot be checked by eye
+against the structure it names, and that is the mistake on this page that never announces itself:
+a site aimed at the wrong face designs for twelve hours and fails nothing.</p>
+<p>A residue drawn without a letter is one this page's own reader has no residue for; the number
+is still the one a hotspot is written in. Where a structure uses insertion codes, so that 21,
+21A and 21B are three residues and one number, every residue is drawn and only the first of each
+number can be pressed: a hotspot is a number and has nowhere to put the code.</p>
+
+<h3 id="from-a-partner">Taking the site from a bound partner</h3>
+<p>Most targets worth designing against arrive bound to something. 1YCR is MDM2 with the p53
+peptide in its cleft, and the residues that peptide touches are the site a binder wants. Leave the
+partner's chain out of the target and the page offers <b>Site from chain B</b>, which
+marks every kept residue within 4.5&nbsp;&#8491; of it and says how many it marked and from where.
+On 1YCR that is 22 residues of chain A. Prune them if you want a tighter site: a design asked to
+reach 22 residues at once is being asked for a larger binder than one aimed at seven.</p>
+<p>4.5&nbsp;&#8491; is the distance every page here counts a contact at, so a site taken from a
+partner and an interface read off a complex are the same residues by the same rule. The partner need not be protein and need not be a chain this tool's own reader can see:
+a DNA strand, a ligand or a sugar in a chain of its own is a partner, because a contact is measured
+on atoms. The page names any such chain under the target.</p>
+<p><b>Site from all chains</b> asks the other question, the one a structure of three
+chains kept whole asks: not what the chain you left out touches but where these chains touch each
+other at all. It marks every residue of the chains you keep within 4.5&nbsp;&#8491; of any other
+chain in the file, the ones you are designing against included. On a trimer kept whole it is the
+only reading there is.</p>
+
+<h2 id="what-the-job-is-told">What the job is told</h2>
+<p>Under the hotspots box the page shows the two lines RFdiffusion will actually be given:</p>
+<pre><code>contigmap.contigs=[A1-150/0 70-100]
+ppi.hotspot_res=[A54,A56,A66,A67,A68,A69,A70]</code></pre>
+<p>The contig map says: keep chain A residues 1 to 150 as they are, break the chain so the binder
+is not fused to the target, then diffuse a new chain whose length is sampled between 70 and 100.
+The hotspot list is every residue spelled out, because RFdiffusion names them one at a time and
+has no range form of its own. Seeing these before you submit is the point of the box: a range
+written the wrong way round, or a chain you did not mean to keep, shows up in them.</p>
+
+<h2 id="a-target-with-gaps">A target with gaps in its chain</h2>
+<p>Most crystal structures have holes in them. Residues nobody could see in the density are not
+in the file at all, and the numbering steps over them: 7A3R's chain A is numbered 1 to 395 but
+has no 191 to 194, no 226 or 227, and three more holes besides. The target is given to the tool
+as it was deposited, so the holes come with it.</p>
+<p>A span in the contig map means every residue number in it, and RFdiffusion checks that each
+one is really in the file, so a chain written 1 to 395 stops the run on the first residue it
+cannot find. The contig therefore gives each stretch of resolved residues a span of its own,
+divided by a slash, with the one chain break at the end:</p>
+<pre><code>contigmap.contigs=[A1-190/A195-225/A228-270/A275-342/A345-381/A386-395/0 70-100]</code></pre>
+<p>Inside one chain the divider is a plain slash and not <code>/0 </code>. RFdiffusion works the
+real distance between the stretches out of the numbering, so the model reads them as one chain
+with residues missing. A <code>/0 </code> would put a two hundred residue jump between them and
+tell the model that one protein is six separate ones. Two different chains do take
+<code>/0 </code> between them, because they really are separate molecules.</p>
+<p>A hotspot that falls in a hole is refused by name before anything is queued, because there is
+no such residue to aim at.</p>
+
+<h2 id="choosing-hotspots-well">Choosing hotspots well</h2>
+<p>Three to six residues on one face is the usual choice, and they should be residues that are
+actually exposed in the structure. A hotspot buried in the core cannot be touched, and asking for
+it wastes the run. If you know the epitope from a complex, take the residues the partner contacts;
+if you do not, a patch that is conserved and solvent exposed is a better guess than the whole
+face.</p>
+<p>Naming too many residues is its own problem: RFdiffusion treats them as a set to make contact
+with, and a set spread over two faces asks for a binder that cannot exist.</p>

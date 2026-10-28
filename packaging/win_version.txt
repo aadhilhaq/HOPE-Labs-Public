@@ -1,0 +1,35 @@
+# Windows file properties for the built executable: without this the Details tab of the .exe
+# is empty, which reads as an anonymous binary. The version is fixed at 1.0.0: it says what
+# the launcher is, not which commit built it; the window reports the commit itself.
+#
+# This is the template. __COPYRIGHT__ is filled in by win_version.py, from LICENSE by way of
+# hope_labs.COPYRIGHT, because a binary that reserves all rights should say so in the one place
+# Windows shows it - and because a copyright typed here would be a third copy of the line with
+# nothing holding it in step.
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [StringStruct('CompanyName', 'HOPE Lab, Texas A&M University'),
+         StringStruct('LegalCopyright', '__COPYRIGHT__'),
+         StringStruct('FileDescription', 'HOPE Labs - the lab tools on Grace, in one place'),
+         StringStruct('FileVersion', '1.0.0.0'),
+         StringStruct('InternalName', 'HOPE-Labs'),
+         StringStruct('OriginalFilename', 'HOPE-Labs.exe'),
+         StringStruct('ProductName', 'HOPE Labs'),
+         StringStruct('ProductVersion', '1.0.0.0')])
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)

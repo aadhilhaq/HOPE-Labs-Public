@@ -1,0 +1,59 @@
+<h1>Getting started</h1>
+<p class="lead">One run from an empty form to a structure, with the waiting explained.</p>
+
+<h2>Opening the page</h2>
+<p>Sign in to HOPE Labs, find ColabFold in the Tools list and press Launch. The launcher starts
+the page on a login node, forwards a port to your own computer and opens it. The page carries a
+token in its address: that is what makes it yours on a shared login node, so open it from the
+launcher rather than keeping the address.</p>
+
+<h2>Filling in the form</h2>
+<p>The form is two cards and a column down the right. The card to do next is outlined, and the
+bar along the bottom says in one line what to do, with <b>Show me</b> to take you there.</p>
+<ol class="steps">
+<li><b>What to fold.</b> Press <b>Choose a structure</b>. It opens the structure browser: this
+computer, your scratch, home, this page's runs, the other tools' run folders and your group's
+folders, and a PDB code. Pick a file and its chains are <a href="entities.html#structures">read off
+it</a> and become rows, its protein chains, with the copies worked out. The structure's chips say which
+chains are on the form: press one to leave that chain out, and again to bring it back. A FASTA
+chosen in the same browser becomes one row per record. A file dropped on the card is read the
+same way.</li>
+<li>Or press <b>Paste sequences</b> and paste plain letters or FASTA, or <b>PDB code</b> and
+type four characters. Each row is a protein chain. A homodimer is one row with two copies; a heterodimer is two rows with one copy each. <b>+ Add a molecule</b> under the rows adds a chain by hand, to type or paste its sequence into.</li>
+<li><b>Settings.</b> Leave them alone unless you have a reason. They are ColabFold's own defaults,
+and the reason for each is behind its <b>?</b>. <b>More options</b> holds the ones few people
+change.</li>
+<li><b>The column on the right.</b> Resources is the GPU, the time limit and the account; Where it
+goes is the run's name and folder, both chosen for you if you leave them. Once there is something
+to fold, the <a href="resources.html#plan">run plan</a> appears above Submit: what will happen,
+where, and roughly how long. <b>Show the job</b> under it opens a FASTA record exactly as it will be
+written, chain ids and all, which is worth a look: a copy count or a chain id read wrong does not
+fail, it folds something else for a few hours and reports a confidence score for it.</li>
+<li>Press <b>Submit</b>. When it cannot be pressed yet, the line under it says why.</li>
+</ol>
+
+<h2>The text size</h2>
+<p>The <b>&minus; 100% +</b> control in the header makes the page's text and controls smaller or
+larger, from 80% to 150%, and pressing the percentage goes back to 100%. The page remembers your
+choice. The structure viewers keep their size, so a residue clicked is the residue under the
+pointer at any text size.</p>
+
+<h2>The wait after Submit</h2>
+<p>Submit does two things. First it fetches the alignments, here on the login node, and that takes
+a minute or two per distinct protein sequence, longer when the alignment server is busy. The
+button says so while it is happening. Then it writes the job and queues it, and the page moves to
+the Runs screen.</p>
+<p>If you would rather not wait at all, set Alignments to Sequence only. Nothing is
+fetched, the job is queued at once, and the structures are markedly worse. It is the right choice
+for a quick look and the wrong one for anything you intend to keep.</p>
+
+<h2>Trying the page without spending a card</h2>
+<p>Dry run writes the run folder, a FASTA record and the job script, fetches no alignments and queues
+nothing. It is how to see exactly what a run would be told before asking for a GPU, and it is how
+this page is worked on.</p>
+
+<h2>Then what</h2>
+<p>The <a href="runs.html">Runs screen</a> shows the job's state and the log while it runs. When
+it finishes, the structures are listed best first and the top one is drawn in the viewer. See
+<a href="results.html">what a run leaves</a> and <a href="viewing.html">looking at a
+structure</a>.</p>

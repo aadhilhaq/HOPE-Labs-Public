@@ -1,0 +1,31 @@
+<h1>RFdiffusion3 on Grace</h1>
+<p class="lead">Designs a binder onto a target by diffusing every atom at once, rather than a
+frame per residue. This page queues that run on a GPU node and gives each design a sequence.</p>
+
+<h2 id="what-it-is">What it is</h2>
+<p>RFdiffusion3 is a generative model for biomolecules from the Institute for Protein Design. The
+difference from RFdiffusion, and the reason it is a separate tool here rather than an upgrade, is
+the unit it works in: RFdiffusion diffuses a frame per residue and places side chains afterwards,
+and RFdiffusion3 diffuses the atoms themselves. A design can therefore be asked for by the atoms
+that have to be in the right place, which is what an enzyme active site or a metal site is.</p>
+<p>For the binder design this page offers, that difference matters less than it does for an
+active site. It is still the newer model, and its authors report it beating RFdiffusion on every
+one of their five binder benchmarks.</p>
+
+<h2 id="beside-rfdiffusion">It stands beside RFdiffusion, not over it</h2>
+<p>Both tools are on the Tools page and both have a card on the canvas. They cannot share an
+environment: RFdiffusion runs on Python 3.9 in SE3nv and this needs 3.12, so they are two
+installs. Nothing has been retired, and a flow saved against RFdiffusion still runs.</p>
+<p>What they hand on is identical, so anything that could follow one can follow the other: a
+complex with the binder already placed on the target, and the binder's sequence.</p>
+
+<h2 id="what-a-run-does">What a run does</h2>
+<ol>
+<li>Builds the input the model is driven by: a contig naming the binder's length and the target's
+residues, and the hotspots the binder has to reach.</li>
+<li>Diffuses the designs, all of them in one pass on the GPU.</li>
+<li>Gives each binder a sequence with ProteinMPNN, and keeps the model's own sequence beside it.</li>
+<li>Writes <code>designs.json</code>, which is what the next card reads.</li>
+</ol>
+<div class="note">Two designs against MDM2, sequences included, took eleven minutes on one A100.
+The model's own demo, twenty-four designs across three harder problems, took twenty-four.</div>

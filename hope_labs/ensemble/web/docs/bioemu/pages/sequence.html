@@ -1,0 +1,54 @@
+<h1>The sequence</h1>
+<p class="lead">One protein chain, what the page does with what you paste, and what the limits
+are.</p>
+
+<h2>One chain, protein, nothing else</h2>
+<p>BioEmu samples a single protein chain. It has no alphabet for a nucleic acid and no way to be
+given a ligand, a metal or a modified residue, so the page refuses anything outside the twenty
+amino acids rather than quietly dropping it. A sequence with a <code>U</code> in it, or with
+<code>X</code> standing in for something unknown, is refused with the letter named.</p>
+<p>That means a complex cannot be sampled here. If what you want is the spread of a complex, that
+is a simulation, and HOPE-MD is the tool for it. What you can do is sample each chain on its own
+and compare each against the simulation of the complex.</p>
+
+<h2>A structure, read for its chain</h2>
+<p>A structure is the better way in: the chain's sequence is read off the file, so what is sampled
+is the chain you meant rather than the one you typed, and the file is kept with the run so the
+samples can be measured against it. Choose a structure opens the structure browser, which reaches
+this computer, a PDB code, your scratch, your home folder, the run folders of the lab's tools and
+your group's folder from one dialog. The browser lists <code>.pdb</code>, <code>.ent</code>,
+<code>.cif</code> and <code>.mmcif</code> files, and inside a run folder of ours it offers the
+structure that run holds.</p>
+
+<h2>What the page does with what you paste</h2>
+<p>Anything reasonable is accepted and cleaned as you type. A FASTA header is dropped, line breaks
+and spaces are removed, numbers from a numbered listing are removed, and lower case is raised. The
+page then says how many residues it ended up with, which is the number worth checking before you
+submit: a sequence pasted out of a PDF often loses a line.</p>
+
+<h2>How long a chain can be</h2>
+<p>Two different limits, and they mean different things.</p>
+<p><strong>About 500 residues</strong> is what BioEmu was trained within. Past it the samples are
+an extrapolation rather than a prediction. The page says so and lets you carry on, because looking
+is often worth it, but a number taken from such a run should be reported with that sentence
+attached.</p>
+<p><strong>1200 residues</strong> is the hard ceiling here. Sampling holds the whole chain on the
+card and the memory it needs grows with the square of the length, so a longer chain does not run
+slowly, it runs out of card memory. The page refuses rather than letting a booking die at the
+end.</p>
+<p>A long protein is usually best sampled a domain at a time. Domains move within themselves and
+against each other, and the second kind of motion is not something a sequence model of this
+generation claims to get right anyway.</p>
+
+<h2>The name of a run</h2>
+<p>A run is named for you from its length and the first few residues, which is enough to tell two
+runs apart in a list. Give it your own name when you are going to come back to it: the name is the
+run's folder on the cluster, so it is what you will be reading in six months.</p>
+
+<h2>Giving your own alignment</h2>
+<p>Set Alignment to a file and name an <code>.a3m</code> you already have, and the search is
+skipped entirely. That is the right thing to do when you have a curated alignment, when you are
+sampling the same sequence repeatedly, or when the ColabFold server is down. The file is read as
+it stands and must end in <code>.a3m</code>: BioEmu decides what a file is by its suffix, and a
+<code>.fasta</code> named here would be read as a bare sequence.</p>
+<p><a href="phases.html">The two phases</a> explains what the alignment is for.</p>

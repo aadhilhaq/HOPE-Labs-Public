@@ -1,0 +1,72 @@
+<h1>Results</h1>
+<p class="lead">The run folders of every tool in one list, newest first, each beside the step that
+usually follows it.</p>
+
+
+<h2 id="what-is-listed">What is listed</h2>
+<p>Results looks in the folders each tool writes its runs to, on the cluster, over the connection
+already open, and lists the twelve newest runs in each folder, newest first. A run is listed by
+its folder's name, with the full path under it, the tool that made it, and how long ago the
+folder was last modified.</p>
+<table>
+<tr><th>Tool</th><th>Where its runs are looked for</th></tr>
+<tr><td>RFdiffusion</td><td><code>$SCRATCH/rfdiffusion_runs</code></td></tr>
+<tr><td>RFdiffusion3</td><td><code>$SCRATCH/rfd3_runs</code></td></tr>
+<tr><td>BoltzGen</td><td><code>$SCRATCH/boltzgen_runs</code></td></tr>
+<tr><td>Boltz-2</td><td><code>$SCRATCH/boltz2_runs</code></td></tr>
+<tr><td>ColabFold</td><td><code>$SCRATCH/colabfold_runs</code></td></tr>
+<tr><td>HOPE-MD</td><td><code>$SCRATCH/hopemd_runs</code></td></tr>
+</table>
+<p>These are where each tool writes when it is not told otherwise, which is how HOPE Labs starts
+them. A run written somewhere else is not listed; open it from its own tool.</p>
+<p>RFdiffusion, RFdiffusion3, BoltzGen, Boltz-2 and ColabFold are the tools whose page is part of
+HOPE Labs, and
+for them that folder is your own scratch and nowhere else. Their output is measured in gigabytes,
+and a folding run leaves several megabytes of alignment for every protein sequence in it before a
+structure is written at all, so there is nowhere else for it to go.</p>
+<p><b>Refresh</b> looks again. Otherwise what was read is kept for twenty seconds, so moving
+between the views does not ask the cluster each time.</p>
+<p>The buttons along the top show one tool's runs, with the number of its runs beside its name.
+Pick it again, or <b>All tools</b>, to see every run.</p>
+<div class="note"><b>Results lists folders; it does not read them.</b> A folder is listed whether
+the run in it finished, failed or is still going. Open the run in its own tool to see which.</div>
+
+<h2 id="files">Looking at what a run made</h2>
+<p>Click a run, or its <b>What it made</b> button, and it opens in place into what it made, in the
+order people look: a report the tool wrote up, a video of the trajectory, the pictures, the
+structures and the tables. Pictures are drawn small straight away and open large when clicked. A
+structure turns in a viewer, drawn as a rainbow for one chain, by chain for a complex, and as
+sticks for anything small, such as a peptide or a docked pose on its own, with the other ways a
+press away. <b>Surface</b> draws its molecular surface, colored by chain, computed by MSMS on the
+cluster: the surface a probe the size of a water molecule traces as it rolls over the atoms, with
+the waters left out. Where MSMS is not installed, or cannot triangulate the structure, the viewer
+draws a surface of its own and says why under it.
+A video plays, a report opens as a page, and a table reads as a table and sorts by any heading; a
+file that holds several tables, as MMPBSA's frames do, has a button for each. Anything can be downloaded, and so can the whole run, zipped on
+the cluster first because a finished run is thousands of small files.</p>
+<p><b>Open in</b> the tool opens that tool on this run's own results page, with the run already
+chosen, for every tool. <b>All files</b> lists everything in the folder, for whatever the
+gallery does not show.</p>
+<div class="note">This reads the run's folder rather than asking the tool, so it works the same for
+every tool, and on a flow too: each card of a flow has a <b>Results</b> button of its own. What it
+will read is any folder on the cluster your account can read, which is exactly what you could
+read in a terminal; a folder you may not read says so, rather than looking empty.</div>
+
+<h2 id="browsing">Browsing the files</h2>
+<p><b>Browse files</b> at the top of Results opens the structure browser, the same
+dialog every page of ours opens: with your scratch, your home, each tool&rsquo;s results and the
+group&rsquo;s folders down the left. Walk to a folder and press <b>Show what is in it</b>, and
+everything in it is listed, with <b>Download</b> beside each file. <b>All files</b> on a run opens
+that same listing on the run&rsquo;s own folder. Up goes one folder at a time as far as <code>/</code>, and any folder your account can read
+opens; one it cannot read says why, and the folder you were in stays open.</p>
+
+<h2 id="handing-a-run-on">Handing a run on</h2>
+<p>The last column holds the step that usually follows a run of that kind: <b>Simulate these
+designs in HOPE-MD</b> beside a design run, <b>Simulate a complex in HOPE-MD</b> beside a Boltz-2
+run and <b>Simulate a structure in HOPE-MD</b> beside a ColabFold one. Pressing one opens the tool
+that takes the run, in its own tab, which shows the run's folder with a <b>Copy path</b> button and
+copies it for you on the way to the tool: see
+<a href="windows.html#handing-on-a-run">Handing on a run</a>. Paste the path into that tool's
+import box.</p>
+<p>A HOPE-MD run says <b>none</b> there: nothing in the lab's order of work comes after a
+simulation.</p>

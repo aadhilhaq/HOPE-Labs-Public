@@ -1,0 +1,63 @@
+<h1>The shapes, and what they are not</h1>
+<p class="lead">What the groups of samples mean, how they are found, and the four things an
+ensemble cannot tell you however much it looks as though it could.</p>
+
+<h2>An ensemble is not a trajectory</h2>
+<p>The samples are independent draws from the distribution BioEmu learned. They are not steps
+along a path, and the order they come out in means nothing at all. Four things follow, and all
+four matter because an ensemble in a viewer looks exactly like a trajectory:</p>
+<ul>
+  <li><strong>No rates and no barriers.</strong> Nothing here says how fast a protein moves between
+  two shapes, or what it has to climb to get there. Those are kinetics and they are what a
+  simulation is for.</li>
+  <li><strong>No pathway.</strong> Two shapes in one ensemble are two shapes the chain takes. The
+  way it gets from one to the other is not in the samples and cannot be read off them.</li>
+  <li><strong>Nothing to play.</strong> The viewer steps through the shapes because that is how a
+  viewer shows several structures. What you are seeing is a slideshow, not a film, and it should
+  never be presented as one.</li>
+  <li><strong>No time axis anywhere.</strong> Nothing on this page or in its report is plotted
+  against sample number, deliberately. A drift along the sample axis would be read as motion in
+  time, and it would mean nothing.</li>
+</ul>
+<p>What an ensemble does carry is <em>how often</em>: the share of the samples in each shape is an
+estimate of how much of its time the protein spends there, which is exactly what a long simulation
+is usually run to find out.</p>
+
+<h2>How the shapes are found</h2>
+<p>Every sample is aligned onto every other and the distance between them measured as the root
+mean square deviation of the alpha carbons. The samples are then grouped by complete linkage and
+the grouping cut at <strong>0.3 nm</strong>.</p>
+<p>Three choices there, each for a reason:</p>
+<p><strong>Alpha carbons only</strong>, because the model writes a backbone and one side chain atom
+per residue, so a heavy atom deviation would be a backbone deviation with a different weighting
+and would not be comparable with the numbers a simulation of the same protein is quoted by.</p>
+<p><strong>0.3 nm</strong>, because below it two structures differ by detail this model does not
+claim to resolve, and above it they are different enough to be worth showing side by side. It is
+the figure the ensemble literature uses for the same fold in a different arrangement.</p>
+<p><strong>Complete linkage</strong>, because the question is whether every sample in a group is
+the same shape as every other. Single linkage answers a different question and will happily chain
+two distinct shapes together through whatever lies between them.</p>
+
+<h2>The representative of a shape</h2>
+<p>The sample closest to all the others in its own group: a real structure the model drew, not an
+average. Averaging a spread of shapes gives something flatter than any of them, with bond lengths
+nothing could have, which is why the mean shape is used here only as the point distances are
+measured from and never shown.</p>
+
+<h2>Reading the numbers</h2>
+<p><strong>One shape, narrow spread.</strong> The model is confident the chain holds one
+arrangement. Worth checking that the shape is the one you expect.</p>
+<p><strong>One shape, wide spread.</strong> A fold that is held but loose, or a chain with a
+flexible tail. The per residue fluctuations say which it is: a tail shows as a few residues moving
+far while the rest hold still.</p>
+<p><strong>Two or three shapes with real populations.</strong> The interesting answer. Open them
+side by side and look at what differs. This is the result that is invisible in any single
+structure, and it is the reason to run this at all.</p>
+<p><strong>Many shapes, each small.</strong> Usually a chain the model has no confident answer for:
+a long disordered region, or a sequence far from anything it was trained on. Treat the populations
+as noise, and look at the length and at
+<a href="sequence.html">what the training range was</a>.</p>
+
+<h2>What would settle it</h2>
+<p>An experiment. Failing that, a simulation of the same chain, which is a different kind of
+evidence rather than a better one: <a href="comparing.html">against a simulation</a>.</p>

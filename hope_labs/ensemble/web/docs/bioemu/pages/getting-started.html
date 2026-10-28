@@ -1,0 +1,70 @@
+<h1>Getting started</h1>
+<p class="lead">One sequence, from pasting it to reading the shapes it takes.</p>
+
+<h2>Before you start</h2>
+<p>The page is started for you by the HOPE Labs launcher: open the Tools page, find BioEmu and
+press Launch. It has to run on a login node, because the alignment is fetched from here, and the
+launcher does that and forwards the port itself.</p>
+<p>If the top of the page says BioEmu is not installed, open Set up from the launcher and install
+it. It is one container image and about four gigabytes of weights, and Set up finishes by running
+a real sample on the GPU queue so that nothing is called installed until it has worked here.</p>
+
+<p>The <strong>&minus; 100% +</strong> control in the header makes the page's text larger or
+smaller, from 80% to 150%; press the percentage to go back to 100%. The page remembers the size
+you chose, and the 3D viewer keeps working at every size.</p>
+
+<h2>1. Choose the molecule</h2>
+<p><strong>Choose a structure</strong> opens the structure browser. Down its left are the places a
+structure can be: <em>This computer</em>, which sends a file up from your own machine; a
+<em>PDB code</em>, fetched here on the login node; your scratch and your home folder; this page's
+own runs; the run folders of the lab's other tools, a HOPE-MD run among them; and your group's
+folder. Walk into a folder and press a file to choose it. Inside a run folder the browser offers
+<em>Use this run's structure</em>, so a chain you have already sampled or simulated is one press
+away. A file dropped onto the Molecule card works as well.</p>
+<p>The chains of the structure appear as chips, each with its length. Press the one to sample.
+A chain this tool cannot sample, DNA say, is shown dashed with the reason as its tooltip.</p>
+<p><strong>Paste a sequence</strong> takes one protein chain in any form: plain letters, a FASTA
+record, wrapped or numbered lines from a paper. A pasted sequence has no structure to measure the
+samples against, so choosing a structure is the better way in when you have one.
+<a href="sequence.html">The sequence</a> covers what is accepted and the limits on length.</p>
+<p><strong>+ Add a variant</strong> puts a second molecule beside the first: the same chain with
+mutations, written as <code>W23A</code> in the structure's own numbering. Each molecule is sampled
+in its own job.</p>
+
+<h2>2. Say how many structures</h2>
+<p>Three presets, each with what it costs: <em>A look</em> (100 structures, enough to see whether
+the chain holds one shape or several), <em>Standard</em> (500, the default, populations you can
+quote) and <em>Thorough</em> (2,000, the small populations too). Type any other number into
+Structures. Ten structures tell you nothing about a distribution and the page will not let you ask
+for fewer.</p>
+<p>Model and Alignment are in the same card. The defaults are the published paper's model and an
+alignment fetched for you; <em>My .a3m</em> reads an alignment you already have instead.</p>
+
+<h2>3. Read the run plan</h2>
+<p>Once there is a molecule, the run plan appears in the right-hand column directly above Submit:
+the alignment, fetched now on this login node, then the sampling, queued on one GPU, each with
+roughly how long it takes, and the folder the results will be in. <strong>Show the job</strong>
+opens the sequence and the job script exactly as they will be queued. A GPU booking is worth
+reading before you spend it.</p>
+<p>The Next bar along the bottom of the form always says what to do next, and Show me takes you
+there.</p>
+
+<h2>4. Submit</h2>
+<p>The alignment search runs first, here, and takes a minute or two for a sequence nobody has
+searched for recently. It is the slow part of a first run and the page says so while it waits. The
+job is then queued and the page shows you its number.</p>
+<p>If the search fails nothing is queued, and the page says why under the button. The server
+rations its answers when it is busy, so the usual answer is to try again in a few minutes.</p>
+
+<h2>5. Read the shapes</h2>
+<p>When the job finishes, the run's own screen shows the one sentence the run is read by, the
+shapes that were found with the share of the samples each holds, how far the samples lie from the
+mean shape, which residues moved, and the structures themselves in the viewer, one per shape.</p>
+<p>Press Report for a page you can save as a PDF, with the same numbers and the figures laid
+out.</p>
+
+<h2>6. Compare it with a simulation, if you have one</h2>
+<p>If the same chain has been simulated in HOPE-MD, point this run at that run and queue a
+comparison. It reads every frame of the trajectory and says whether the simulation visited the
+shapes that were sampled. <a href="comparing.html">Against a simulation</a> describes what it
+measures.</p>

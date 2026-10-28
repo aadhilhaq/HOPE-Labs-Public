@@ -1,0 +1,235 @@
+<h1>Installing by hand</h1>
+<p class="lead">Set up installs some of the tools for you. The others are installed by hand, once,
+in the HOPE Labs folder, where HOPE Labs finds them without being told.</p>
+
+<div class="note"><b>Start with Set up.</b> <a href="set-up.html">Setting up on a cluster</a> sets
+HOPE Labs up in a folder you choose and installs the tools it has a recipe for. This page is for
+the others, and for a tool you would rather install yourself.</div>
+<p>The HOPE Labs folder is the one you set HOPE Labs up in, with its checkout at
+<code>&lt;folder&gt;/HOPE-labs</code>; replace <code>&lt;folder&gt;</code> with it everywhere
+below. Some of the tools are opened by a page that is part of HOPE Labs rather than of the tool,
+and that page is served from the checkout.</p>
+<p>The tools with an installer of their own are the sections below. The others are
+<a href="#the-pages-that-are-ours">the tools whose page is ours</a>, where what there is to say
+is where each one lives and what it must not be made to share.</p>
+
+<h2 id="before-you-start">Before you start</h2>
+<p>Every tool below is a public project, installed from its own address. HOPE-MD is the HOPE
+Lab's, free for academic research and teaching under its own license.</p>
+<p>The clone lines below are each repository's own address, in the form its own documentation
+gives it. For a private repository either form wants your own GitHub access: an SSH key on the
+login node, or a token for the HTTPS lines.</p>
+<p><b>Check your file count, not your disk space.</b> Grace caps the number of files as well as
+the bytes.</p>
+<pre>showquota</pre>
+<p>Read the File Usage column. An environment with AmberTools in it is about 60,000 files by
+itself, and personal scratch on Grace allows 250,000, so a few tools fill it. Clear space with
+<code>conda clean -a -y</code>, take the smaller environment where a tool offers one, or set
+HOPE Labs up in a group folder with more room.</p>
+<h2 id="images">Tools that come as one file</h2>
+<p>Some tools are installed as a container image instead of an environment: one file, however much
+is inside it, against the tens of thousands of files a Python environment costs. HOPE Labs builds
+these from its public repository and publishes them, so pulling one needs no account and no
+token:</p>
+<pre>cd &lt;your HOPE Labs folder&gt;
+export SINGULARITY_CACHEDIR=$PWD/setup/cache/singularity
+singularity pull images/bioemu_1.4.1.sif docker://ghcr.io/aadhilhaq/hope-labs-bioemu:1.4.1</pre>
+<p>The Set up page does this for you, and removes the image again when you take the tool off. An
+image carries no model weights: those are fetched separately, on a login node, into
+<code>weights/&lt;tool&gt;/</code> beside it, because a compute node here has no network. A job then
+runs the tool inside the image with that folder bound in, and with the network shut, so a weight
+that was never fetched fails plainly instead of hanging.</p>
+<p>A cluster cannot build these images, only pull them: building needs a privilege Grace does not
+give. They are built on GitHub's machines from the recipes in <code>images/</code>, and each image
+records the commit it was built from.</p>
+
+<p><b>Nothing in your home directory.</b> Home on Grace is 10 GB and 10,000 files.
+HOPE-MD's installer refuses a prefix under <code>$HOME</code>, and the pages of
+ours refuse to put a run folder in your home directory for the same reason. Always give a
+prefix.</p>
+<p><b>Install from a login node.</b> Each installer downloads something, and Grace's compute
+nodes have no outbound network.</p>
+<p><b>Use the HOPE Labs folder for all of them.</b> HOPE Labs looks for every tool under the
+folder it was set up in, in the layout below. Give <code>&lt;folder&gt;</code> to each installer
+as its prefix and you get exactly that layout.</p>
+<table>
+<tr><th>Tool</th><th>Its key</th><th>Folder under your root</th></tr>
+<tr><td>RFdiffusion</td><td><code>rfdiffusion</code></td><td><code>ML_programs/RFdiffusion</code></td></tr>
+<tr><td>RFdiffusion3</td><td><code>rfd3</code></td><td><code>envs/rfd3</code>, with <code>ML_programs/foundry</code></td></tr>
+<tr><td>BoltzGen</td><td><code>boltzgen</code></td><td><code>envs/boltzgen</code></td></tr>
+<tr><td>Boltz-2</td><td><code>boltz2</code></td><td><code>envs/boltz</code></td></tr>
+<tr><td>ColabFold</td><td><code>colabfold</code></td><td><code>envs/colabfold</code></td></tr>
+<tr><td>HOPE-MD</td><td><code>hopemd</code></td><td><code>HOPE-MD/MD</code></td></tr>
+</table>
+
+
+
+
+<h2 id="hope-md">HOPE-MD</h2>
+<pre>P=&lt;folder&gt;
+git clone https://github.com/aadhilhaq/HOPE-MD.git $P/HOPE-MD/MD &amp;&amp; bash $P/HOPE-MD/MD/install.sh $P</pre>
+<p>That gives <code>&lt;prefix&gt;/HOPE-MD/MD</code> for the checkout and
+<code>&lt;prefix&gt;/HOPE-MD/env</code> for its environment, with caches in
+<code>&lt;prefix&gt;/HOPE-MD/.cache</code>. The environment is a venv on a base Python that already
+has OpenMM, PDBFixer, pdb2pqr and AmberTools. The script looks in <code>HOPEMD_BASE_PYTHON</code>
+first, and failing that builds a conda environment in <code>&lt;prefix&gt;/HOPE-MD/conda</code>,
+which its README calls tens of thousands of files. A Python of your own that already has those
+four is named with <code>HOPEMD_BASE_PYTHON</code>, and that build is skipped.</p>
+<p>The script then checks that HOPE-MD imports and audits which of its <code>module load</code>
+lines work here, which takes a minute or two. The engines are never installed: they are Grace's own
+modules. Its README's Requirements table is plain about what that needs, and none of it is yours
+to grant: the <code>amber</code> group for every run, the <code>desmond</code> group for Desmond
+runs, and HPRC's Schr&ouml;dinger users list for Prime MM-GBSA. Each is a mail to
+help@hprc.tamu.edu after registering with the authors.</p>
+
+<h2 id="the-pages-that-are-ours">The tools whose page is ours</h2>
+<p>RFdiffusion, RFdiffusion3, RFD4-Proteina, BoltzGen, Boltz-2, ColabFold and BioEmu are the tools
+whose page is not inside the install. None of those projects ships one, so the lab wrote them: the
+design pages are under <code>hope_labs/pages</code>, the folding pages under
+<code>hope_labs/folding</code> and the ensemble page under <code>hope_labs/ensemble</code>, and
+the Tools screen starts each from the HOPE Labs checkout rather than from the tool.</p>
+<p>Because the page belongs to HOPE Labs, a copy of any of them elsewhere is still driven by the
+lab's page, which is handed the install path. A HOPE Labs checkout is named with
+<code>HOPELABS_INSTALL</code>, and the Python that runs the page with <code>HOPELABS_PYTHON</code>:
+the page needs Python 3.8 or newer, and a login node's own <code>python3</code> may be
+older.</p>
+<p>Two of them are installed as a single container image rather than as an environment:
+RFD4-Proteina and BioEmu. The install their page is handed is that image file, and the folder
+holding it is where their weights are read from, so a copy of the image in your own scratch brings
+its own weights with it. <a href="#images">Tools that come as one file</a> says how Set up
+installs them.</p>
+<p>Each page serves its own documentation at its <b>Docs</b> button, written for the tool it
+fronts rather than for the launcher, and that is where the settings, the messages and the run
+folder are described.</p>
+<h3 id="rfdiffusion">RFdiffusion with ProteinMPNN</h3>
+<p>A card on the canvas as well, and a page and a card queue the same run through the same
+code.</p>
+<p><code>ML_programs/RFdiffusion</code> holds the code and its
+nine checkpoints, and <code>envs/SE3nv</code> is its environment, a Python 3.9 with torch.
+<code>ML_programs/dl_binder_design</code> is the ProteinMPNN half, with its own weights under
+<code>mpnn_fr/ProteinMPNN</code>. Both halves run in <code>SE3nv</code>: ProteinMPNN needs only
+torch and numpy, and that environment has them.</p>
+<div class="tip"><code>envs/proteinmpnn_binder_design</code> is <b>not used, and does not work</b>.
+It has no Python standard library at all: 78 conda packages and no
+<code>lib/python3.11</code>, so its interpreter cannot start whatever its permissions say. Rebuild it only if something outside
+HOPE Labs wants it; the card does not.</div>
+<h3 id="rfd3">RFdiffusion3</h3>
+<p>A card on the canvas as well, and a page and a card queue the same run through the same
+code.</p>
+<p><code>envs/rfd3</code> is the environment, a Python 3.12 with <code>rc-foundry</code> and
+torch; <code>ML_programs/foundry</code> is the source it is installed from, kept because the
+model is driven through that checkout's own configuration; and
+<code>ML_programs/foundry_checkpoints</code> holds the 2.5 GB checkpoint, fetched on a login
+node because a compute node has no outbound network.</p>
+<p>It cannot share anything with RFdiffusion above it. That one is Python 3.9 in
+<code>SE3nv</code> and this needs 3.12, so they are two installs and two cards, and nothing has
+been retired. The sequences, though, come from the same <code>dl_binder_design</code>
+ProteinMPNN the older tool uses.</p>
+<div class="tip"><b>Installing it needs one pin that <code>pip</code> will not work out.</b>
+<code>pip install ".[rfd3]"</code> on its own resolves <code>atomworks</code> to a version whose
+configuration has drifted from the model's, and the first run dies on a renamed argument. The
+package names <code>atomworks==3.0.1</code> in its own <code>ci-constraints.txt</code> and that
+is the version to install. The MPNN that ships in the same package is deliberately not used:
+its documentation asks that the original be used for anything being compared until the
+re-implementation has been validated, and it wants weights this install has not got.</div>
+<h3 id="boltzgen">BoltzGen</h3>
+<p>A card on the canvas as well, queueing the same run as the page.</p>
+<p><code>envs/boltzgen</code> is BoltzGen 0.3.2 on Python 3.12, and
+<code>envs/boltzgen_cache</code> holds its weights: five checkpoints and <code>mols.zip</code>, about
+8 GB. It cannot share the Boltz-2 environment beside it, because <code>boltz</code> pins numpy below
+2 and <code>boltzgen</code> pins 2.0.2: pip installs the second over the first without saying so, and
+leaves Boltz-2 broken. To install it again, elsewhere:</p>
+<pre>conda create -p &lt;prefix&gt;/envs/boltzgen python=3.12 &amp;&amp; &lt;prefix&gt;/envs/boltzgen/bin/pip install boltzgen
+HF_HOME=&lt;prefix&gt;/envs/boltzgen_cache &lt;prefix&gt;/envs/boltzgen/bin/boltzgen download all \
+    --cache &lt;prefix&gt;/envs/boltzgen_cache</pre>
+<p>Fetch the weights on a <b>login</b> node: a compute node has no internet, and a cache missing one
+checkpoint fails when the model loads rather than when the job is submitted.</p>
+<p>One thing to know before reading a BoltzGen spec by hand: it numbers the residues a binder should
+touch by their <b>position in the chain</b>, not by the numbering the structure file carries. On the
+lab's own hPD-L1, whose file begins at residue 18, residues 54 and 56 are positions 37 and 39. The
+card takes the file's numbering, as every other tool here does, and converts; it then runs
+<code>boltzgen check</code> and reads the marked residues back before queueing anything, because
+getting this wrong does not fail. It designs against a different patch of the surface and returns
+binders for the wrong site.</p>
+
+<h3 id="boltz-2">Boltz-2</h3>
+<p><code>envs/boltz</code> is the environment, and <code>envs/boltz/cache</code> holds the weights,
+already fetched. The page always passes that cache to <code>boltz</code>, and that one argument
+matters more than it looks: left off, <code>boltz</code> falls back to <code>~/.boltz</code>, finds
+nothing, and tries to download the whole 7.6 GB from a node with no route out, which is the single
+most likely way for a first run to fail. Keep the cache inside the environment's folder and a copy
+elsewhere needs no second setting.</p>
+<pre>conda create -p &lt;prefix&gt;/envs/boltz python=3.11 &amp;&amp; &lt;prefix&gt;/envs/boltz/bin/pip install boltz
+&lt;prefix&gt;/envs/boltz/bin/boltz predict --cache &lt;prefix&gt;/envs/boltz/cache &lt;a tiny input&gt;</pre>
+<p>There is no download subcommand: Boltz-2 fetches what it needs the first time it predicts, so
+run one small prediction on a <b>login</b> node to fill the cache before any job needs it. The
+whole cache is about 7.6 GB, most of it two checkpoints and a folder of 45,000 small molecule
+files.</p>
+<p>This is the environment <a href="#boltzgen">BoltzGen</a> must not be installed into, for the
+numpy pins described there. The two are separate environments on purpose, even though BoltzGen
+re-folds its own designs with Boltz-2.</p>
+
+<h3 id="colabfold">ColabFold</h3>
+<p><code>envs/colabfold</code> is the environment, and the AlphaFold weights are in a
+<code>params</code> folder inside it.</p>
+<p>Two things about it are worth knowing before anybody rebuilds it. The weights that are complete
+in this install are AlphaFold-Multimer's, so that is the model the page asks for, for one chain as
+well as for twelve; ColabFold's own <code>auto</code> would choose the single-chain model, of which
+this install has one parameter file of the five, and it would go to the internet to look before it
+looked at a single file. And relaxation is not offered at all, because OpenMM and PDBFixer are not
+in that environment, so a run that asked for it would fail at the very end with the folding
+already done.</p>
+<p>Neither folding tool has an installer in this repository. Install either from its own project,
+<a href="https://github.com/jwohlwend/boltz" target="_blank" rel="noopener">github.com/jwohlwend/boltz</a>
+and
+<a href="https://github.com/sokrypton/ColabFold" target="_blank" rel="noopener">github.com/sokrypton/ColabFold</a>,
+fetch the weights on a <b>login</b> node, and point HOPE Labs at the environment you built.</p>
+
+
+<h2 id="pointing-hope-labs-at-your-copies">Pointing HOPE Labs at your copies</h2>
+<p>HOPE Labs reads a small settings file on your own computer, not on the cluster. On macOS and Linux it
+is <code>~/.hope_labs_public.json</code>; on Windows it is
+<code>%USERPROFILE%\.hope_labs_public.json</code>.</p>
+<p>Two keys matter. <code>"root"</code> is one folder holding every install, and each tool is
+looked for under it with the layout in the table above. <code>"installs"</code> names a tool on
+its own and wins over <code>"root"</code>. Its keys are the tool keys: <code>rfdiffusion</code>,
+<code>rfd3</code>, <code>rfd4</code>, <code>boltzgen</code>, <code>boltz2</code>,
+<code>colabfold</code>, <code>hopemd</code>, <code>bioemu</code>.</p>
+<pre>{
+  "root": "/scratch/user/jane.doe",
+  "installs": {
+    "hopemd": "/scratch/user/jane.doe/HOPE-MD/MD",
+    "boltz2": "/scratch/user/jane.doe/envs/boltz"
+  }
+}</pre>
+<p>With neither key set, HOPE Labs finds every tool in the HOPE Labs folder of the cluster you
+sign in to. The file is read when you sign
+in, so sign out and in again after an edit. HOPE Labs keeps the sign in boxes in the same file and
+leaves what you wrote by hand alone. If the file named any installs, the log lists each tool key
+and its path just after you sign in, so you can see it was read.</p>
+<div class="tip"><b>To try a root without editing the file</b>, set <code>HOPE_LABS_ROOT</code> in
+the environment HOPE Labs is started from. It wins over the file's <code>"root"</code>.</div>
+
+<h2 id="where-runs-go">Where runs go</h2>
+<p>Where a tool writes its runs is a separate question from where it is installed. What each
+repository documents:</p>
+<table>
+<tr><th>Tool</th><th>Runs folder, as its own documentation gives it</th></tr>
+<tr><td>RFdiffusion</td><td><code>$SCRATCH/rfdiffusion_runs</code></td></tr>
+<tr><td>BoltzGen</td><td><code>$SCRATCH/boltzgen_runs</code></td></tr>
+<tr><td>Boltz-2</td><td><code>$SCRATCH/boltz2_runs</code></td></tr>
+<tr><td>ColabFold</td><td><code>$SCRATCH/colabfold_runs</code></td></tr>
+<tr><td>HOPE-MD</td><td><code>/scratch/user/&lt;NetID&gt;/hopemd_runs</code></td></tr>
+</table>
+<p>RFdiffusion's, RFdiffusion3's, BoltzGen's, Boltz-2's and ColabFold's are decided by HOPE Labs
+rather than by
+the tool, since the tool has no opinion about it: each is a command line that writes where it is
+told. They are in your own scratch because a folding run is gigabytes, and a path inside your home
+directory is refused outright with the reason.</p>
+<p>Those are among the folders <a href="results.html">Results</a> looks in, so runs from your own
+copies are listed there too.</p>
+
+<h2 id="if-something-goes-wrong">If something goes wrong</h2>
+<p>When a tool will not start, its tab says why in one sentence, and the sentence names the
+folder it looked in. <a href="troubleshooting.html#starting-a-tool">When something goes wrong</a>
+lists every one, with what to do.</p>

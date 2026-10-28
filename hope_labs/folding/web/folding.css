@@ -1,0 +1,289 @@
+/* The folding page's own parts: the rows, the sequence box, the structure summary, the row's menu,
+   the modifications dialog and, on the Runs screen, what was folded and the viewer. Everything
+   else, the palette, the type scale, the shell, the structure browser, the run plan and the bar
+   along the bottom, is /static/style.css. Every size here is one of its tokens, so the text-size
+   control in the header grows this page with the rest and nothing can drift under 13px. */
+
+/* Said across the top when the tool is not installed at this site, or the page was started as a
+   dry run. Not a dismissible notice: it is the reason Submit is refused, or the reason it queues
+   nothing, and it stays while that is true. */
+.banner{margin:0;padding:var(--sp-2) var(--sp-4);background:var(--rust-soft);color:var(--rust);
+  border-bottom:1px solid var(--line);font-size:var(--fs-sm);line-height:1.5}
+.banner.dryline{background:var(--teal-soft);color:var(--teal)}
+
+/* ---- the rail's foot ------------------------------------------------------- */
+/* The plan and Submit are the foot of the rail, held on the screen however far the settings
+   above them are scrolled. Held, they may take no more than half of it: the shared sheet allows
+   two thirds, which on a laptop at the larger text sizes left the settings a 212px slot with
+   Time limit's label showing and its box below the edge. Where even half is not enough to leave
+   the settings a readable column, app.js puts .railscrolls on the rail and the whole rail
+   scrolls as one column instead, with the plan and Submit at the end of it. */
+#railside .submitbox{max-height:50%}
+#railside.railscrolls{overflow-y:auto;overflow-x:hidden}
+#railside.railscrolls .railscroll{flex:0 0 auto;overflow:visible;min-height:0}
+#railside.railscrolls .submitbox{max-height:none}
+#railside.railscrolls .submitbox .runplan{overflow:visible}
+/* Pressed, step 3 flashes the foot the way steps 1 and 2 flash their cards. */
+.submitbox.flash-on{animation:flashon 1.4s ease-out}
+
+/* A file dragged over the card once it has rows: the card itself is the drop target. */
+.box.dropover{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-soft)}
+
+/* ---- the structure summary ------------------------------------------------- */
+/* One per structure read: the file, how it arrived, its chains as chips that say which of them
+   are on the form, and Change. The card's shape is the shared .picked. */
+.picked-file{font-size:var(--fs-md);font-weight:600;color:var(--ink);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.picked-x{border:0;background:none;color:var(--dim);font-size:var(--fs-lg);line-height:1;
+  width:var(--ctl-h-sm);height:var(--ctl-h-sm);border-radius:var(--radius-sm)}
+.picked-x:hover{background:var(--wait);color:var(--rust)}
+.structnote{margin:var(--sp-2) 0 0;font-size:var(--fs-sm);color:var(--dim)}
+/* A chain that cannot be folded here: dashed, and pressed it copies the chain's letters. */
+.pchain.off{border-style:dashed;color:var(--dim);background:var(--card);font-weight:400}
+.pchain.off:hover{border-color:var(--line);color:var(--ink)}
+.pchain .pgap{color:var(--amber);font-size:var(--fs-sm)}
+.pchain[aria-pressed=true] .pgap{color:var(--on-accent)}
+
+/* A place's name in the structure browser wraps instead of being cut. A place is only ever given
+   a long name because another place shares its short one - "Boltz-2 runs (aadhil.haq)" beside
+   "Boltz-2 runs (shared)" - and cut to the width of the pane both of them read "Boltz-2 runs (",
+   so the one case the longer name exists for is the case the cut destroys. A file name may be
+   cut, because a file name is as long as whoever made it; a place name may not. */
+.hlp .hlp-pl{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+
+/* In the structure browser, a run's long model name gives way before "Use this run's structure"
+   does: ColabFold names its models in eighty characters, and the row is the browser's one button
+   that says what it does. Cut with an ellipsis; the whole path is the row's tooltip. */
+.hlp .hlp-row.userun .hlp-name{flex:0 0 auto}
+.hlp .hlp-row.userun .hlp-size{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+
+/* The run plan's last line, where the results go. It wraps: cut to one line with an ellipsis it
+   was unreadable at every window size, and where the results land is the one line in the plan a
+   person has to be able to read. The whole path stays the tooltip. */
+#planwhere{white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+
+/* ---- the rows ---------------------------------------------------------------- */
+/* One per chain or molecule. Two lines: what it is (the type, a name, the copies, its menu), and
+   under them the sequence the whole width of the card, which is the part a person reads. */
+.ents{margin-top:var(--sp-3)}
+#rows{display:flex;flex-direction:column;gap:var(--sp-3)}
+.ent{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);
+  padding:var(--sp-3)}
+.ent-top{display:flex;align-items:center;gap:var(--sp-2) var(--sp-3);flex-wrap:wrap}
+.entnum{flex:0 0 auto;min-width:var(--q-size);height:var(--q-size);border-radius:50%;
+  background:var(--wait);color:var(--dim);font-size:var(--fs-xs);font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;line-height:1;
+  font-variant-numeric:tabular-nums;user-select:none}
+.ent .kindsel{flex:0 0 calc(140px * var(--ui-scale));width:auto}
+/* The name box wears its word, the way Copies does: a box with letters in it and nothing to say
+   what they are is a box nobody can name. */
+.ent .nmwrap{display:flex;align-items:center;gap:var(--sp-2);flex:0 1 auto;min-width:0;
+  font-size:var(--fs-sm);color:var(--dim)}
+.ent .namebox{flex:0 1 calc(200px * var(--ui-scale));min-width:calc(110px * var(--ui-scale));width:auto}
+.ent .cpwrap{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto;
+  font-size:var(--fs-sm);color:var(--dim)}
+.ent .cpwrap .spin{width:calc(84px * var(--ui-scale))}
+.ent .dots{flex:0 0 auto;font-size:var(--fs-lg);font-weight:700;line-height:1;
+  min-width:var(--ctl-h-sm);padding:0 var(--sp-2);color:var(--dim)}
+.ent .dots:hover{border-color:var(--teal);color:var(--teal)}
+.ent-body{margin-top:var(--sp-2);min-width:0}
+.ent-body>select.inp,.ent-body>input.inp{max-width:calc(420px * var(--ui-scale))}
+
+/* the sequence box: letters in tens, each group numbered above itself */
+/* It grows with what is in it. A 338-residue chain read through a four-line window is a chain
+   nobody checks, and checking it by eye against what was meant to be folded is the whole reason
+   the letters are laid out in tens with their numbers over them. Past the maximum it scrolls,
+   because a row taller than the screen puts the controls beside it out of reach; the maximum is a
+   share of the window rather than a count of lines, since how many letters fit on a line depends
+   on how wide the card is. */
+.seq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:var(--sp-3) var(--sp-3) var(--sp-1);font-family:var(--mono);font-size:var(--fs-sm);
+  line-height:2.8;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;overflow-y:auto;
+  height:auto;min-height:var(--ctl-h);max-height:min(46vh,calc(360px * var(--ui-scale)))}
+/* An empty box has no residue numbers, so the headroom they need would only push the placeholder
+   down. It is centered instead, at the height of every other box. */
+.seq:empty{padding:0 var(--sp-3);display:flex;align-items:center;line-height:1.3}
+.seq:empty::before{content:attr(data-ph);color:var(--dim);font-family:var(--sans);
+  font-size:var(--fs-sm)}
+.seq.plain:not(:empty){padding:var(--sp-2) var(--sp-3);line-height:1.6}
+.seq:focus{outline:2px solid var(--teal-soft);border-color:var(--teal)}
+.seq.bad{border-color:var(--rust);box-shadow:0 0 0 1px var(--rust)}
+.grp10{position:relative;display:inline-block;margin-right:1.1em;letter-spacing:.17em}
+.grp10::after{content:attr(data-n);position:absolute;right:.17em;top:-.35em;line-height:1;
+  font-size:var(--fs-xs);letter-spacing:0;color:var(--dim);font-family:var(--sans);font-weight:500}
+/* A letter the tool has no residue for. Marked where it is, because the position is what a person
+   needs in order to fix it, and neither tool would have told them: Boltz-2 folds an unknown letter
+   as its unknown token and reports a confidence for the result. */
+.seq .x{color:var(--rust);font-weight:700;background:var(--rust-soft);border-radius:2px}
+.seq .u{color:var(--amber)}
+.seq .m{background:var(--teal-soft);color:var(--teal);font-weight:700;border-radius:2px;
+  box-shadow:inset 0 -2px 0 var(--teal)}
+/* The one line under a row: how long it is, and where it was read from. */
+.seqlen{font-size:var(--fs-xs);color:var(--dim);margin-top:var(--sp-1)}
+.seqlen a{color:var(--teal)}
+.fromfile{color:var(--dim)}
+.modslink{background:0;border:0;padding:0;font:inherit;color:var(--teal);cursor:pointer;
+  text-align:left}
+.modslink:hover{text-decoration:underline}
+
+/* The quiet ways to add more, under the rows, and the count at the far end. */
+.entbar{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;margin-top:var(--sp-3)}
+.entbar .why{margin-left:auto}
+/* A pasted sequence is read in blocks, and a line break inside one would be read as a gap. */
+.seqbox{min-height:calc(110px * var(--ui-scale));resize:vertical;line-height:1.6;
+  word-break:break-all;font-size:var(--fs-sm)}
+#pastebox .row{margin-top:var(--sp-2)}
+
+/* ---- the settings -------------------------------------------------------- */
+/* A short choice is a row of chips: one press rather than two, and every choice visible. */
+.seg{display:flex;gap:var(--sp-1);flex-wrap:wrap;min-height:var(--ctl-h);align-items:center}
+.seg .chip{margin:0}
+.seg .chip:not(.on){background:var(--card);border-color:var(--line);color:var(--ink)}
+.seg .chip:not(.on):hover{border-color:var(--teal);color:var(--teal)}
+.fldacts{display:flex;gap:var(--sp-2);margin-top:var(--sp-1)}
+/* A field of chips is as wide as its chips, so "Fetch" and "Sequence only" stay on one line. */
+.sfields .fld.segf{flex:0 0 auto}
+/* A tick among the boxes sits on the boxes' line, on one line of its own words. */
+#fields-more{margin-top:var(--sp-2);align-items:flex-end}
+#fields-more .tickrow{min-height:var(--ctl-h)}
+#fields-more .tick{white-space:nowrap}
+/* In the rail, one field under another. */
+#fields-res .fld .spin,#fields-res .fld select.inp{margin-top:0}
+
+/* ---- the Submit area ------------------------------------------------------- */
+/* What the run plan does not already say, one line each, with the rest in the tooltip. */
+ul.warnlist{list-style:none;margin:var(--sp-3) 0 0;padding:0;display:flex;flex-direction:column;
+  gap:var(--sp-1)}
+ul.warnlist li{font-size:var(--fs-sm);color:var(--amber);line-height:1.4;padding-left:var(--sp-3);
+  border-left:3px solid var(--amber)}
+
+/* ---- the row's menu ---------------------------------------------------------- */
+/* AlphaFold Server's three dots: everything about a row that is not one of its boxes. Drawn on the
+   page rather than inside the row, so a row near the bottom of a scrolled list does not clip it,
+   and placed above the button when there is no room below. */
+.rowmenu{position:fixed;z-index:60;min-width:calc(220px * var(--ui-scale));background:var(--card);
+  border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:0 8px 26px rgba(0,0,0,.18);
+  padding:var(--sp-1)}
+.rmitem{display:flex;flex-direction:column;align-items:flex-start;width:100%;background:0;border:0;
+  border-radius:6px;padding:var(--sp-2) var(--sp-3);font:inherit;font-size:var(--fs-md);
+  color:var(--ink);text-align:left;cursor:pointer}
+.rmitem small{color:var(--dim);font-size:var(--fs-xs);margin-top:2px}
+.rmitem:hover:not(:disabled),.rmitem:focus-visible{background:var(--wait);outline:0}
+.rmitem:disabled{color:var(--dim);cursor:default}
+
+/* ---- the modifications dialog ----------------------------------------------- */
+dialog#mods{width:min(calc(760px * var(--ui-scale)),calc(100vw - 32px))}
+#mods .mhead .why{margin-left:var(--sp-2);font-weight:400}
+/* The chain, a button a residue, numbered in tens as the sequence box is. */
+.modgrid{font-family:var(--mono);font-size:var(--fs-sm);line-height:2.8;max-height:40vh;overflow:auto;
+  padding:var(--sp-3) var(--sp-2) var(--sp-1);border:1px solid var(--line-soft);
+  border-radius:var(--radius-sm);background:var(--wait);margin-top:var(--sp-2)}
+.modgrid .grp10{letter-spacing:0;margin-right:.9em}
+.modres{border:0;background:0;font:inherit;padding:1px 2px;margin:0;min-width:1.25em;cursor:pointer;
+  color:var(--ink);border-radius:3px}
+.modres:hover{background:var(--teal-soft)}
+.modres.on{background:var(--teal-soft);color:var(--teal);font-weight:700;
+  box-shadow:inset 0 -2px 0 var(--teal)}
+.modres.sel{outline:2px solid var(--teal);outline-offset:0}
+.modpick{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;margin:var(--sp-3) 0 var(--sp-2)}
+.modpick b{font-size:var(--fs-md);min-width:calc(48px * var(--ui-scale))}
+.modpick select.inp{flex:1 1 calc(260px * var(--ui-scale));min-width:0;width:auto}
+.modpick input.inp{flex:0 0 calc(110px * var(--ui-scale));width:auto}
+.modlist{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin:var(--sp-2) 0}
+.modchip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);overflow:hidden;font-size:var(--fs-sm)}
+.modgo{background:0;border:0;padding:2px var(--sp-1) 2px var(--sp-3);font:inherit;color:var(--ink);cursor:pointer}
+.modgo:hover{color:var(--teal)}
+.modx{background:0;border:0;padding:2px var(--sp-3) 2px var(--sp-1);font:inherit;color:var(--dim);cursor:pointer}
+.modx:hover{color:var(--rust)}
+
+/* ---- a finished run --------------------------------------------------------- */
+.acts{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-top:var(--sp-4)}
+.acts .btn{flex:0 0 auto}
+/* What was folded: a row a line, its sequence under it, wrapped anywhere and scrolled past a few
+   lines, because the sequence is what a structure a month later is read against. */
+.foldrows{display:flex;flex-direction:column;gap:var(--sp-3)}
+.foldrow .fr-head{font-size:var(--fs-md)}
+.foldrow .fr-head b{font-weight:600}
+.foldrow .fr-head .why{margin-left:var(--sp-2)}
+.seqshow{display:flex;gap:var(--sp-2);align-items:flex-start;margin:var(--sp-1) 0 0}
+.seqshow code{flex:1 1 auto;min-width:0;font-family:var(--mono);font-size:var(--fs-sm);line-height:1.55;
+  word-break:break-all;background:var(--wait);border:1px solid var(--line-soft);border-radius:6px;
+  padding:var(--sp-1) var(--sp-2);max-height:8em;overflow:auto}
+.seqshow .pill{flex:0 0 auto;white-space:nowrap}
+.foldrow .fromfile{display:block;font-size:var(--fs-xs);margin-top:2px}
+.foldfacts{margin-top:var(--sp-4)}
+.box>h2 .count{font-weight:400;color:var(--dim);font-size:var(--fs-sm)}
+
+/* The pLDDT key, in the viewer's bottom-right corner: the top right is Mol*'s own buttons and the
+   bottom left its axes. It lets the pointer through, so turning the structure by a corner still
+   turns it. The bands are AlphaFold's own and the colors are its colors, because a person reading
+   one of these has seen that scale before. */
+.plddtkey{position:absolute;right:var(--sp-2);bottom:var(--sp-2);z-index:3;pointer-events:none;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-3);font-size:var(--fs-xs);line-height:1.5;
+  box-shadow:0 2px 10px rgba(0,0,0,.10);opacity:.94}
+.pkeyhead{font-weight:600;margin-bottom:2px;color:var(--ink)}
+.pkeyrow{display:flex;align-items:center;gap:var(--sp-2);color:var(--ink)}
+.pkeyswatch{display:inline-block;width:calc(12px * var(--ui-scale));height:calc(12px * var(--ui-scale));
+  border-radius:3px;flex:0 0 auto}
+/* The residue last clicked in the viewer, said in the bar over it. */
+.vbar .picknote{margin-left:auto;font-size:var(--fs-sm);color:var(--ink);font-weight:500}
+.vbar .vname{font-size:var(--fs-sm);color:var(--dim);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.vbar select.inp{width:auto;flex:0 0 auto;min-height:var(--ctl-h-sm);padding:var(--sp-1) var(--sp-2)}
+
+.copybox{display:flex;gap:var(--sp-2);align-items:flex-end;flex-wrap:wrap;margin-top:var(--sp-2)}
+.copybox>.withbtn{flex:1 1 calc(300px * var(--ui-scale));min-width:0}
+.copybox .btn{flex:0 0 auto}
+
+/* What a finished run was given, and its log: there for the curious, closed until opened. */
+details.disclose>summary{cursor:pointer;font-size:var(--fs-lg);font-weight:600;list-style:none;
+  display:flex;align-items:center;gap:var(--sp-2)}
+details.disclose>summary::-webkit-details-marker{display:none}
+details.disclose>summary::before{content:"\25B8";color:var(--dim);font-size:var(--fs-sm)}
+details.disclose[open]>summary::before{content:"\25BE"}
+details.disclose[open]>summary{margin-bottom:var(--sp-3)}
+details.disclose>summary .why{font-weight:400;font-size:var(--fs-sm)}
+details.disclose pre+h3{margin-top:var(--sp-4)}
+
+/* ---- the job, for the curious ----------------------------------------------- */
+#jobdlg #toldfirst{margin:var(--sp-3) 0 0}
+
+/* ---- the viewer box ---------------------------------------------------------
+   The folding page itself chooses everything through the shared structure browser
+   (/static/picker.js). */
+.vwrap{position:relative;border:1px solid var(--line);border-radius:0 0 var(--radius-sm) var(--radius-sm);
+  overflow:hidden;background:var(--card);height:380px;margin-top:0}
+.vwrap.alone{border-radius:var(--radius-sm)}
+#viewer,#viewerM{position:absolute;inset:0;width:100%;height:100%}
+.fld .spin{margin-top:2px}
+
+dialog#picker{border:1px solid var(--line);border-radius:var(--radius);padding:0;
+  width:min(calc(680px * var(--ui-scale)),92vw);background:var(--card);color:var(--ink)}
+dialog#picker::backdrop{background:rgba(0,0,0,.45)}
+#picker .dlg-h{padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--line);display:flex;
+  gap:var(--sp-3);align-items:baseline;flex-wrap:wrap}
+#picker .dlg-h b{font-size:var(--fs-lg)}
+#picker .crumbs{font-size:var(--fs-sm);color:var(--dim);word-break:break-all;flex:1 1 100%}
+#picker .crumbs button{background:0;border:0;color:var(--teal);padding:0 2px;font:inherit}
+#picker .pickfilter{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-4);
+  border-bottom:1px solid var(--line-soft)}
+#picker .pickfilter input{flex:1 1 auto;min-width:0;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);color:var(--ink);padding:var(--sp-1) var(--sp-2);
+  font-size:var(--fs-md)}
+/* Every scrolling list on these pages has a maximum height, for the same reason the dialog is a
+   dialog: a folder of two hundred entries must not grow past the screen. */
+#picker .listing{max-height:56vh;overflow:auto;padding:var(--sp-1) 0}
+#picker .listing button{display:flex;width:100%;gap:var(--sp-3);background:0;border:0;color:inherit;
+  font:inherit;text-align:left;padding:var(--sp-2) var(--sp-4);align-items:center;border-radius:0;
+  font-size:var(--fs-md)}
+#picker .listing button:hover{background:var(--wait)}
+#picker .listing .sz{margin-left:auto;color:var(--dim);font-size:var(--fs-sm);
+  font-variant-numeric:tabular-nums}
+#picker .listing .place{font-weight:600}
+#picker .listing .why{padding:var(--sp-3) var(--sp-4);display:block}
+#picker .dlg-f{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);display:flex;
+  gap:var(--sp-3);align-items:center;justify-content:space-between;flex-wrap:wrap}
+#picker .pickacts{display:flex;gap:var(--sp-2);align-items:center}

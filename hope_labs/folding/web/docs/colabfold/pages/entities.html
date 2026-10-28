@@ -1,0 +1,134 @@
+<h1>The sequences</h1>
+<p class="lead">The rows, what is checked in them, and why the checking is on this page rather
+than left to the tool.</p>
+
+<h2>One row per chain</h2>
+<p>A folding run is a list of entities. Each row is a type, an optional name, a sequence and a
+number of copies. The copies are chains of the same sequence: a row of 300 residues with three
+copies is three chains and 900 residues, and the running total under the rows says so.</p>
+<p>The name is yours, for reading the run folder later. It is not the chain id.</p>
+
+<h2>The types</h2>
+<table>
+<tr><th>Type</th><th>Letters</th><th>Notes</th></tr>
+<tr><td>Protein</td><td>the twenty standard amino acids, and X</td>
+    <td>One chain per row. The chains are written into one FASTA record, joined by colons, which
+    is how ColabFold is told that they belong in one structure.</td></tr>
+</table>
+<p>There is no other type, because ColabFold has no other model. A nucleic acid pasted in is
+refused with a sentence saying so rather than folded as a protein.</p>
+
+<h2>Why the letters are checked here</h2>
+<p>Neither folding tool refuses a sequence it does not understand. ColabFold maps every character
+it has no residue for to its unknown token and folds what is left, so a lowercase sequence becomes
+a chain of nothing but unknown residues and comes back with a confidence score on it. That is the
+worst kind of failure, because it looks like a result.</p>
+<p>So the sequence box marks every letter the tool has no residue for, where it is, and the run is
+refused until they are gone. Lower case is simply made upper case, because case carries no meaning
+in a sequence. A gap character is refused with a message of its own: it usually means a row of an
+alignment has been pasted instead of a sequence.</p>
+
+<h2>Chain ids</h2>
+<p>Chain ids are handed out A, B, C in row order, one per copy, and the page shows which letters
+each row became. That is the order the tool names its chains in, so the ids on the page are the
+ids in the structure that comes back. Twenty-six chains is the limit, counting copies.</p>
+
+<h2>Pasting sequences, and FASTA files</h2>
+<p><b>Paste sequences</b> takes a bare sequence or FASTA and makes one row per record, with the name from
+the header. The type is read off the letters where the letters settle it: a U with no T is RNA, a T
+with no U is DNA. A sequence of nothing but A, C and G is a protein, a DNA strand and an RNA strand
+all at once, so it is read as a protein and the page says that it guessed. Nothing is decided
+quietly.</p>
+<p>A FASTA file is chosen in the structure browser, like a structure: on the cluster, or under
+<b>This computer</b>, which sends it up through the page. A <code>.fasta</code>, <code>.fa</code>,
+<code>.faa</code>, <code>.txt</code> or <code>.seq</code> file becomes one row per record, as a
+paste does. Two megabytes is the most the page takes from your computer, which is about two
+million residues; a sequence file is kilobytes, so anything near the cap is something else. A file
+on the cluster is read where it is, and nothing crosses the connection.</p>
+<p>A structure pasted into <b>Paste sequences</b>, or a structure file given where sequences are read, is refused
+with a pointer to <b>Choose a structure</b> rather than read as letters: it used to become one row
+of fifty thousand characters, refused for holding a digit.</p>
+
+<h2 id="structures">Choosing a structure</h2>
+<p><b>Choose a structure</b> reads the chains off a file and makes them rows: a crystal structure, a
+fold this page wrote last week, a docked pose, a prepared complex out of a HOPE-MD run. It is
+there because the alternative is opening the file in a viewer and copying the one-letter codes out
+by hand, and a chain copied by eye with one residue missed is the one mistake on this form that
+does not fail. It folds, and it comes back with a confidence score on it.</p>
+<p>The button opens the structure browser, the same one every page of HOPE Labs uses. Down its left
+are the places a structure can come from:</p>
+<table>
+<tr><th>Place</th><th>What happens</th></tr>
+<tr><td>This computer</td><td>Your own computer's file chooser. The file is read in your browser and
+its contents are sent to the page, because the page runs on the cluster and the cluster cannot see
+your computer. Ten megabytes is the most it takes, which is a solvated system rather than a
+structure; anything larger is chosen on the cluster instead. A file dropped on the
+<b>What to fold</b> card is sent up the same way.</td></tr>
+<tr><td>PDB code</td><td>Four characters, fetched from the RCSB here on the login node, which is the
+one machine in this cluster that can reach it. The mmCIF is tried before the PDB file, because a
+structure of more than 62 chains has no PDB file at all. <b>PDB code</b> beside
+<b>Choose a structure</b> does the same without opening the browser.</td></tr>
+<tr><td>My scratch, Home, a group's folder</td><td>The cluster's own folders, walked a folder at a
+time; the filter box finds a name in a large one. Nothing crosses the connection: the page's own
+process opens the file where it already is. Eighty megabytes is the most it reads, because that is
+where the reader stops and a larger file would come back with its last chains missing and nothing
+said.</td></tr>
+<tr><td>A run folder</td><td>This page's runs, and the other tools' under <b>Other tools</b>. Inside
+a run, <b>Use this run's structure</b> takes the structure it holds: a fold's best model, the
+structure a HOPE-MD run was given, a design.</td></tr>
+</table>
+<p>A file that came from your computer or from the RCSB is kept in a folder beside the runs. The
+run's record names the file its rows were read from, and a record naming a file that is nowhere is
+a record nobody can check.</p>
+
+<h3>Choosing the chains</h3>
+<p>Once a structure is read it has a summary on the card: its name, how it arrived, <b>Change</b>
+to choose another in its place, and a chip for every chain in the file with its kind and length.
+The pressed chips are the chains on the form, and every chain that can be folded starts pressed.
+Press one to leave that chain out, and again to bring it back: a receptor and the peptide bound to
+it are usually two rows, and sometimes only one of the two is wanted. Two chains of one sequence
+become one row with two copies rather than two rows, whether one of their chips is pressed or both,
+so 4INS is four chains and two rows.</p>
+
+
+<h3>What is left out, and why</h3>
+<p>Nothing is dropped without a word. A chain that cannot become a row has a dashed chip, the
+reason is its tooltip, and a line under the chips names it. Pressing a dashed chip copies the
+chain's sequence, so it can be put right by hand:</p>
+<ul>
+<li>A nucleic acid chain. The chains are read off the file by their backbone, which is the alpha
+carbon of an amino acid or the C1' of a nucleotide, so a DNA or an RNA strand is read with its bases and
+then refused: ColabFold folds protein chains only. Folded as a protein its A, C, G
+and T would be read as alanine, cysteine, glycine and threonine, and the run would finish and put
+a confidence score on the result. The Boltz-2 page folds a strand, and reads one off this same
+file.</li>
+<li>A chain holding residues that are not one of the twenty amino acids: a ligand or a sugar
+numbered into the chain, or a residue nothing here has a letter for. Its letters carry an X at each
+one.</li>
+<li>A chain with no backbone atom at all, which is how a ligand, an ion or a sugar given a chain
+of its own appears. It is in the file, it has no sequence to read, so it is named and left.</li>
+<li>A chain shorter than four residues, or longer than the most this page will fold.</li>
+</ul>
+<p>Water is not a chain here and is never counted as one. Nor is a lone metal or salt ion, which a
+structure writes as a residue of its own: a calcium ion is written with CA for both its atom name
+and its residue name, so counting residues by that name alone once made every ion in a calmodulin
+a residue of the chain beside it.</p>
+
+<h3>A chain with a gap</h3>
+<p>A chain whose numbering jumps says so on its chip, as <i>1 gap</i>: residues are missing from
+the file there, and the fold joins the residues either side as neighbors. It is said rather than
+closed silently, because a chain with a loop missing is a different molecule from the one the
+file describes; a structure with the loop built in is the one to fold.</p>
+
+<h3>What the run remembers</h3>
+<p>A row read off a structure keeps the file and the chain with it. The line under the row says
+<code>1ycr.cif chain A</code>, the finished run says it again under that chain, and the
+report's summary names the file. Change the letters and the line goes: a record must not name a
+file and a chain for a sequence that is no longer in that file.</p>
+
+<h2>How large a run may be</h2>
+<p>Five thousand residues in all is the most this page will queue, and over about fifteen hundred
+it says so: both tools hold something that grows with the square of the residue count, so what
+runs out is the card rather than the clock. <b>Show the job</b> under the run plan names the card and how much memory it
+has, and <a href="resources.html">Resources and submitting</a> says which cards this cluster
+has.</p>

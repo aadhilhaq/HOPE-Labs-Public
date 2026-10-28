@@ -1,0 +1,43 @@
+<h1>The Runs screen</h1>
+<p class="lead">Your runs, what Slurm makes of them, and the two things you can do to a job that
+is already queued.</p>
+
+<h2>The list</h2>
+<p>Newest first, with a dot for the state: amber for queued, teal and blinking for running, green
+for finished, rust for stopped. Mine shows yours; Everyone shows every run in the folders this
+page was started with, which is how to see what a colleague's run did without asking them.</p>
+<p>A folder is a run when it holds a <code>submission.json</code>, and the page writes that before
+it queues anything, so a run whose submission failed is still listed and can still be read.</p>
+
+<h2>What the tiles say</h2>
+<p>Structures is how many are on disk, counted by looking rather than by reading the log: a log
+line can be printed before the work it describes has finished. Alignments is what phase one left.
+Chains and residues are what was asked for.</p>
+
+<h2>Cancel, and Queue again</h2>
+<p>Cancel runs <code>scancel</code> on the job. Slurm decides whether you may, which is to say it
+is your job or it is not. What is already on disk stays in the run folder.</p>
+<p>Queue again submits the same job script a second time. It is phase two only, so it needs no
+network: the alignments are already in the folder. Use it for a run that ran out of walltime or
+died on a bad node. Boltz-2 starts again from the beginning either way, because it writes no
+checkpoint a second job could pick up.</p>
+
+<h2>The log</h2>
+<p>The last couple of hundred lines of the Slurm log, under <b>The log</b> at the foot of the run,
+closed until it is opened, and open by itself when the job failed. The whole file is a download
+away. The job
+prints the node, the card and the driver before it folds anything, because when folding fails on a
+new node it is almost always the card or the driver rather than the tool.</p>
+
+<h2>What was folded</h2>
+<p>The rows as you gave them, each with the chains it became, its sequence with <b>Copy</b> beside
+it, and the file and chain it was read from when it was read off a structure. <b>The job it was
+given</b>, closed at the foot of the run, is the input file the job actually read, so an argument
+about what a finished run folded can be settled from the run folder rather than from memory.</p>
+<p><b>Reuse</b>, beside the run's name, puts its rows and its settings back on the Fold screen, to
+run it again or change it first.</p>
+
+<h2 id="tidy">Tidying when it finishes</h2>
+<p>A run that finishes and has written its structures packs what its results no longer read into one archive in its own <code>archive</code> folder: Boltz-2's preprocessed inputs (the tensors it makes from the sequences before it predicts), and the matplotlib and CUDA caches. The structures, their confidence and PAE files, the alignments, the inputs and the log stay, and so do the weights and the home folder the job was given. A run that wrote nothing is left whole. <b>Keep every file</b>, among the advanced settings, leaves the run alone, and</p>
+<pre>python -m hope_labs.folding.tidy RUN boltz2 --undo</pre>
+<p>run from the HOPE Labs folder puts every file back.</p>

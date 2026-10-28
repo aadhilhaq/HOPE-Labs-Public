@@ -1,0 +1,129 @@
+<h1>The target and hotspots</h1>
+<p class="lead">What the binder is designed against, which face of it, and the two things about
+this tool's numbering that will catch you out.</p>
+
+<h2 id="the-target">The target</h2>
+<p><b>Choose a structure</b> opens the structure browser, the same dialog on every page of ours.
+Down its left are the places it offers to start: <b>This computer</b>, which opens your own file
+chooser and sends the file up; <b>My scratch</b> and <b>Home</b>; this tool's own run folder; the
+other tools' run folders, so a structure another tool made is two presses away; the group folders
+you can read; and a <b>PDB code</b> box with Fetch. Down its right is one folder at a time, with
+where you are, a way up, the folders, and then the structure files with their sizes. A code can
+also be typed straight into the card, and a file dropped anywhere on the card is the same as one
+chosen on This computer.</p>
+<p>Once something is chosen, the card shows what was read off it: the file, its chains as chips
+with how many residues each holds and where its numbering runs, and the start of the sequence.
+<b>Press a chip to leave that chain out of the target.</b> Everything left out is dropped rather
+than kept out of the way, so a structure that arrived with its own bound peptide should have that
+chain left out, and the site can still be read off it with the button under the chain.</p>
+<p>A <code>.cif</code> is taken as well as a <code>.pdb</code>. It is written as a PDB first,
+which is the copy the run is given and the one the chains, the ruler and the contig here are read
+off; 1YCR read in as an mmCIF comes out with chain A numbered 25 to 109, as it is in the entry,
+and the same 22-residue interface. Where it cannot be written as a PDB the page refuses it at the
+box and says why, rather than queueing a run to find out.</p>
+<p>Under the chains, the page says anything it read that this tool's own reader cannot see: a
+nucleic acid strand, a ligand in a chain of its own, or a residue it has no name for. None of
+those is a chain to design against, and all of them are things the site can be read off.</p>
+<p>The file is converted to an annotated mmCIF before anything else happens, because a condition
+spec will not read a PDB at all. The tool's own refusal says why: a PDB does not reliably carry
+the bonds and formal charges the model consumes. The conversion is the model's own, so missing
+atoms are completed and selenomethionine becomes methionine here rather than halfway through a
+run.</p>
+
+<h2 id="hotspots">The site</h2>
+<p>The residues the binder has to reach. Press them on the chain the page draws under the target,
+or type them into the box as <code>A63,A67,A73</code> or <code>63,66-70</code> when they are all
+on the first chain named; the chain and the box are one site, so each follows the other. They are
+sent as the <code>C_HOT</code> condition, which marks them as the residues the design must
+contact.</p>
+<p>The chain is drawn in the structure's own numbering, ten residues to a group with the number
+above each. A residue the structure has not got, or one that falls in a gap in the density, is
+still refused against the box: the ruler can only offer the residues that are there, and the box
+will take anything typed into it.</p>
+<p>A residue drawn without a letter is one this page's own reader has no residue for, such as a
+hetero group or an ion the file carries under the chain's name, and the number is still the one a
+hotspot is written in. Where a structure uses insertion codes, 21, 21A and 21B being three residues and
+one number, every residue is drawn and only the first of each number can be pressed: a selection
+names a residue by its number and has nowhere to put the code. Thrombin's heavy chain has
+twenty-eight of them.</p>
+
+<h3 id="from-a-partner">Taking the site from a bound partner</h3>
+<p>Most targets worth designing against arrive bound to something. 1YCR is MDM2 with the p53
+peptide in its cleft, and the residues that peptide touches are the site a binder wants. Leave the
+partner's chain out of the target and the page offers one button that marks every kept residue
+within 4.5&nbsp;&#8491; of it, saying how many it marked and from which chain. The partner need
+not be protein and need not be a chain this tool's own reader can see: a DNA strand, a ligand or a
+sugar in a chain of its own is a partner, because a contact is measured on atoms.</p>
+<p>4.5&nbsp;&#8491; is the distance every page here counts a contact at, so a site taken from a
+partner and an interface read off a complex are the same residues by the same rule. On 1YCR it marks 22 residues of chain A. Prune them if you want a tighter site: a
+design asked to reach 22 residues at once is being asked for a larger binder than one aimed at
+seven.</p>
+<p>A structure of three chains asks the other question: there may be no chain left out at all,
+and its chains still touch each other. <b>Site from all chains</b> marks every
+residue of the chains you are keeping that is within 4.5&nbsp;&#8491; of any other chain in the
+file, the ones you are designing against included. That is the interface a binder has to compete
+with, and on a trimer kept whole it is the only reading there is.</p>
+<p>The viewer beside the chain draws the target with the site marked and the partner you left out
+faintly behind it. Pressing a residue there marks it too, which is the only way to mark a face you
+are looking at rather than one you have counted along a sequence.</p>
+<p>The model also takes hotspots at the atom level, naming particular side-chain atoms. This page
+sends whole residues, because that is what a target card carries. For binder design that is the
+normal case.</p>
+<div class="note"><b>No hotspots is allowed and is not the same as a mistake.</b> With none
+named, the condition is left out and the binder may grow anywhere on the target. The run says so
+in its log rather than refusing.</div>
+<p>A hotspot carrying an insertion code, <code>H60A</code>, is refused against the box. There is
+nowhere in a selection to put the letter: residues are named by number, and a structure with
+<code>60</code> and <code>60A</code> in one chain cannot be converted at all, because both
+residues end up under one number and their atoms collide. Crop or renumber the target first.</p>
+
+<h2 id="the-numbering">The numbering, which is yours going in and not coming out</h2>
+<p>Going in, the numbers are the ones your structure carries. A residue is named in the contig
+and in every selection by the number it has in the file, so MDM2 in 1YCR is
+<code>A25-109</code>, not <code>A1-85</code>. This was measured against the tool rather than
+assumed: a file whose chain runs 17, 18, 30, 31 comes back out of the conversion as exactly
+those numbers, and a hotspot asked for as 30 lands on the residue that was 30.</p>
+<p>That is worth saying plainly because the tool's own documentation warns about the opposite
+case. It names <code>label_seq_id</code> rather than author numbering, and for a structure
+deposited as mmCIF the two often differ. For anything this page converts from a PDB they are the
+same, and the preview shows you the result either way.</p>
+<p><b>Show the job</b>, under the run plan beside Submit, shows the contig and each
+condition, as the job will be given them:</p>
+<pre><code>contig: 70-100, /0, A25-109
+C_CRDGRP: the target's backbone in one group, so it is held rigid with its side chains left free
+C_SEQ: the target's own sequence
+C_HOT: A63, A67, A73, by the numbers this structure carries</code></pre>
+<p>Read it before you submit. The range it took off your structure and every residue it will aim
+at are both in there.</p>
+<p>Coming out, the design is renumbered. Each output chain is numbered from 1, so a motif no
+longer sits at the indices it went in at. <a href="results.html">What a run leaves</a> says what
+that means for reading the output.</p>
+
+<h2 id="a-target-with-gaps">A target with gaps in its chain</h2>
+<p>Most crystal structures have holes in them. Residues nobody could see in the density are not
+in the file, and the numbering steps over them. The target is given to the tool as it was
+deposited, so the holes come with it.</p>
+<p>Each chain goes in as one piece, with its stretches of resolved residues listed one after
+another and a chain break only between different chains:</p>
+<pre><code>contig: 70-100, /0, A1-190, A195-225, A228-270, /0, B1-85</code></pre>
+<p>This is the one place where this tool allows less than RFdiffusion3 does, and it is worth
+knowing rather than discovering. RFdiffusion3 can say "same chain, and no bond across this hole"
+by putting a chain break between two stretches of one chain. RFD4-Proteina cannot: a break starts
+a new output chain, and a contig whose two runs both name chain A is refused outright with
+<code>Contig produces two separate output chains both named 'A'</code>. So the stretches are
+listed in one run, and the model is told the chain runs straight through. The preview says how
+many gaps your target has, so you know when it applies.</p>
+<p>A hotspot that falls in a hole is refused by name before anything is queued, because there is
+no such residue to aim at. The chips above the box say how each chain is numbered but not where
+its holes are, so a refusal naming the residue is how you find out.</p>
+
+<h2 id="what-the-target-is-told">What the target is told about itself</h2>
+<p>Two conditions are always set on the chains you named, and they are the authors' own
+recommendation for a protein against a protein.</p>
+<p><code>C_CRDGRP</code> puts every backbone atom of the target into a single coordinate group.
+That retains their geometry relative to one another, which is what holding a target rigid means,
+while leaving its side chains free to move. The alternative, <code>C_CRD</code>, fixes the atoms
+absolutely and reveals the side chains with them, and the authors warn that it produces binders
+that resemble the target.</p>
+<p><code>C_SEQ</code> reveals the target's own sequence, so the model knows what it is designing
+against rather than only the shape of it.</p>

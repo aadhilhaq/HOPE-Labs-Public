@@ -1,0 +1,74 @@
+<h1>The binder</h1>
+<p class="lead">How long it is, how many you get, and the sampler's own knobs: the ones that
+change what the diffusion does rather than how it is run.</p>
+
+<h2 id="length">Length</h2>
+<p>A range, not a number: the model samples a length within it for each design. Seventy to a
+hundred is a reasonable miniprotein and is the default. A short binder has less surface to make
+contacts with and a long one is harder to fold; neither limit is enforced by anything but
+judgment.</p>
+
+<h2 id="how-many">How many designs</h2>
+<p><b>Designs to generate</b> is a batch size rather than a loop count. They come out of one
+diffusion pass together, so asking for more costs GPU memory rather than wall clock, and the
+failure when it is too high is an out-of-memory error rather than a slow run. Eight is the
+model's own default and sits comfortably on an A100.</p>
+
+<h2 id="sequences">Sequences</h2>
+<p>The model writes a sequence of its own, and for RNA that sequence is the answer. For proteins
+the authors redesign the backbone with ProteinMPNN before anything is ordered, and so does this
+page. <b>Sequences per design</b> is how many ProteinMPNN writes for each backbone; the best by
+its score is kept and the rest are left in the run folder.</p>
+<p>Both sequences are recorded. They are two different claims about the same backbone and they
+differ substantially in practice, which is worth being able to see rather than having one
+quietly chosen for you.</p>
+
+<h2 id="the-samplers-own-knobs">The sampler's own knobs</h2>
+<p>Under <b>More settings</b>, named as the model's own configuration names them, so that the
+upstream documentation and the paper describe the same things.</p>
+<p><b>Step scale</b> is the diversity knob, 1.5 by default. Higher gives less varied designs and
+more of them hold up; lower gives more varied designs and fewer. This is the trade the paper
+tunes when it reports designability against diversity.</p>
+<p><b>Diffusion steps</b> is 200 by default. Fewer is faster and rougher.</p>
+<p><b>Classifier-free guidance</b> holds a design closer to what was asked of it. Off is the
+model's own default; it is turned on for conditioning that has to be obeyed rather than
+preferred. <b>How closely held</b> is the strength, 1.5 by default and read only while the
+guidance is on. One means no guidance at all: the sampler checks for it and skips the whole
+step.</p>
+<p><b>Noise scale</b> is how much noise is put back at each step, 1.003 by default. <b>Churn</b>
+is how much of each step is re-noised before being denoised again, 0.6 by default; 0 samples the
+diffusion as a plain equation rather than a stochastic one.</p>
+
+<h2 id="a-larger-campaign">A larger campaign</h2>
+<p><b>Designs to generate</b> is one pass and is bounded by card memory, so a campaign bigger
+than a card will hold is more passes of it. <b>Passes</b> is how many, and the run writes the two
+multiplied: eight designs over three passes is twenty-four designs, in one job, from one card.</p>
+<p><b>Seed</b> is empty by default, which means a new one each run. The same number gives the
+same designs again, which is what to set when a run has to be reproduced rather than
+repeated.</p>
+
+<h2 id="the-shape-of-the-binder">The shape of the binder</h2>
+<p><b>Cyclic peptide</b> joins the binder's ends, by cyclic positional encoding across the
+designed chain. RFdiffusion3 takes this for one complete de novo peptide, which is what the
+binder is, and the job names the designed chain for it rather than asking you which one it
+is.</p>
+<p><b>Fewer loops</b> is on, which is how this card has always run and what the authors' own
+binder examples set. The model's own default says nothing either way; a loopier binder is the one
+that fails to fold, so turning this off is for when designs are coming back too alike rather
+than too floppy.</p>
+
+<h2 id="what-the-form-does-not-offer">What the form does not offer</h2>
+<p><b>Partial diffusion.</b> It re-noises a structure that already exists and refines it. What
+this card is given is a target with no binder on it, so there is nothing to partially diffuse:
+RFdiffusion3 accepts the field beside this card's contig without complaining, which is why it is
+not offered as a box. It also cannot be combined with a cyclic binder: RFdiffusion3 refuses that
+pair outright. Re-diffusing a design that came out of an earlier run is a real thing to want, and
+it wants a card that takes a design as its input rather than a target.</p>
+<p><b>Symmetry.</b> It describes a symmetric assembly, which a binder against one face of a
+target is not. It also needs a specification of its own rather than a figure.</p>
+<p><b>Ligand and nucleic-acid targets.</b> RFdiffusion3 has a field for a ligand, and a flow
+hands every design card a receptor cleaned to its polymer residues, so the ligand is not in the
+file by the time this card sees it. That is a change to the Target card rather than to this form.
+A nucleic-acid target would be read and contigged here as a protein one is, but the install
+carries one checkpoint, <code>rfd3_latest</code>, and the nucleic-acid model is a separate one
+that is not fetched; nothing has been run against it here.</p>

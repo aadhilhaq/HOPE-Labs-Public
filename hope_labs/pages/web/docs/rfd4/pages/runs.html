@@ -1,0 +1,27 @@
+<h1>The Runs screen</h1>
+<p class="lead">Where a queued run appears, what its states mean, and where its folder is.</p>
+
+<h2 id="where-runs-go">Where runs go</h2>
+<p>Each run is a folder under <code>$SCRATCH/rfd4_runs</code>, named for when it was queued. A
+run started from this page and one started from a card on the canvas go to the same place, so
+either is listed on the Runs screen whichever way it was started.</p>
+
+<h2 id="states">States</h2>
+<p>The screen reads Slurm rather than guessing from files: <b>queued</b>, <b>running</b>,
+<b>finished</b>, <b>failed</b>. A run whose job has left the queue without writing
+<code>designs.json</code> is shown as failed even if the structures are there, because the record
+the next card reads is what makes a run usable.</p>
+<p>While a run is going, the screen counts the designs it has written. They appear one folder at
+a time under <code>rfd4/inference_samples</code>, so the count moves as the run works rather
+than all at once at the end.</p>
+
+<h2 id="queue-again">Queue again</h2>
+<p><b>Queue again</b> submits the same job script afresh. There is no checkpoint to carry on
+from, so this is a restart rather than a resume; the previous run's folder is left alone.</p>
+
+<h2 id="cleaning-up">Cleaning up</h2>
+<p>A finished run tidies itself, so what is left is the structures, the spec, the plan, the log
+and the record. <b>Clean up</b> does the same thing on demand, for a run that finished before
+that was the rule or one you want reduced now.</p>
+<p>The run folders are yours to delete. The image and the weights are shared and are not in them,
+so removing a run removes only that run.</p>

@@ -1,0 +1,128 @@
+<h1>The binder</h1>
+<p class="lead">How long the binder should be, how many to make, the knobs that change what the
+diffusion does rather than how it is run, and the sequence step that follows it.</p>
+
+<h2 id="the-length-range">The length range</h2>
+<p><b>Shortest</b> and <b>Longest</b> are a range, and a length is sampled inside it for every
+backbone. The default is 70 to 100 residues, which is a small folded miniprotein: long enough to
+have a hydrophobic core and a face to bind with, short enough to be synthesized and expressed.</p>
+<p>A wide range gives designs that are hard to compare with each other, and the page says so when
+the range is wider than about sixty residues. If you want one length, set both boxes to it.</p>
+<div class="note"><b>Below about thirty residues a designed chain will not fold on its own.</b> It
+can still be a useful peptide, but it
+is a different kind of design from a miniprotein and RFdiffusion was not trained for it.</div>
+
+<h2 id="backbones-and-sequences">Backbones and sequences</h2>
+<p><b>Backbones to generate</b> is the whole size of the run. Each one is a separate diffusion
+from a different starting noise, so ten backbones are ten independent attempts at the same site,
+not ten views of one answer. Minutes each, and the run is this many.</p>
+<p><b>Sequences per backbone</b> is how many sequences ProteinMPNN proposes for each design. It
+runs with the target held fixed and only the diffused chain free, so what it designs is the binder
+and nothing else. The best of them, by ProteinMPNN's own score, is the one kept and written into
+<code>designs.json</code>; the rest stay in the run folder under
+<code>proteinmpnn/</code> if you want to look at them.</p>
+<p>Eight is the default and is usually plenty. The two numbers multiply, so a hundred backbones
+with eight sequences each is eight hundred sequence designs, and the page warns when the product
+gets large enough to matter to the walltime.</p>
+
+<h2 id="the-diffusion-s-own-knobs">The diffusion's own knobs</h2>
+<p>These sit behind <b>More settings</b>, because the defaults are the ones RFdiffusion's own
+binder-design example uses and most runs should leave them alone.</p>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td><b>Noise scale</b></td><td>How much noise the denoiser is given, on both the positions
+and the frames. The example lowers it to 0 for binder design, which is what makes the backbones
+worth giving a sequence to. Raising it asks for more varied designs, and fewer of them will
+fold.</td></tr>
+<tr><td><b>Diffusion steps</b></td><td>How many denoising steps each design takes. Fifty is the
+default. Fewer is faster and rougher, and fifteen is the least the box takes: RFdiffusion asserts
+on anything lower while it builds its schedule, so a smaller number spends a card and writes
+nothing.</td></tr>
+<tr><td><b>Noise schedule</b></td><td>Whether the noise scale above holds for the whole run
+(<code>constant</code>, RFdiffusion's own) or walks from it to the figure below over the steps
+(<code>linear</code>).</td></tr>
+<tr><td><b>Final noise scale</b></td><td>Where a linear schedule ends up. It is read
+only on that schedule: a constant one returns the starting scale at every step and never looks at
+this, and the box says so when the schedule is constant.</td></tr>
+<tr><td><b>Checkpoint</b></td><td>Which model weights to use. Empty takes the binder-design
+default, which is the right answer unless you have a reason. The two on the menu are the complex
+checkpoints; see below for why the rest of the install's weights are not offered.</td></tr>
+<tr><td><b>Keep the diffusion trajectories</b></td><td>Off. RFdiffusion's own default writes two
+files per design holding every step of it, which nothing downstream reads. Turn it on to look at
+the diffusion itself, and expect thousands of files.</td></tr>
+<tr><td><b>Repeat the same designs</b></td><td>Seeds each design from its own number, so the same
+card run twice gives the same backbones. There is no seed box: this is the whole of
+RFdiffusion's reproducibility, and the number it uses is the design's index.</td></tr>
+</table>
+
+<h2 id="pulling-on-the-design">Pulling on the design</h2>
+<p><b>Pull on the design</b> adds one of RFdiffusion's potentials: a force applied to the binder
+at every step, beside the model's own prediction. Empty is the default and is what the
+binder-design example uses.</p>
+<table>
+<tr><th>Pull</th><th>What it asks for</th></tr>
+<tr><td><code>binder_ROG</code></td><td>A compact binder, by its radius of gyration. The one to
+reach for when designs come back stringy.</td></tr>
+<tr><td><code>binder_ncontacts</code></td><td>More contacts inside the binder, which is the same
+wish from the other side.</td></tr>
+<tr><td><code>interface_ncontacts</code></td><td>More contacts between the binder and the target:
+a larger interface rather than a better binder.</td></tr>
+</table>
+<p>Three of RFdiffusion's eight potentials, and they are the three written for a binder beside a
+target. The others describe a monomer or a symmetric oligomer and have no binder to act on in a
+run shaped like this one, so they are not offered and the job refuses them by name.</p>
+<div class="note"><b>Start without one.</b> RFdiffusion's own notes say the potentials "seem to
+interact weirdly with hotspot residues" in binder design, that its authors know why and mean to
+write better ones for it, and that good practice is to begin with none and raise the strength
+slowly. This card is always aimed at hotspots, so that is advice about this exact run. A
+baseline with no pull at all is the thing to compare against.</div>
+<p><b>How hard it pulls</b> is the potential's own weight, 1 by default. <b>Guide scale</b> is how
+much of the pull reaches the diffusion, 10 by default, and <b>Guide decay</b> is how it fades as
+the structure settles: constant, linear, quadratic or cubic. All three are read only once a pull
+is chosen, and say so until it is.</p>
+
+<h2 id="the-sequence-step">The sequence step</h2>
+<p>ProteinMPNN is half of what this card does: its temperature, its seed and its model are
+boxes under <b>More settings</b>, each at ProteinMPNN's own default.</p>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td><b>ProteinMPNN model</b></td><td><code>v_48_020</code> by default. The figure is the
+backbone noise the model was trained with, in hundredths of an angstrom: <code>v_48_002</code>
+stays closest to the backbone it is given and <code>v_48_030</code> is the most forgiving of a
+rough one.</td></tr>
+<tr><td><b>Soluble ProteinMPNN</b></td><td>Weights trained on soluble proteins only, which is
+what a binder has to be. The install carries both sets, so this is a choice rather than a
+download.</td></tr>
+<tr><td><b>Sequence temperature</b></td><td>0.1, which is both ProteinMPNN's default and what
+this job always used. Higher is more varied; ProteinMPNN suggests 0.1 to 0.3.</td></tr>
+<tr><td><b>Sequence seed</b></td><td>37, which is the number that was frozen in, so a card drawn
+before any of this designs the sequences it always did. 0 picks a new one each run.</td></tr>
+<tr><td><b>Excluded amino acids</b></td><td>Letters the designed sequence may not use.
+<code>C</code> keeps cysteines out, which is usual for something to be expressed. X is always
+among them whatever you type.</td></tr>
+<tr><td><b>Backbone noise</b></td><td>0 by default. Noise added to the backbone while the
+sequence is designed, up to the 0.30 A the released models were trained at.</td></tr>
+</table>
+
+<h2 id="what-the-form-does-not-offer">What the form does not offer</h2>
+<p><b>Relaxing a design before it is scored.</b> It was on this card and it did nothing: relaxing
+needs the interface script from <code>dl_binder_design</code>, and that needs a PyRosetta license
+this install has not got. It has been taken off rather than hidden, because a control that
+changes nothing is worse than no control. What the run does instead is call ProteinMPNN's own
+script directly on the diffused backbone, which needs no PyRosetta and is what has been proven
+here end to end.</p>
+<p><b>Six of the nine checkpoint files.</b> The install holds nine, and eight of those are
+diffusion checkpoints. RFdiffusion picks the complex model by itself once hotspots are given, and
+that is what this card always asks for; the others are for jobs this card does not do, which is
+fold-guided scaffolding, sequence inpainting and unconditional or active-site design. The ninth
+file is the structure prediction weights and is not a diffusion checkpoint at all.</p>
+<p><b>A contig of your own.</b> The contig is built from the target: every resolved stretch of
+every chain kept, a chain break, then the binder's length range. A fixed motif, several designed
+segments or inpainting would each need a contig written by hand, and the job's own way of telling
+the binder from the target afterwards is built on there being exactly one designed chain of the
+length that was asked for. That is a change to the job, not a box on the form.</p>
+<p><b>Partial diffusion, symmetry, and ProteinMPNN's per-position files.</b> Partial diffusion
+re-noises a design that already exists, and what this card is given is a target with no binder on
+it. Symmetry is for a symmetric assembly rather than a binder against one face. ProteinMPNN's
+fixed-position, bias and tied-position options each want a file of per-position dictionaries,
+which is not something a one-line box on a card can carry.</p>

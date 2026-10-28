@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__APP__</title>
+<!-- The shell, the palette and the type scale are the shared stylesheet, so the lab's pages read
+     as kin; this page's own sheet is the molecule summary, the presets, the run plan and the
+     shapes. The server looks in this page's web folder first, the design page's second (the
+     shared sheet, the text-size control and the structure browser), and the folding page's
+     third, which is where the viewer is vendored. -->
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/ensemble.css">
+<!-- In the head, so the text size somebody chose is applied before anything is drawn. -->
+<script src="/static/zoom.js" data-page="__TOOL__"></script>
+<link rel="icon" href="__FAVICON__">
+</head>
+<body data-tool="__TOOL__">
+<header class="apphead">
+  <span class="mark">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">__MARK__</svg>
+    <span class="nm" id="appname">__APP__</span>
+  </span>
+  <span class="bd" id="where"></span>
+  <span class="headtools">
+    <span class="tabs" role="tablist" aria-label="Screens">
+      <button class="tab on" data-screen="setup" role="tab" aria-selected="true">Sample</button>
+      <button class="tab" data-screen="runs" role="tab" aria-selected="false">Runs <em id="runcount" hidden></em></button>
+    </span>
+    <span data-hl-zoom></span>
+    <button class="pill theme" id="theme" type="button" title="Switch between light and dark">Dark</button>
+    <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+       title="How this page works, with what to do when something goes wrong">Docs</a>
+  </span>
+</header>
+
+<!-- Two unrelated things, each with its own line: the tool is not installed at this site, which is
+     why Submit is refused, and the page was started as a dry run, which is only about Submit. -->
+<p class="banner" id="notinstalled" hidden></p>
+<p class="banner dryline" id="dryline" hidden></p>
+
+<!-- ============================== SAMPLE ============================== -->
+<main id="screen-setup" class="screen">
+  <section class="stage" id="stage">
+
+    <ol class="steprail" id="rail" aria-label="Steps">
+      <li><button class="st" type="button" data-goto="what"><span class="n">1</span><b>Molecule</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="sampling"><span class="n">2</span><b>Sampling</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="after"><span class="n">3</span><b>After the run</b></button></li>
+      <li><span class="sep"></span></li>
+      <li><button class="st" type="button" data-goto="submit"><span class="n">4</span><b>Submit</b></button></li>
+    </ol>
+
+    <!-- 1. The molecule. A structure is read, not described: the chain's sequence comes off the
+         file, and the file is kept so the samples can be measured against it. -->
+    <section class="box" id="step-what">
+      <h2>Molecule <button class="q" type="button" data-help="molecule" aria-label="About the molecule">?</button>
+        <span class="cstate need" id="st-what">Needed</span></h2>
+
+      <div class="pickzone" id="pickzone">
+        <div class="pickbtns">
+          <button class="btn pri" id="choose" type="button">Choose a structure</button>
+          <button class="btn quiet" id="pastebtn" type="button">Paste a sequence</button>
+          <button class="btn quiet" id="codebtn" type="button">PDB code</button>
+        </div>
+        <p class="hint">or drop a .pdb or .cif file here</p>
+        <input type="file" id="file" accept=".pdb,.ent,.cif,.mmcif" hidden>
+      </div>
+
+      <div class="srcpane" id="codepane" hidden>
+        <label class="f" for="pdbid"><span class="fname">PDB code</span></label>
+        <div class="withbtn short">
+          <input class="inp" id="pdbid" placeholder="1YCR" maxlength="4" autocomplete="off" spellcheck="false">
+          <button class="btn sm pri" id="fetch" type="button">Fetch</button>
+          <button class="btn sm quiet" id="codecancel" type="button">Cancel</button>
+        </div>
+      </div>
+
+      <div class="srcpane" id="pastepane" hidden>
+        <label class="f" for="seq"><span class="fname">Protein sequence</span>
+          <button class="q" type="button" data-help="sequence" aria-label="What can be pasted">?</button></label>
+        <textarea class="inp mono seqbox" id="seq" rows="4" spellcheck="false"
+                  placeholder="&gt;chignolin&#10;YYDPETGTWY"></textarea>
+        <div class="row" style="margin-top:var(--sp-2)">
+          <button class="btn sm pri" id="seqadd" type="button">Use this sequence</button>
+          <button class="btn sm quiet" id="pastecancel" type="button">Cancel</button>
+          <span class="why" id="seqsays"></span>
+        </div>
+      </div>
+
+      <p class="errmsg" id="src-err" hidden></p>
+      <p class="note" id="srcsays" hidden></p>
+
+      <div id="molecules"></div>
+
+      <div class="molacts" id="molacts" hidden>
+        <button class="btn sm quiet" id="addvariant" type="button">+ Add a variant</button>
+        <button class="q" type="button" data-help="variant" aria-label="About variants">?</button>
+        <span class="why" id="molnote"></span>
+      </div>
+    </section>
+
+    <!-- 2. Sampling. A preset is a choice about cost, so the cost is on it. Model and Alignment
+         live here and nowhere else. -->
+    <section class="box" id="step-sampling">
+      <h2>Sampling <button class="q" type="button" data-help="num_samples" aria-label="About sampling">?</button>
+        <span class="cstate done" id="st-sampling">Set</span></h2>
+      <div class="presets" id="presets"></div>
+      <div class="sfields" id="sampling-rest"></div>
+      <details class="more" id="moreopts">
+        <summary>More options <span class="why" id="morecount"></span></summary>
+        <div id="fields-more"></div>
+      </details>
+    </section>
+
+    <!-- 3. What the job does once it has its samples: two ticks, each with its reason behind a ?. -->
+    <section class="box" id="step-after">
+      <h2>After the run <span class="cstate" id="st-after">Optional</span></h2>
+      <div class="ticks">
+        <div class="tickrow">
+          <label class="tick"><input type="checkbox" id="opt_against"> Compare with a run</label>
+          <button class="q" type="button" data-help="against" aria-label="About comparing">?</button>
+        </div>
+        <div class="againstrow" id="againstrow" hidden>
+          <button class="btn sm" id="againstbrowse" type="button">Choose a run</button>
+          <span class="againstname" id="againstname">None chosen</span>
+          <input type="hidden" id="against">
+        </div>
+        <p class="errmsg" id="against-err" hidden></p>
+        <div class="tickrow">
+          <label class="tick"><input type="checkbox" id="opt_keep"> Keep every file</label>
+          <button class="q" type="button" data-help="keep_files" aria-label="About keeping every file">?</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="nextbar" id="nextbar" role="status" aria-live="polite">
+      <span class="nextlab">Next</span>
+      <span class="nexttext" id="nexttext">Choose a structure, or paste a sequence.</span>
+      <button class="btn sm" id="nextgo" type="button">Show me</button>
+    </div>
+  </section>
+
+  <!-- ------------------------------- the rail -------------------------------
+       The rail is two parts: everything that is set scrolls, and Submit is a foot that never
+       moves. Held there by position:sticky instead, the plan sat over the Run name and the Run
+       folder on a laptop, and at 150% it left the window altogether. -->
+  <aside class="rail" id="railside">
+    <div class="railscroll" id="railscroll">
+      <div class="grp" id="g-res">Resources</div>
+      <div id="fields-res"></div>
+
+      <div class="grp" id="g-where">Where it goes</div>
+      <label class="f" for="name"><span class="fname">Run name</span></label>
+      <input class="inp" id="name" placeholder="Named for you" autocomplete="off">
+      <!-- The folder is chosen for you and the run plan says which one it is, so the box for
+           changing it is folded away: open on the rail of a 1366x768 laptop it was the row that
+           fell below the fold, half a box showing. It opens itself if what is in it is refused. -->
+      <details class="more wherefolder" id="wherefolder">
+        <summary>Another folder</summary>
+        <label class="f" for="out"><span class="fname">Run folder</span></label>
+        <div class="withbtn">
+          <input class="inp" id="out" placeholder="Chosen for you" autocomplete="off">
+          <button class="btn sm" id="outbrowse" type="button" title="Choose a folder on the cluster, or make one">Browse</button>
+        </div>
+        <p class="errmsg" id="out-err" hidden></p>
+      </details>
+    </div>
+
+    <!-- The foot of the rail, which never scrolls: the run plan, and under it the button that
+         commits to it. The plan belongs here rather than among the settings above, where at the
+         larger text sizes on a laptop it fell below the fold of the rail's own scrolling and
+         took Show the job with it. Held to two thirds of the rail; past that the plan scrolls
+         inside this box and the buttons stay put. -->
+    <section class="submitbox" id="step-submit">
+      <!-- What will happen, where, and what it costs, in plain numbered steps. It appears once
+           there is a molecule, directly above the button that commits to it. -->
+      <div class="runplan" id="plan" hidden>
+        <div class="runplan-head">Run plan
+          <button class="q" type="button" data-help="plan" aria-label="About the run plan">?</button></div>
+        <ol class="runplan-steps" id="phases"></ol>
+        <!-- Where the results land and, for the curious, the job itself: one line, because the
+             rail on a laptop has no room for two. -->
+        <div class="runplan-foot">
+          <p class="runplan-where" id="planwhere"></p>
+          <button class="linkbtn" id="showjob" type="button">Show the job</button>
+        </div>
+      </div>
+      <div class="gobar">
+        <ul class="problist" id="problems" hidden></ul>
+        <div class="btns">
+          <button class="btn pri" id="go" type="button" disabled>Submit</button>
+          <button class="btn quiet" id="dry" type="button" disabled
+                  title="Write the run folder and the job script; fetch nothing and queue nothing">Dry run</button>
+        </div>
+        <p class="gowhy" id="gowhy">Choose a structure or paste a sequence first.</p>
+        <p class="note" id="golast" hidden></p>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<!-- ============================== RUNS ============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <section class="rrail">
+    <div class="row" style="justify-content:space-between">
+      <span class="modes" id="scope">
+        <button data-scope="mine" class="on" type="button">Mine</button>
+        <button data-scope="all" type="button">Everyone</button>
+      </span>
+      <button class="pill" id="refresh" type="button" title="Read the run folders and the queue again" aria-label="Refresh">&#8635;</button>
+    </div>
+    <div class="legend"><span><span class="dot q"></span>queued</span><span><span class="dot run"></span>running</span><span><span class="dot fin"></span>finished</span><span><span class="dot stop"></span>stopped</span></div>
+    <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+  </section>
+  <section class="rmain" id="rundetail">
+    <p class="empty">Pick a run on the left.</p>
+  </section>
+</main>
+
+<!-- The ? dialog: the reasons, where they can be read by somebody who wants them and stepped over
+     by somebody who does not. -->
+<dialog id="helpdlg" class="hlmodal" aria-labelledby="helptitle">
+  <div class="mhead"><h2 id="helptitle"></h2>
+    <button class="mx" id="helpx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody" id="helpbody"></div>
+  <div class="mfoot">
+    <a id="helpdocs" href="/docs/index.html" target="_blank" rel="noopener">More in the docs</a>
+    <button class="btn sm" id="helpclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The job, for the curious: the sequence as it will be sampled and the job script exactly as
+     it will be queued. Opened from Show the job under the run plan, never a panel on the form. -->
+<dialog id="jobdlg" class="hlmodal" aria-labelledby="jobtitle">
+  <div class="mhead"><h2 id="jobtitle">The job</h2>
+    <span class="modes" id="toldmodes">
+      <button data-told="input" class="on" type="button">Sequence</button>
+      <button data-told="command" type="button">Job script</button>
+    </span>
+    <button class="mx" id="jobx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody">
+    <p class="why" id="toldwhat"></p>
+    <pre class="told" id="toldtext"></pre>
+  </div>
+  <div class="mfoot">
+    <span class="why">Written into the run folder as it is shown here.</span>
+    <button class="btn sm" id="jobclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<script src="/static/vendor/3Dmol-min.js"></script>
+<script src="/static/picker.js"></script>
+<script src="/static/app.js"></script>
+<!--__CREDITBAR__-->
+</body>
+</html>

@@ -1,0 +1,51 @@
+<h1>The two phases</h1>
+<p class="lead">Why a folding run is not one job on this cluster, what happens on the login node,
+and what happens on the card.</p>
+
+<h2>The fact everything here follows from</h2>
+<p>A compute node on this cluster has no route to the internet. Names resolve and every connection
+fails, and there is no proxy. This was learned the hard way: a real co-folding run died with
+"Network is unreachable" after its alignments had been fetched and its GPU allocated.</p>
+<p>So the work splits where the network is.</p>
+
+<h2>Phase one, on the login node</h2>
+<p><code>colabfold_batch --msa-only</code> is run here, on the login node, on the
+FASTA record the page wrote. It asks the ColabFold MSA server and leaves the alignment in the run
+folder as <code>&lt;name&gt;.a3m</code>, with a pickled copy of the same thing beside it. This is
+exactly what the lab's co-folding has always done, and both phases share one folder so the second
+finds what the first left.</p>
+<p>The alignment is named after the FASTA header and the second phase looks for it by the file's
+name. The page makes those the same string, which is why the run name is cleaned before it is
+used: a header and a filename that drift apart produce an alignment the prediction cannot find,
+and ColabFold then skips the whole construct with one line on stderr.</p>
+<p>This is the one part of a folding run that is not on a compute node, and it is the reason the
+page has to be served on a login node rather than anywhere else.</p>
+
+<h2>Phase two, in the GPU job</h2>
+<p>The GPU job runs <code>colabfold_batch</code> on that alignment, with
+<code>--data</code> pointing at the AlphaFold weights in the install. Giving it the alignment
+rather than the FASTA is what makes the prediction offline: ColabFold takes an alignment on disk
+in preference to fetching one, and never reaches the part of its code that would make a
+request.</p>
+<p>The model type is always <code>alphafold2_multimer_v3</code>, for one chain as well as for
+several, and that is deliberate. ColabFold's own <code>auto</code> picks the single chain model
+for a monomer, and this install has only one of the five weight files that model needs. Worse, the
+marker file ColabFold checks before deciding it already has weights is missing, so it would try to
+reach Google's storage before looking at a single file on disk. The multimer weights are all
+present and their marker is there.</p>
+<p>The job also moves every cache into the run folder, including the home folder itself. Home on
+this cluster is 10 GB and 10,000 files, and both tools write caches by the thousand.</p>
+
+<h2>Folding from the sequence alone</h2>
+<p>Setting Alignments to <b>Sequence only</b> skips phase one entirely. Nothing is
+fetched, the job is queued the moment you press Submit, and the structures are markedly worse,
+because an alignment is most of what these models know about a sequence. Use it for a quick look
+at something, not for a result.</p>
+
+<h2>What this means when a run fails</h2>
+<p>Because the alignments are already on disk, Queue again on the Runs screen needs no network. A
+run that ran out of walltime, or landed on a bad node, can be queued again as it stands and will
+pick up the same alignments. That is the practical reward for splitting the phases.</p>
+<p>If phase one fails, nothing is queued at all and the page says why under the Submit button.
+The alignment server rations its answers and queues when it is busy, so the usual answer is to
+try again later. <a href="messages.html">What the messages mean</a> lists the rest.</p>

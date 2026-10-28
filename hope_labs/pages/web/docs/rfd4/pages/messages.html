@@ -1,0 +1,61 @@
+<h1>What the messages mean</h1>
+<p class="lead">The failures this tool actually produces, and what each one is telling you.</p>
+
+<h2 id="no-hotspots">no hotspots on the target, so the binder may grow anywhere on it</h2>
+<p>Not an error. No hotspots were named, so the hotspot condition was left out and the binder may
+form anywhere on the target. If that was not meant, name the residues the binder should reach and
+queue it again.</p>
+
+<h2 id="gaps">the target has N gaps in its chains, so each chain is kept as one piece</h2>
+<p>Not an error either, but worth reading. Your target has holes where residues could not be
+resolved, and this tool has no way to say that a chain stops and starts again: the only break it
+has starts a new output chain. So the stretches are listed one after another in a single run and
+the model is told the chain is continuous. See
+<a href="target.html#a-target-with-gaps">a target with gaps</a>.</p>
+
+<h2 id="two-chains-named-a">Contig produces two separate output chains both named 'A'</h2>
+<p>The refusal behind the note above, and the reason the contig is built the way it is. It means
+a contig put two stretches of one input chain in two different runs, which would make two output
+chains with the same letter. Nothing on the form produces this; it means the spec has been edited
+by hand.</p>
+
+<h2 id="pdb-refused">condition_spec inputs must be CIF or BinaryCIF ...</h2>
+<p>A condition spec will not read a PDB. The run converts your target before writing the spec, so
+this appears only if a spec has been pointed at a PDB by hand. The tool's own reason is in the
+message: a PDB does not reliably carry the bonds and formal charges the model consumes.</p>
+
+<h2 id="conversion-failed">the target could not be converted to a CIF ...</h2>
+<p>The conversion the run does for you failed. The usual cause is named in the message: a target
+carrying insertion codes, a residue 60 and a 60A in the same chain. Both end up under one number
+and their atoms collide, and the failure surfaces from inside the standardizer as a complaint
+about an atom that does not belong to the residue it ended up in. Crop or renumber the target.</p>
+
+<h2 id="hotspots-missing">these hotspots are not residues of the target ...</h2>
+<p>Each named hotspot is checked against the structure before anything is queued, and a residue
+the target has not got is refused by name, saying whether it falls in a gap in the chain or
+outside the chain altogether.</p>
+<p>This is checked here rather than left to the tool for a reason: a selection that matches
+nothing is not an error to the model. It would set the condition on no atoms and design happily
+for hours against a site nobody asked for.</p>
+
+<h2 id="lexer">LexerNoViableAltException: '~metrics'</h2>
+<p>An install problem rather than a run problem, and a trap worth knowing if you run the tool by
+hand. The tool's own documentation writes <code>'~metrics'</code> in quotes because zsh would
+otherwise read it as a home folder. Passed to the model with the quotes still attached, its
+configuration parser refuses it. The job here composes the preset that has no metrics instead, so
+nothing on the form can produce this.</p>
+
+<h2 id="contig-expandable">A contig must contain at least one preserved segment</h2>
+<p>A design asking for a binder and nothing else, with no part of the target kept. The model
+refuses it: the input exists to be referenced. Name at least one chain of the target.</p>
+
+<h2 id="out-of-memory">CUDA out of memory</h2>
+<p>Too much on the card at once. Lower <b>Designs per batch</b> to one, which is the tool's own
+default and its own advice for a long input, or ask for an A100 rather than an A40. A long binder
+against a large target is the case that reaches this.</p>
+
+<h2 id="offline">a wait on huggingface.co, or an error naming it</h2>
+<p>The weights are fetched when the tool is installed, on a login node, because a compute node
+here reaches no network at all. A run is told to work offline so that a missing weight fails at
+once rather than hanging. If this appears, the install did not finish: run it again from the Set
+up page.</p>

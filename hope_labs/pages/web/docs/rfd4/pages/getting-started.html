@@ -1,0 +1,36 @@
+<h1>Getting started</h1>
+<p class="lead">A first run, start to finish, and what to look at when it comes back.</p>
+
+<h2 id="before-you-start">Before you start</h2>
+<p>Nothing to install. The model is one image file in the HOPE Labs folder and its weights sit
+beside it, shared rather than copied per run. If the page says the tool is not installed, it is
+installed from the Set up page, which pulls the image and fetches the weights on a login node.</p>
+
+<h2 id="a-first-run">A first run</h2>
+<ol>
+<li>Give it a target: a PDB id to fetch, or a file already on Grace.</li>
+<li>Name the chains the binder should be designed against, and the hotspots it should reach.
+Without hotspots the binder may grow anywhere on the target, which is a real thing to want and
+rarely the thing you meant.</li>
+<li>Leave the binder length at 70 to 100 for a first run.</li>
+<li>Leave <b>Designs to generate</b> at 8 and the sampling steps at 60.</li>
+<li>Read the preview under the form. It shows the contig taken off your structure and every
+condition the model will be given, in the tool's own words.</li>
+<li>Press <b>Queue</b>. The run appears on the Runs screen.</li>
+</ol>
+
+<h2 id="what-to-look-at-first">What to look at first</h2>
+<p>When it finishes, open the run and look at the designs. Each is a complex: the target under
+its own chain letters and the binder under a new one.</p>
+<div class="note"><b>Check the first design in a viewer before trusting the list.</b> Nothing in
+this run ranks the designs, so the order they are listed in is the order they were written in. A
+binder grown somewhere other than the face you named is the failure this catches, and it is
+obvious in one look and invisible in any table.</div>
+
+<h2 id="how-long-it-takes">How long it takes</h2>
+<p>Minutes a design on an A100 for a binder of seventy residues against a small target, with the
+compile warm-up left off. A larger target, a longer binder or more sampling steps all cost more.
+The default walltime is generous on purpose, so a first run does not fail on the clock.</p>
+<p>The first run after an install is slower than the ones after it: the model's weights are read
+off shared storage and the image has to be opened. <a href="messages.html">What the messages
+mean</a> covers the lines that appear while that is happening.</p>

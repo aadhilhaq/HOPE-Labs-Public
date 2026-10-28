@@ -1,0 +1,57 @@
+<h1>RFdiffusion on Grace</h1>
+<p class="lead">A page in front of the lab's shared RFdiffusion install: give it a target, say
+where the binder should bind, and it queues one GPU job that diffuses binder backbones onto the
+target and gives each of them a sequence.</p>
+
+<h2 id="what-the-page-does">What the page does</h2>
+<p>RFdiffusion designs a protein backbone. Given a receptor and the residues a binder should
+touch, it diffuses a new chain of the length you ask for onto that patch of the surface, keeping
+the receptor exactly as it was. A backbone has no sequence, so the same job then runs ProteinMPNN
+over every design, with the target held fixed, and keeps the best sequence it proposes for the
+binder. What comes out is a structure of the binder already placed on the target, and a sequence
+for it.</p>
+<p>This page takes the target, the hotspots and the binder length, checks them against the
+structure while you type, shows the contig map and the hotspot list the job will be given, writes
+the run folder and queues the job. Nothing is installed and no module is loaded: the code, the
+environment and the model weights are all in the install at
+<code>ML_programs/RFdiffusion</code> in the HOPE Labs folder, and ProteinMPNN is unpacked beside
+it.</p>
+<p>The server runs as you. The job is queued under your own account, Slurm charges your
+allocation, and the page shows only the runs you can read.</p>
+
+<h2 id="the-two-screens">The two screens</h2>
+<table>
+<tr><th>Screen</th><th>What it is for</th></tr>
+<tr><td><b>Design</b></td><td>The target, the hotspots, the binder length and the resources, with
+a box that says what Slurm will be asked for and another that shows the contig map before
+anything is queued. <b>Submit</b> stays off while anything is unanswered.</td></tr>
+<tr><td><b>Runs</b></td><td>Your runs and their Slurm state, the backbones and sequences written
+so far, the designs best first once the run has finished, the log, and where the results are. A
+job can be canceled here, and one that stopped can be queued again.</td></tr>
+</table>
+
+<h2 id="the-same-run-from-a-flow">The same run, from a flow</h2>
+<p>This tool can also be one card of a flow, drawn on the launcher's canvas with a
+simulation after it. The page and the canvas queue the run through the same code, so the two are
+the same run: the same job script, the same plan, the same run folder, and the same refusals for
+the same reasons. The only difference is that nobody had to draw a graph to do one thing.</p>
+<p>A run queued from either place can be read on the Runs screen here, and a design it leaves can
+be handed to HOPE-MD from a flow.</p>
+
+<h2 id="what-it-is-not">What it is not</h2>
+<div class="note"><b>A design from this run has not been validated.</b> RFdiffusion proposes a
+backbone and ProteinMPNN proposes a sequence for it. Neither of them predicts the complex again
+to see whether the design would actually fold and bind that way. Folding the complex
+again, with Boltz-2 or ColabFold, is how that is checked. The score beside each design is
+ProteinMPNN's own, and it says how
+confident ProteinMPNN was about the sequence, not how well the binder binds.</div>
+<p>So a run here is the beginning of a design campaign rather than the end of one. The usual next
+step is to fold the complex and look at it, or to simulate it in HOPE-MD, before anything reaches
+a bench.</p>
+<p>RFdiffusion is not the lab's work. It is by the Institute for Protein Design at the University
+of Washington, and ProteinMPNN is by its own authors. The bar along the bottom of the page names
+the version this install runs, and <a href="citing.html">How to cite</a> says what to cite.</p>
+
+<h2 id="where-to-start">Where to start</h2>
+<p><a href="getting-started.html">Getting started</a> opens the page and says where runs go. Then
+<a href="target.html">The target and hotspots</a>, which is the first box on the Design screen.</p>

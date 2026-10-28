@@ -1,0 +1,52 @@
+<h1>Getting started</h1>
+<p class="lead">Open the page, give it a four-character PDB id, name a few residues, and press Dry
+run. That writes everything a real run writes and queues nothing, which is the cheapest way to
+see what you are about to ask for.</p>
+
+<h2 id="opening-the-page">Opening the page</h2>
+<p>From HOPE Labs: sign in, go to <b>Tools</b>, find <b>RFdiffusion</b> and press <b>Launch</b>.
+The launcher starts the page on a login node, forwards the port to your own computer and opens
+it in a tab. Nothing needs installing on your machine.</p>
+<p>From a terminal on the cluster, if you would rather, in the HOPE Labs folder:</p>
+<pre><code>cd &lt;folder&gt;/HOPE-labs
+PYTHONPATH=. ../envs/hopelabs/bin/python3 \
+    -m hope_labs.pages.serve rfdiffusion --port 0</code></pre>
+<p>It prints the address to tunnel to and then a line beginning <code>open</code> with a URL in
+it. That URL carries a token, and nothing but this documentation answers without it, so the page
+is yours even though the login node is shared with everybody else logged into it.</p>
+<div class="note"><b>A login node, not a compute node.</b> The page itself does nothing heavy: it
+reads a structure, talks to the queue and waits. The design runs in a job on a GPU node, which is
+what the page queues.</div>
+
+<h2 id="where-runs-go">Where runs go</h2>
+<p>By default a run goes in <code>$SCRATCH/rfdiffusion_runs</code>, in your own scratch, which is
+also where a flow puts its RFdiffusion runs. So the Runs screen shows both, and a run started one
+way can be read the other way.</p>
+<p>Your home folder on Grace holds 10 GB and 10 000 files, and one run writes more files than
+that between its caches and its backbones. The page refuses a run folder inside home for that
+reason. Put runs in scratch.</p>
+
+<h2 id="a-first-run">A first run</h2>
+<ol class="steps">
+<li>In <b>Target</b>, type a four-character RCSB id and press <b>Fetch</b>. The page fetches the
+entry, reads it, and shows one chip per chain with the residue numbers that chain actually uses.</li>
+<li>Leave every chain selected, or click a chip to drop one. Most targets are given as the chains
+a binder should bind.</li>
+<li>In <b>Where the binder should bind</b>, type the residues to aim at, in the numbering the
+chips show: <code>54,56,66-70</code> for one chain, or <code>A54,B12-16</code> across chains. The
+box below fills in with the contig map and the hotspot list the job will be given.</li>
+<li>In the rail on the right, set the binder length and how many backbones to generate. The
+defaults are ten backbones of 70 to 100 residues, with eight sequences designed for each.</li>
+<li>Press <b>Dry run</b>. The run folder is written, the structure is copied into it, the plan and
+the job script are written, and nothing is queued. Read the job script if you like: it is the one
+a real submission would send.</li>
+<li>When it looks right, press <b>Submit</b>. The page moves to the Runs screen with the new run
+open.</li>
+</ol>
+
+<h2 id="how-long-it-takes">How long it takes</h2>
+<p>A diffusion is minutes per backbone on an A100, and longer the larger the target and the longer
+the binder. Ten backbones of a hundred residues onto a small receptor is comfortably inside the
+default twelve hours; a hundred backbones onto a large one is not. The <b>Resources</b> group is
+where to lengthen the walltime, and <a href="resources.html#walltime-and-starting-again">Walltime
+and starting again</a> explains why running out is worse here than it is for some tools.</p>

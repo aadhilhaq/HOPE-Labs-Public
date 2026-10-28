@@ -1,0 +1,102 @@
+<h1>When something goes wrong</h1>
+<p class="lead">HOPE Labs says what it found, in a sentence. The common ones, what they mean, and
+what to do.</p>
+
+<h2 id="signing-in">Signing in</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td>The password is refused, though it is right</td><td>Check that the NetID box holds your
+NetID alone. HOPE Labs cuts an email address at the @ and says so in the log, but anything else
+in the box is sent as it is.</td></tr>
+<tr><td>No Duo push arrives</td><td>Duo's question is shown exactly as Grace sent it. If it offers
+a numbered list, answer with the number for a push, as you would in a terminal.</td></tr>
+<tr><td><b>Could not connect:</b> and a reason</td><td>The sign in failed where the reason says.
+<b>Show technical details</b> is turned on for you, and what it shows is what to send with a
+report.</td></tr>
+</table>
+
+<h2 id="the-page">The page</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td>The page did not open</td><td>Press <b>Open the page</b> in the HOPE Labs window, or paste
+the address the log printed into your browser.</td></tr>
+<tr><td><b>Open this page from the launcher window: it carries the token that gates it.</b></td>
+<td>The address was typed or kept without its token. Use <b>Open the page</b>; the token changes
+every time you sign in.</td></tr>
+<tr><td><b>Chrome blocked the tab.</b></td><td>Allow pop-ups for the page once: see
+<a href="getting-started.html#allow-its-tabs">Let its tabs open</a>.</td></tr>
+<tr><td>The log says the usual port <b>was busy</b></td><td>Another program had it. Nothing is
+wrong, but Chrome treats the new address as a new site and may ask once more.</td></tr>
+<tr><td>A tool's page stopped answering</td><td>The tool was stopped, it stopped by itself, or the
+connection dropped. Launch it again, after signing in again if the connection is gone.</td></tr>
+</table>
+
+<h2 id="starting-a-tool">Starting a tool</h2>
+<p>When a tool stops before it is ready, its tab says why, with the tool's own last lines under
+it where they help, and a <b>Try again</b> button. In each sentence the tool and the folder
+are named.</p>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>HOPE Labs is not set up on this cluster yet</b></td><td>No HOPE Labs was found in any
+of your spaces, so no tool, flow or report can start from it. The Tools page offers to set it up,
+or to name the folder it is in if you or your group set it up somewhere else.</td></tr>
+<tr><td><b>there is no</b> <i>tool</i> <b>on the cluster</b></td><td>The folder HOPE Labs looked
+in does not exist. Install the tool from the <a href="set-up.html">Set up</a> page, or by hand,
+or check that a path you set really spells your folder:
+<a href="own-installs.html#pointing-hope-labs-at-your-copies">Pointing HOPE Labs at your
+copies</a>.</td></tr>
+<tr><td><i>tool</i> <b>is installed at</b> <i>folder</i> <b>but its activate.sh is
+missing</b></td><td>Run that tool's <code>install.sh</code> again; it writes the file. This is
+HOPE-MD.</td></tr>
+<tr><td><i>tool</i> <b>is run from a page that is part of HOPE Labs, and the HOPE Labs install on
+the cluster is not where it is expected</b></td><td>RFdiffusion, RFdiffusion3, BoltzGen, Boltz-2
+or ColabFold. The folder named is the HOPE Labs checkout, not the tool's own install, so look there
+and not at the tool. A checkout somewhere HOPE Labs was not told of is named on the Tools page, or
+with <code>HOPELABS_INSTALL</code>: <a href="own-installs.html#the-pages-that-are-ours">The tools
+whose page is ours</a>.</td></tr>
+<tr><td>the quoted lines end in <b>no Python of 3.8 or newer was found for</b> <i>tool</i>'s
+<b>page</b></td><td>The same tools. Their page is Python, and a login node's own
+<code>python3</code> here is 3.6, so one is looked for rather than named outright. Name the one to
+use with <code>HOPELABS_PYTHON</code>.</td></tr>
+<tr><td><i>tool</i> <b>was not found in its install</b></td><td>Its environment loaded, but the
+tool itself would not import there. Run the tool's own check, or its installer, again.</td></tr>
+<tr><td><b>the cluster ran</b> <i>tool</i> <b>with a Python too old to parse it</b></td><td>Its
+environment did not load, and the login node's own Python ran it. Its <code>activate.sh</code> is
+not naming the install's own Python.</td></tr>
+<tr><td><b>the port</b> <i>tool</i> <b>was given is taken</b></td><td>Something took the port in
+the moment between HOPE Labs finding it free and the tool starting. Try again; it is given
+another.</td></tr>
+<tr><td><b>permission denied starting</b> <i>tool</i></td><td>Usually a folder you cannot read,
+such as an install in a group folder you are not in.</td></tr>
+<tr><td><i>tool</i> <b>did not report a URL within 120s</b></td><td>A cold login node can be slow;
+try again. If it happens again, the tool's own lines quoted under it say why.</td></tr>
+<tr><td><i>tool</i> <b>stopped before it was ready</b></td><td>None of the above; the tool's own
+last lines are quoted under it.</td></tr>
+</table>
+
+<h2 id="results">Results</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td><b>No run folders yet.</b></td><td>None of the folders Results looks in holds a run yet,
+or the runs are somewhere else: <a href="results.html#what-is-listed">What is listed</a> names
+where it looks.</td></tr>
+<tr><td>A run you know is there is missing</td><td>Results lists the twelve newest in each folder,
+and keeps what it read for twenty seconds. Press <b>Refresh</b>.</td></tr>
+</table>
+
+<h2 id="reporting-a-problem">Reporting a problem</h2>
+<p>Turn on <b>Show technical details</b> in the HOPE Labs window and copy what is under <b>What is
+happening</b>. Send it, with what you were doing, to whoever looks after HOPE Labs on your
+cluster.</p>
+
+<h2 id="telling-somebody">Telling somebody</h2>
+<p><b>Send feedback</b>, at the bottom of the rail, is there for anything at all: something
+awkward, something missing, something wrong. On a flow card that failed there is a <b>Report
+this</b> beside it, which is the same thing with the run already in it.</p>
+<p>What usually arrives when something breaks is "the flow failed", and then three messages
+asking for a job id, a folder and a log. So the report gathers those on the cluster where they
+are: what you typed, the state of every card, what Slurm says about each job, the last eighty
+lines of the log, and the settings the card was given. You see the whole of it before anything is
+written, because it quotes your own run, and you can copy it instead of sending it. Nothing
+leaves the cluster: it goes to the reports folder beside the HOPE Labs install, for whoever
+looks after it.</p>

@@ -1,0 +1,49 @@
+<h1>Overview</h1>
+<p class="lead">BioEmu samples the structures a protein actually takes, from its sequence, in
+minutes. This page runs it on Grace, reads the samples for you and puts the answer beside a
+simulation of the same chain.</p>
+
+<h2>What this answers</h2>
+<p>A folding tool answers one question: what shape is this sequence. It gives one structure, or a
+few that differ in the parts it is least sure about, and a confidence for each.</p>
+<p>That is not the question most protein work turns on. A protein is not one shape. It holds a
+fold and moves within it, opens and closes, frays at a loop, and sometimes sits in two
+arrangements with a population each. BioEmu answers <em>what shapes does this sequence take, and
+how often</em>, by sampling from a distribution it learned from simulation and from measured
+folding free energies.</p>
+<p>The usual way to ask that question is molecular dynamics, which integrates the physics for
+days. BioEmu answers it in minutes. It does not replace a simulation, and
+<a href="shapes.html">the shapes, and what they are not</a> is the page that says exactly what it
+does and does not give you.</p>
+
+<h2>What a run does here</h2>
+<p>You paste one protein sequence and say how many structures to draw. The run then has two
+phases, because a compute node on this cluster reaches no network at all:</p>
+<ol>
+  <li><strong>Here, on the login node.</strong> The alignment for your sequence is searched for on
+  the ColabFold server. BioEmu makes its embeddings from an alignment, and this is the only part
+  of a run that needs the internet.</li>
+  <li><strong>On the GPU queue.</strong> The sampling, inside the tool's own container image, with
+  the weights that were fetched when it was installed, and with nothing reaching out anywhere.
+  The samples are then read in the same job.</li>
+</ol>
+<p><a href="phases.html">The two phases</a> explains why that split exists and what it means when
+something fails.</p>
+
+<h2>What you get back</h2>
+<p>The samples as one trajectory file with a topology beside it, which is how every tool that
+reads ensembles expects them, and on top of that what reading them found: how wide the spread is,
+how many distinct shapes are in it, what share of the samples each shape holds, which residues
+move and which do not, and one structure per shape that you can open in the viewer or put in a
+slide. <a href="results.html">What a run leaves</a> lists the files.</p>
+
+<h2>Against a simulation</h2>
+<p>The reason this page sits beside HOPE-MD rather than beside the folding pages is that you can
+point it at a HOPE-MD run of the same chain and ask whether the two agree: whether the simulation
+visited the shapes that were sampled, whether the two say the same residues move, and whether
+their spreads overlap. Minutes against days, on the same protein.
+<a href="comparing.html">Against a simulation</a> is that page.</p>
+
+<h2>Where to start</h2>
+<p><a href="getting-started.html">Getting started</a> walks one sequence through a run, from
+pasting it to reading the shapes.</p>

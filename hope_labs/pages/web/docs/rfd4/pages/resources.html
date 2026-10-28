@@ -1,0 +1,47 @@
+<h1>Resources and submitting</h1>
+<p class="lead">What the job asks Slurm for, where it runs from, and what it leaves on disk.</p>
+
+<h2 id="the-card">The card</h2>
+<p><b>GPU</b> is <code>auto</code> by default, which asks for an A100. The model needs a large
+card: an a40 has more memory and is in a partition of its own, and the page asks for the right
+one for you once you choose. The partition and the account boxes are there for the cases the
+defaults do not cover.</p>
+<p><b>Walltime</b> defaults to twelve hours, which is generous for a first run and is there so
+that one does not fail on the clock. The <code>gpu</code> partition allows four days at most and
+the page refuses longer before anything is queued.</p>
+
+<h2 id="the-image">It runs from an image, not an environment</h2>
+<p>RFD4-Proteina is installed as a single container image in the HOPE Labs folder, with its
+weights in a folder beside it. A run opens that image, and nothing of the tool is copied into
+your scratch or your home folder.</p>
+<p>That has two consequences worth knowing. The first is that a run has no outbound network: a
+compute node on Grace reaches nothing, so the weights are fetched on a login node when the tool
+is installed and the run is told to work offline. The second is that the model's version is the
+image's, so the report names the image rather than a package version.</p>
+<div class="note"><b>Nothing a run writes goes near your home folder.</b> Every cache the tool
+keeps under a home folder, which is several of them, is pointed at the run's own directory, and
+the image is given that directory as its home. Home on Grace is ten gigabytes and ten thousand
+files, and a design run would fill it.</div>
+
+<h2 id="where-runs-go">Where a run goes</h2>
+<p>Runs land in <code>$SCRATCH/rfd4_runs</code> unless you name a <b>Run folder</b>. A folder
+you name is used as it is, unless it already holds a run, in which case the new run goes in a
+folder of its own inside it so that two runs in one place do not overwrite each other's
+records.</p>
+<p>Home is refused outright as a run folder, for the reason in the note above. A folder outside
+the ones this page was started with is allowed and the page says so, because the Runs screen only
+reads the folders it knows about, and a run queued outside them would be invisible here.</p>
+
+<h2 id="tidying">What is cleared up afterwards</h2>
+<p>A finished run tidies itself: the caches the tool wrote while it ran are removed, and the
+structures, the spec, the plan, the log and <code>designs.json</code> are kept. The run stays
+readable and reportable afterwards; what goes is only the part nothing reads again.</p>
+<p>The Runs screen has a clean-up button for a run that finished before this was the rule, or for
+one you want reduced to its results now rather than later.</p>
+
+<h2 id="submitting">Submitting</h2>
+<p>Press <b>Queue</b>. The page writes the run folder, converts nothing yet, writes the job
+script and hands it to Slurm, and the run appears on the Runs screen with its job id.</p>
+<p>Everything the form refuses, it refuses before any of that: a chain the target has not got, a
+hotspot that is not a residue of it, a walltime Slurm would reject, a run folder in home. A
+refusal names the box it belongs to.</p>

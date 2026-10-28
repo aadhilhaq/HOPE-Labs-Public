@@ -1,0 +1,61 @@
+<h1>Against a simulation</h1>
+<p class="lead">Point a finished ensemble at a HOPE-MD run of the same chain and ask whether the
+two agree. What is measured, what the numbers mean, and what neither of them proves.</p>
+
+<h2>Why this is here</h2>
+<p>Minutes against days, on the same protein. If the sampled ensemble holds the shapes the
+simulation visits, the sampling can be trusted for the next protein and a great deal of card time
+is saved. If it does not, that is worth knowing before a week of simulation is planned on its
+suggestion. Either way the comparison is the thing that turns a sampled ensemble from an
+interesting picture into evidence.</p>
+
+<h2>What you need</h2>
+<p>A finished run on this page, read, and a HOPE-MD run whose complex holds a chain with the same
+sequence. The chain is matched on its sequence rather than on its name or its length: HOPE-MD
+renames chains as it prepares a complex, and the two chains of a dimer have the same length. If no
+chain matches, the comparison refuses and lists the sequences it found, so you can see at once
+whether you pointed it at the wrong run or at a construct with a tag on it.</p>
+<p>The trajectory is read if it is there, and the viewer export
+(<code>analysis/r1_view.pdb</code>) if it is not, which is what a tidied HOPE-MD run looks like.
+The comparison says which of the two it read and how many frames, because the answer is worth
+less from a few hundred frames than from a few thousand.</p>
+
+<h2>What is measured</h2>
+<p><strong>The shapes, one row each.</strong> For every sampled shape, the closest the simulation
+ever came to it, and whether that is within 0.3 nm. This is the headline: a sampled shape the
+simulation came within 0.3 nm of is a shape both methods agree the protein takes.</p>
+<p><strong>The residues.</strong> The fluctuation of each residue in each, and the correlation
+between the two. This is the number that says whether the two agree about which parts of the chain
+move, which is often more useful than agreement about the shapes themselves. Above about 0.7 they
+agree closely; below about 0.4 they are telling different stories and the reason is worth
+chasing.</p>
+<p><strong>The spread.</strong> The radius of gyration of each, mean and width, and how much the
+two distributions overlap, as the common area of their histograms. One for a pair that sit on top
+of one another, zero for a pair that do not touch.</p>
+
+<h2>Reading the answer</h2>
+<p><strong>Most shapes visited, residues correlated, spreads overlapping.</strong> The two agree.
+Quote both, and use the sampling for the next protein in the series.</p>
+<p><strong>The populated shapes visited, a small one not.</strong> The usual result, and not a
+disagreement: a simulation of a few hundred nanoseconds has not visited everything, and a shape
+holding two per cent of the samples is exactly the kind of thing it would miss.</p>
+<p><strong>The simulation visits something that was not sampled.</strong> More interesting. Either
+the sampling missed a populated state, which is a real limitation of the model, or the simulation
+went somewhere the protein does not go, which happens: a forcefield artifact, an unfolding, a bad
+start. Look at the structure before deciding which.</p>
+<p><strong>Nothing matches at all.</strong> Check first that both are the same chain, in the same
+protonation and without a tag, and that the simulation had settled before the frames being read.
+A comparison against the first nanoseconds of a run is a comparison against the model building
+rather than against the protein.</p>
+
+<h2>What neither of them proves</h2>
+<p>A simulation is not an experiment and neither is a sampled ensemble. Two methods agreeing is
+two models agreeing, which is worth more than one model on its own and is not the same as being
+right. Where the answer matters, it is worth saying what the experimental evidence is, even when
+it is only that the fold is the one in the structure both started from.</p>
+
+<h2>How it runs</h2>
+<p>As a short processor job on the ordinary partition, because it reads every frame of the
+trajectory and nothing it does wants a card. It writes into the ensemble run's own folder, under
+<code>compare/</code>, named after the simulation, so one ensemble can be compared with several
+simulations and each answer kept. Nothing is ever written into the HOPE-MD run.</p>

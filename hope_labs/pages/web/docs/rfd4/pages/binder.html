@@ -1,0 +1,51 @@
+<h1>The binder</h1>
+<p class="lead">How long it is, how many you get, and the sampling settings worth moving.</p>
+
+<h2 id="length">Length</h2>
+<p><b>Binder length</b> is a range, not a number: the model samples a length inside it for each
+design. It reaches the contig as the first segment, <code>70-100</code>, which is a placeholder
+the model fills in at generation time.</p>
+<p>Seventy to a hundred residues is a reasonable first ask for a miniprotein. A range much wider
+than that makes designs which are hard to compare with one another, and the page says so under
+the boxes when you open it wide.</p>
+<p>The binder arrives in a chain of its own, with a letter the tool picks. On a target of chains
+A and B the binder comes back as C. That is the opposite of RFdiffusion3, where the design is
+always chain A, and it is why <a href="results.html#which-chain">What a run leaves</a> is worth
+reading once.</p>
+
+<h2 id="how-many">How many designs</h2>
+<p><b>Designs to generate</b> is the number of replicates of the same design problem. Each is an
+independent sample, so this costs time roughly in proportion.</p>
+<p><b>Designs per batch</b> is how many are generated together on the GPU. One is the tool's own
+default and the safe setting: a larger batch is faster but holds more on the GPU at once, and the
+tool's own advice is to try your longest input at one first.</p>
+
+<h2 id="sampling">Sampling</h2>
+<p><b>Sampling steps</b> is the number of steps the generation takes, 60 by default. Fewer is
+faster and rougher; under thirty is a smoke test rather than a design, and the page says so.</p>
+<p><b>Recycling</b> is how much the model reconsiders its own intermediate answer at each step.
+The three choices are the tool's own presets for designing a protein against a protein, and the
+figure in brackets on each is the total number of trunk passes it costs. Medium is what the
+model's own validation uses for this task, and it is the default here.</p>
+<div class="note"><b>The preset is task-specific, and this card picks the right family for
+you.</b> The tool publishes a different schedule for small-molecule binders and another for
+inverse folding, and its command-line default is not task aware. A binder run wants a
+front-loaded schedule, so those are the only ones offered here.</div>
+
+<h2 id="the-warm-up">The compile warm-up</h2>
+<p><b>Compile the model first</b> is off by default. With it on, the model is compiled for a set
+of input lengths before the first design, which costs minutes up front and makes every design
+after it faster. It pays for itself over a campaign and is a waste on a handful of designs.</p>
+
+<h2 id="repeatability">Repeating a run</h2>
+<p><b>Seed</b> is empty by default, which means a new one each run. Set it to any number to get
+the same designs again from the same inputs. With it empty, the report says plainly that the run
+cannot be reproduced exactly from its own record.</p>
+
+<h2 id="sequences">The sequence</h2>
+<p>There is no sequence step on this card, and nothing is missing. RFD4-Proteina designs the
+sequence along with the backbone, so each design comes back with one and it is the one recorded
+in <code>designs.json</code> and listed in the report.</p>
+<p>That is a real difference from RFdiffusion and RFdiffusion3, where the diffusion writes a
+backbone and ProteinMPNN is run afterwards to give it a sequence. If you want a ProteinMPNN
+sequence for one of these backbones for comparison, that is a separate run against the design.</p>
