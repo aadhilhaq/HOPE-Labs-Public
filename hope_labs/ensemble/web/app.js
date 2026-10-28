@@ -203,7 +203,7 @@ const HELP = {
       "Samples": "How many structures the run drew.",
       "Shapes": "How many groups of alike structures they fall into.",
       "Residues": "How long the chain is.",
-      "Radius of gyration": "How spread out the chain is, in nanometres: a small number is a "
+      "Radius of gyration": "How spread out the chain is, in nanometers: a small number is a "
                           + "tight ball, a larger one is extended. The ± is how much it varied.",
       "From the mean shape": "How far a sample sits from the average of them all, on average. "
                            + "The bigger it is, the more this chain moves.",
@@ -213,12 +213,14 @@ const HELP = {
     docs: "/docs/results.html" },
   shapes: { title: "The shapes in this ensemble",
     body: "The structures are grouped by how alike they are, and each group is a shape. Press a "
-        + "row to draw that one in color.",
+        + "row to draw that one in color.\n\n"
+        + "Color by movement paints every residue by how far it moves, teal for still to red for "
+        + "the most. Click a residue in the viewer or on the chart below to name it in both.",
     notes: {
       "Shape": "The groups in order, the most populated first.",
       "Share of samples": "How much of the run came out in this shape.",
       "Samples": "How many structures are in it.",
-      "Width": "How much the structures within one shape differ, in nanometres. A small width "
+      "Width": "How much the structures within one shape differ, in nanometers. A small width "
              + "is a tight group.",
       "Sample": "Which structure of the run is drawn for this shape.",
       "In the viewer": "Whether it is drawn. A group of one or two is not.",
@@ -226,10 +228,11 @@ const HELP = {
     docs: "/docs/shapes.html" },
   moves: { title: "Which residues move",
     body: "One value for each residue of the chain: how far that residue sits from where it sits "
-        + "in the average structure, in nanometres. A peak is a part of the chain that moves; a "
+        + "in the average structure, in nanometers. A peak is a part of the chain that moves; a "
         + "flat stretch is a part that holds still.\n\n"
         + "The dashed line is the same measured against the structure you gave, where there is "
-        + "one. Residue number runs along the bottom; nothing here is plotted against time.",
+        + "one. Residues are numbered as in the structure you gave, or from one. Hover to read a "
+        + "residue; click to mark it in the viewer. Nothing here is plotted against time.",
     docs: "/docs/results.html" },
 };
 document.addEventListener("click", (e) => {
@@ -1280,37 +1283,167 @@ function reportButton(run) {
 
 let VIEW = null;
 let VIEWAT = -1;
-function forgetViewer() { VIEW = null; VIEWAT = -1; }
+/* What the shapes are colored by, kept for the next visit: each shape its own color, or every
+   residue by how far it moves. And the residue last picked, in the viewer or on the chart, by its
+   place along the chain (0 for the first), so the two always point at the same one. */
+let PAINT = "shape";
+try { if (localStorage.hlensemblepaint === "moves") PAINT = "moves"; } catch (e) { /* ignore */ }
+let PICKED = -1;
+let SHAPES = null;
+let CHART = null;
+function forgetViewer() { VIEW = null; VIEWAT = -1; PICKED = -1; SHAPES = null; CHART = null; }
 function paintViewerBackground() {
   if (VIEW) { VIEW.setBackgroundColor(isDark() ? 0x14191c : 0xf7f6f1); VIEW.render(); }
 }
 const COLORS = ["#0d5c6b", "#c98a3c", "#7a5ea7", "#2f9e6e", "#b4362f", "#1f6f9c", "#8a6d3b", "#555"];
+const THREE = { A: "Ala", R: "Arg", N: "Asn", D: "Asp", C: "Cys", Q: "Gln", E: "Glu", G: "Gly",
+  H: "His", I: "Ile", L: "Leu", K: "Lys", M: "Met", F: "Phe", P: "Pro", S: "Ser", T: "Thr",
+  W: "Trp", Y: "Tyr", V: "Val" };
+
+/* The residue numbers to show: the structure's own when the run was given one (MDM2 from 1YCR is
+   25 to 109), counted from one otherwise. The server decides, so the page and the report agree. */
+function numbersOf(run) {
+  const given = (run.numbering && run.numbering.numbers) || [];
+  if (given.length) return given;
+  const n = run.residues || ((run.analysis && run.analysis.rmsf) || []).length;
+  return Array.from({ length: n }, (_v, i) => i + 1);
+}
+function residueName(run, k) {
+  const letter = (run.sequence || "")[k];
+  return (THREE[letter] || letter || "Residue") + " " + numbersOf(run)[k];
+}
+
+/* How far a residue moves, as a color: the lab's teal for still, through amber, to red for the
+   residue that moves most. Teal to red rather than blue to white to red: white is lost on the
+   viewer's pale ground, and every step of this one shows on the dark ground too. */
+const STILL = [13, 92, 107], HALF = [217, 164, 65], MOST = [180, 54, 47];
+function heat(t) {
+  t = Math.max(0, Math.min(1, t || 0));
+  const [a, b, u] = t < 0.5 ? [STILL, HALF, t * 2] : [HALF, MOST, t * 2 - 1];
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * u).toString(16).padStart(2, "0")).join("");
+}
+function movesOf(run) { return (run.analysis && run.analysis.rmsf) || []; }
 
 /* The shapes, overlaid rather than played. Every shape faint and the one picked in color on top
-   of them: stepped through, these read as a film of a protein moving, which they are not. */
+   of them: stepped through, these read as a film of a protein moving, which they are not. The
+   file is read and the viewer made once per run; a press on Show, Color or a residue restyles it,
+   so the view keeps the angle somebody turned it to. */
 async function drawShapes(run, box, at) {
   if (typeof $3Dmol === "undefined") {
     box.appendChild(el("p", "note", "The viewer could not be loaded. Download has the shapes."));
     return;
   }
-  let text;
-  try { text = await (await fetch(fileUrl(run, run.ensemble))).text(); }
-  catch (failure) { box.appendChild(el("p", "note", "The shapes could not be read.")); return; }
-  const models = text.split(/^ENDMDL\s*$/m).map((p) => p.trim()).filter((p) => p.includes("ATOM"));
-  box.innerHTML = "";
-  VIEW = $3Dmol.createViewer(box, { backgroundColor: isDark() ? 0x14191c : 0xf7f6f1 });
-  models.forEach((one, n) => {
-    VIEW.addModel(one, "pdb");
-    const lit = at < 0 || n === at;
-    VIEW.setStyle({ model: n }, { cartoon: {
-      color: lit ? COLORS[n % COLORS.length] : "#9aa5a3",
-      opacity: lit ? 1 : 0.28, thickness: lit ? 0.4 : 0.2 } });
-  });
-  VIEW.zoomTo();
-  VIEW.render();
+  if (!VIEW || !SHAPES || SHAPES.path !== run.path || !box.contains(SHAPES.host)) {
+    let text;
+    try { text = await (await fetch(fileUrl(run, run.ensemble))).text(); }
+    catch (failure) { box.appendChild(el("p", "note", "The shapes could not be read.")); return; }
+    const models = text.split(/^ENDMDL\s*$/m).map((p) => p.trim()).filter((p) => p.includes("ATOM"));
+    box.innerHTML = "";
+    const host = el("div", "vhost");
+    box.appendChild(host);
+    const key = el("div", "vkey");
+    box.appendChild(key);
+    VIEW = $3Dmol.createViewer(host, { backgroundColor: isDark() ? 0x14191c : 0xf7f6f1 });
+    models.forEach((one) => VIEW.addModel(one, "pdb"));
+    /* Each residue's place along the chain, from the first model's own order: BioEmu numbers
+       from zero, and every model is the same chain. */
+    const places = new Map();
+    VIEW.selectedAtoms({ model: 0 }).forEach((a) => { if (!places.has(a.resi)) places.set(a.resi, places.size); });
+    SHAPES = { path: run.path, run, host, key, models: models.length, places,
+      rows: (run.table.rows || []).filter((row) => row.in_viewer) };
+    VIEW.setClickable({}, true, (atom) => pickResidue(run, SHAPES.places.get(atom.resi)));
+    VIEW.zoomTo();
+  }
   VIEWAT = at;
+  paintShapes();
 }
 window.addEventListener("hl-zoom", () => { if (VIEW) { VIEW.resize(); VIEW.render(); } });
+
+function paintShapes() {
+  if (!VIEW || !SHAPES) return;
+  const run = SHAPES.run, moves = movesOf(run);
+  const top = Math.max.apply(null, moves.concat([1e-9]));
+  VIEW.removeAllLabels();
+  for (let n = 0; n < SHAPES.models; n++) {
+    const lit = VIEWAT < 0 || n === VIEWAT;
+    const cartoon = { opacity: lit ? 1 : 0.25, thickness: lit ? 0.4 : 0.2 };
+    if (!lit) cartoon.color = "#9aa5a3";
+    else if (PAINT === "moves" && moves.length) cartoon.colorfunc = (a) => heat((moves[SHAPES.places.get(a.resi)] || 0) / top);
+    else cartoon.color = COLORS[n % COLORS.length];
+    VIEW.setStyle({ model: n }, { cartoon });
+  }
+  const resi = PICKED < 0 ? null : [...SHAPES.places.entries()].find(([, k]) => k === PICKED);
+  if (resi) {
+    let where = null;
+    for (let n = 0; n < SHAPES.models; n++) {
+      if (VIEWAT >= 0 && n !== VIEWAT) continue;
+      VIEW.addStyle({ model: n, resi: resi[0], atom: "CA" }, { sphere: { radius: 0.8, color: "#20262b" } });
+      where = where || VIEW.selectedAtoms({ model: n, resi: resi[0], atom: "CA" })[0];
+    }
+    if (where) VIEW.addLabel(residueName(run, PICKED), { position: { x: where.x, y: where.y, z: where.z },
+      fontSize: 13, fontColor: "#20262b", backgroundColor: "#ffffff", backgroundOpacity: 0.85,
+      borderThickness: 0, inFront: true });
+  }
+  VIEW.render();
+  paintKey();
+}
+
+/* The key, in the viewer's corner, over the structure it explains: the shapes and their shares,
+   or the scale of how far a residue moves. */
+function paintKey() {
+  const key = SHAPES && SHAPES.key;
+  if (!key) return;
+  key.innerHTML = "";
+  const moves = movesOf(SHAPES.run);
+  if (PAINT === "moves" && moves.length) {
+    key.appendChild(el("div", "pkeyhead", "How far each residue moves"));
+    const scale = el("div", "vscale");
+    scale.style.background = "linear-gradient(90deg," + [0, 0.25, 0.5, 0.75, 1].map(heat).join(",") + ")";
+    key.appendChild(scale);
+    const ends = el("div", "vscaleends");
+    ends.appendChild(el("span", null, "Still"));
+    ends.appendChild(el("span", null, Math.max.apply(null, moves).toFixed(2) + " nm"));
+    key.appendChild(ends);
+    return;
+  }
+  SHAPES.rows.forEach((row, n) => {
+    if (n >= SHAPES.models) return;
+    const line = el("div", "pkeyrow" + (VIEWAT >= 0 && n !== VIEWAT ? " dim" : ""));
+    const swatch = el("span", "pkeyswatch");
+    swatch.style.background = COLORS[n % COLORS.length];
+    line.appendChild(swatch);
+    line.appendChild(el("span", null, "Shape " + row.rank + " · " + (100 * (row.share || 0)).toFixed(0) + "%"));
+    key.appendChild(line);
+  });
+}
+
+/* A residue picked, in the viewer or on the chart: marked in both and named in the bar. Picked
+   again, it is let go. */
+function pickResidue(run, k) {
+  if (k == null || k < 0) return;
+  PICKED = k === PICKED ? -1 : k;
+  paintShapes();
+  markChart();
+  const say = $("vpick");
+  if (!say) return;
+  if (PICKED < 0) { say.textContent = "Click a residue, here or on the chart"; say.classList.add("dim"); return; }
+  const moves = movesOf(run)[PICKED];
+  const given = ((run.analysis && run.analysis.given) || {}).per_residue || [];
+  say.classList.remove("dim");
+  say.textContent = residueName(run, PICKED)
+    + (moves == null ? "" : " · moves " + moves.toFixed(2) + " nm from the mean shape")
+    + (given[PICKED] == null ? "" : " · " + given[PICKED].toFixed(2) + " nm from the structure given");
+}
+
+function markChart() {
+  if (!CHART) return;
+  const on = PICKED >= 0 && PICKED < CHART.n;
+  CHART.mark.style.display = on ? "" : "none";
+  if (on) {
+    const x = (PICKED * (CHART.W / (CHART.n - 1))).toFixed(1);
+    CHART.mark.setAttribute("x1", x); CHART.mark.setAttribute("x2", x);
+  }
+}
 
 /* Which shape the viewer is drawing, said on the row of buttons and on the table. Pressing one
    used to read the whole run again, and reading a run forgets which shape was picked, so the
@@ -1366,8 +1499,18 @@ function shapesTable(run, onPick) {
 /* One value per residue: which parts of this chain move. The lines are drawn to the box and the
    words about them are text on the page. Residue number along the bottom, which is a position
    in a molecule; nothing on this page is plotted against the sample number. */
-function lineChart(values, second, first) {
+/* Where along the chain to write its residue numbers: at round ones, at the finest step that
+   leaves no more than nine. The server's reporting.residue_ticks does the same for the report. */
+function residueTicks(numbers, most) {
+  most = most || 9;
+  const span = Math.max.apply(null, numbers) - Math.min.apply(null, numbers) + 1;
+  const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find((s) => span / s <= most) || 1000;
+  return numbers.map((n, i) => (n % step === 0 ? i : -1)).filter((i) => i >= 0);
+}
+
+function lineChart(values, second, numbers, onPick, run) {
   if (!values || values.length < 3) return null;
+  if (!numbers || numbers.length !== values.length) numbers = values.map((_v, i) => i + 1);
   const all = second && second.length >= 3 ? values.concat(second) : values;
   const top = Math.max.apply(null, all) || 1;
   const W = 1000, H = 100;
@@ -1387,8 +1530,8 @@ function lineChart(values, second, first) {
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("class", "chart");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "How far each residue sits from the mean shape, in nanometres, "
-                   + "0 to " + top.toFixed(2) + ", residue " + first + " onward");
+  svg.setAttribute("aria-label", "How far each residue sits from the mean shape, in nanometers, "
+                   + "0 to " + top.toFixed(2) + ", residues " + numbers[0] + " to " + numbers[numbers.length - 1]);
   const axis = document.createElementNS(ns, "line");
   axis.setAttribute("x1", 0); axis.setAttribute("y1", H - 4); axis.setAttribute("x2", W); axis.setAttribute("y2", H - 4);
   axis.setAttribute("stroke", "currentColor"); axis.setAttribute("opacity", "0.35");
@@ -1405,11 +1548,62 @@ function lineChart(values, second, first) {
     if (dash) poly.setAttribute("stroke-dasharray", dash);
     svg.appendChild(poly);
   });
-  wrap.appendChild(svg);
-  const axisText = el("div", "chartaxis");
-  axisText.appendChild(el("span", null, "Residue " + first));
-  axisText.appendChild(el("span", null, "Residue " + (first + values.length - 1)));
+  const xOf = (i) => (i * (W / (values.length - 1))).toFixed(1);
+  const ticks = residueTicks(numbers);
+  ticks.forEach((i) => {
+    const t = document.createElementNS(ns, "line");
+    t.setAttribute("x1", xOf(i)); t.setAttribute("x2", xOf(i));
+    t.setAttribute("y1", H - 4); t.setAttribute("y2", H);
+    t.setAttribute("stroke", "currentColor"); t.setAttribute("opacity", "0.5");
+    t.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(t);
+  });
+  /* The picked residue, and the one under the pointer: a rule each, the picked one solid. */
+  const rule = (opacity, dash) => {
+    const r = document.createElementNS(ns, "line");
+    r.setAttribute("y1", 0); r.setAttribute("y2", H - 4);
+    r.setAttribute("stroke", "currentColor"); r.setAttribute("opacity", opacity);
+    r.setAttribute("vector-effect", "non-scaling-stroke");
+    if (dash) r.setAttribute("stroke-dasharray", dash);
+    r.style.display = "none";
+    svg.appendChild(r);
+    return r;
+  };
+  const hover = rule("0.35", "3 3"), mark = rule("0.8", "");
+  const plot = el("div", "chartplot");
+  plot.appendChild(svg);
+  const tip = el("div", "charttip");
+  tip.hidden = true;
+  plot.appendChild(tip);
+  const at = (event) => {
+    const box = svg.getBoundingClientRect();
+    return Math.max(0, Math.min(values.length - 1, Math.round((event.clientX - box.left) / box.width * (values.length - 1))));
+  };
+  svg.addEventListener("pointermove", (event) => {
+    const i = at(event);
+    hover.style.display = "";
+    hover.setAttribute("x1", xOf(i)); hover.setAttribute("x2", xOf(i));
+    tip.hidden = false;
+    tip.textContent = (run ? residueName(run, i) : "Residue " + numbers[i]) + " · " + values[i].toFixed(2) + " nm"
+      + (second && second[i] != null ? " · " + second[i].toFixed(2) + " nm given" : "");
+    const left = (i / (values.length - 1)) * 100;
+    tip.style.left = left + "%";
+    tip.classList.toggle("flip", left > 70);
+  });
+  svg.addEventListener("pointerleave", () => { hover.style.display = "none"; tip.hidden = true; });
+  if (onPick) { svg.style.cursor = "pointer"; svg.addEventListener("click", (event) => onPick(at(event))); }
+  wrap.appendChild(plot);
+  const axisText = el("div", "chartticks");
+  ticks.forEach((i) => {
+    const label = el("span", null, String(numbers[i]));
+    label.style.left = (i / (values.length - 1)) * 100 + "%";
+    axisText.appendChild(label);
+  });
   wrap.appendChild(axisText);
+  if (run && run.numbering && run.numbering.from) {
+    wrap.appendChild(el("div", "chartaxis", "Residue, numbered as in " + run.numbering.from));
+  }
+  CHART = { mark, n: values.length, W };
   const key = el("div", "chartkey");
   const k1 = el("span"); k1.appendChild(el("i")); k1.appendChild(document.createTextNode("From the mean shape"));
   key.appendChild(k1);
@@ -1583,6 +1777,28 @@ async function openRun(path, quiet) {
       b.onclick = () => pick(n);
       vbar.appendChild(b);
     });
+    vbar.appendChild(el("span", "lb", "Color"));
+    [["shape", "By shape"], ["moves", "By movement"]].forEach(([value, words]) => {
+      if (value === "moves" && !movesOf(run).length) return;
+      const b = el("button", "pill paint" + (PAINT === value ? " on" : ""), words);
+      b.type = "button";
+      b.dataset.paint = value;
+      b.setAttribute("aria-pressed", PAINT === value ? "true" : "false");
+      b.onclick = () => {
+        PAINT = value;
+        try { localStorage.hlensemblepaint = value; } catch (e) { /* ignore */ }
+        vbar.querySelectorAll(".pill.paint").forEach((p) => {
+          p.classList.toggle("on", p.dataset.paint === value);
+          p.setAttribute("aria-pressed", p.dataset.paint === value ? "true" : "false");
+        });
+        paintShapes();
+      };
+      vbar.appendChild(b);
+    });
+    const say = el("span", "picknote dim", "Click a residue, here or on the chart");
+    say.id = "vpick";
+    say.setAttribute("aria-live", "polite");
+    vbar.appendChild(say);
     section.appendChild(shapesTable(run, pick));
     section.appendChild(vbar);
     section.appendChild(viewer);
@@ -1595,7 +1811,7 @@ async function openRun(path, quiet) {
   }
 
   const rmsf = (run.analysis && run.analysis.rmsf) || [];
-  const chart = lineChart(rmsf, given.per_residue, 1);
+  const chart = lineChart(rmsf, given.per_residue, numbersOf(run), (k) => pickResidue(run, k), run);
   if (chart) {
     const section = el("div", "box");
     section.appendChild(boxHead("Which residues move", "moves", "the chart"));

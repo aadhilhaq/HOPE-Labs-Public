@@ -168,7 +168,26 @@ table.shapes .swatch{display:inline-block;width:calc(10px * var(--ui-scale));hei
    depends on how many shapes were found, and a viewer that changed size would jump. */
 .rmain .viewer{position:relative;height:340px;margin-top:0;border:1px solid var(--line);
   border-radius:0 0 var(--radius-sm) var(--radius-sm);overflow:hidden;background:var(--wait)}
+.rmain .viewer .vhost{position:absolute;inset:0}
 .rmain .vbar{margin-top:var(--sp-3)}
+/* The residue last picked, said in the bar over the viewer; muted while it only says how. */
+.vbar .picknote{margin-left:auto;font-size:var(--fs-sm);color:var(--ink);font-weight:500}
+.vbar .picknote.dim{color:var(--dim);font-weight:400}
+/* The key sits in the viewer's own corner, over the structure it explains, as the folding
+   page's does: the shapes and their shares, or the scale of how far a residue moves. */
+.vkey{position:absolute;right:var(--sp-2);bottom:var(--sp-2);z-index:3;pointer-events:none;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-3);font-size:var(--fs-xs);line-height:1.5;
+  box-shadow:0 2px 10px rgba(0,0,0,.10);opacity:.94}
+.vkey:empty{display:none}
+.pkeyhead{font-weight:600;margin-bottom:2px;color:var(--ink)}
+.pkeyrow{display:flex;align-items:center;gap:var(--sp-2);color:var(--ink)}
+.pkeyrow.dim{opacity:.45}
+.pkeyswatch{display:inline-block;width:calc(12px * var(--ui-scale));height:calc(12px * var(--ui-scale));
+  border-radius:3px;flex:0 0 auto}
+.vscale{width:calc(170px * var(--ui-scale));height:calc(10px * var(--ui-scale));border-radius:3px;
+  margin:var(--sp-1) 0 2px}
+.vscaleends{display:flex;justify-content:space-between;color:var(--dim);font-variant-numeric:tabular-nums}
 
 /* The one chart on the page. The lines are drawn to the box; the words about them are text on
    the page, so they grow with the rest of it. How far each residue moves up the left, residue
@@ -190,8 +209,21 @@ svg.chart{display:block;width:100%;height:calc(170px * var(--ui-scale));color:va
 .chartkey i{display:inline-block;width:calc(18px * var(--ui-scale));height:0;border-top:2px solid var(--teal);
   vertical-align:middle;margin-right:var(--sp-1)}
 .chartkey i.given{border-top:2px dashed var(--rust)}
-.chartaxis{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--dim);
-  font-variant-numeric:tabular-nums;grid-column:2}
+.chartaxis{display:flex;justify-content:center;font-size:var(--fs-xs);color:var(--dim);
+  grid-column:2;margin-top:2px}
+/* The residue numbers along the bottom, each under its own tick, at round numbers. Two numbers,
+   the first and the last, said where the chain began and ended and nothing about where a peak
+   was. */
+.chartplot{position:relative;grid-column:2}
+.chartticks{position:relative;grid-column:2;height:calc(1.5em + 2px);font-size:var(--fs-xs);color:var(--dim);
+  font-variant-numeric:tabular-nums}
+.chartticks span{position:absolute;top:2px;transform:translateX(-50%);white-space:nowrap}
+/* What is under the pointer, beside it; turned to the left of it near the right-hand end. */
+.charttip{position:absolute;top:0;transform:translateX(10px);background:var(--card);
+  border:1px solid var(--line);border-radius:var(--radius-sm);padding:2px var(--sp-2);
+  font-size:var(--fs-xs);white-space:nowrap;pointer-events:none;color:var(--ink);
+  box-shadow:0 2px 8px rgba(0,0,0,.10)}
+.charttip.flip{transform:translateX(calc(-100% - 10px))}
 
 /* ---- the comparisons ------------------------------------------------------ */
 .cmphead{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}

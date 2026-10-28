@@ -590,7 +590,8 @@ dialog.hlp[open]{display:flex;flex-direction:column}
   color:var(--dim);position:relative;z-index:6}
 .hlfoot-line{display:flex;align-items:center;gap:var(--sp-2);padding:0 var(--sp-4);
   min-height:calc(32px * var(--ui-scale))}
-.hlfoot-text{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hlfoot-text{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden;text-overflow:ellipsis}
 .hlfoot-more{flex:0 0 auto;border:0;background:none;color:var(--teal);font-size:var(--fs-xs);
   font-weight:600;padding:2px var(--sp-1);text-decoration:underline;border-radius:4px}
 .hlfoot-links{flex:0 0 auto;white-space:nowrap}

@@ -737,7 +737,9 @@ function stillCredits() {
      launcher wrote, so "Texas A&amp;M" in them is an ampersand, and put into a text node as it
      stands it was drawn as the five characters &amp;. */
   const decode = (html) => { const n = document.createElement("span"); n.innerHTML = html; return n.textContent; };
-  const short = decode(parts[0] + (parts[1] ? sep + parts[1].split(/(?<=\.)\s/)[0] : ""));
+  /* The copyright with its authors: only "All rights reserved." waits behind Credits. The first
+     sentence alone named the holder and nobody who wrote it. */
+  const short = decode(parts[0] + (parts[1] ? sep + parts[1].replace(/\s*All rights reserved\.?\s*$/, "") : ""));
   text.textContent = short;
   text.title = decode(parts.join(sep));
   const more = el("button", "hlc-more", "Credits");

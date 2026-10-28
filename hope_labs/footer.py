@@ -7,7 +7,7 @@ interfaces, and it rolls the credits across the window when they do not fit. On 
 line of text moving past the edges of the screen while somebody is trying to fill the form in.
 
 So a form page carries this one instead. One line, cut with an ellipsis where the window ends
-rather than moving: the page and its version, then the first sentence of the copyright. Beside it
+rather than moving: the page and its version, then the copyright and its authors. Beside it
 a Credits button, which opens the whole statement above the line, wrapped, with every credit on a
 line of its own; then Docs and How to cite. Nothing is dropped and nothing runs off the window.
 Its styles are in /static/style.css (.hlfoot), so every page that loads the shared stylesheet
@@ -41,9 +41,8 @@ def bar(site, docs_href="/docs/index.html"):
     """The bar for a docskit.Site: the same statement and credits its own bar carries."""
     head = "%s %s" % (html.escape(site.app), html.escape(site.version))
     statement = html.escape(site.copyright)
-    # The first sentence, for the one line. "(c)" has no full stop in it, so splitting on ". "
-    # cannot cut the statement in the wrong place.
-    first = html.escape(site.copyright.split(". ")[0].rstrip(".") + ".")
+    # The holder and the authors, for the line: everything but the reservation at the end.
+    first = html.escape(re.sub(r"\s*All rights reserved\.?\s*$", "", site.copyright).strip())
     plain = html.unescape(re.sub(r"<[^>]+>", "", " · ".join(
         ["%s %s" % (site.app, site.version), site.copyright] + list(site.credits))))
     links = ['<a href="%s" target="_blank" rel="noopener">Docs</a>' % html.escape(docs_href)]

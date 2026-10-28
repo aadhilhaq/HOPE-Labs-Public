@@ -466,13 +466,23 @@ def line_chart(series, x_label="", y_label="", digits=2, y_range=None):
     return "".join(out)
 
 
+def residue_ticks(numbers, most=9):
+    """Where along a chain to write its residue numbers: the positions whose number is a round
+    one, at the finest step that leaves no more than `most` of them."""
+    span = max(numbers) - min(numbers) + 1
+    step = next((s for s in (1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000)
+                 if span / float(s) <= most), 1000)
+    return [i for i, n in enumerate(numbers) if n % step == 0]
+
+
 def value_chart(values, x_label="", y_label="", mean_at=None, bands=(), digits=1, y_range=None,
-                marks=()):
+                marks=(), numbers=None):
     """One value per position along a chain: where a terminus frays or a loop never settled.
 
     ``bands`` shades thresholds behind the line ([(from, to, color)]); ``mean_at`` draws the mean
     as a dashed rule; ``marks`` draws a labeled vertical rule, which is how the chains of a
-    complex are separated.
+    complex are separated. ``numbers``, one per value, are the residues' own numbers: the axis
+    is then ticked at round ones of them rather than counted from one at three places.
     """
     values = [v for v in (values or [])]
     if len(values) < 2:
@@ -512,8 +522,14 @@ def value_chart(values, x_label="", y_label="", mean_at=None, bands=(), digits=1
         out.append(_text(where, top + 11, _fit(label, max(room, 30)), "middle", LABEL, PALE))
     out.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="%s"/>'
                % (left, height - bottom, width - 16, height - bottom, INK))
-    for at in (0, len(values) // 2, len(values) - 1):
-        out.append(_text(sx(at), height - bottom + 17, str(at + 1), "middle", LABEL, PALE))
+    ticks = residue_ticks(numbers) if numbers and len(numbers) == len(values) else []
+    for at in ticks:
+        out.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s"/>'
+                   % (sx(at), height - bottom, sx(at), height - bottom + 4, INK))
+        out.append(_text(sx(at), height - bottom + 17, str(numbers[at]), "middle", LABEL, PALE))
+    if not ticks:
+        for at in (0, len(values) // 2, len(values) - 1):
+            out.append(_text(sx(at), height - bottom + 17, str(at + 1), "middle", LABEL, PALE))
     out.append(_text((left + width - 16) / 2.0, height - 7, x_label, "middle", LABEL, PALE))
     mid = (height - bottom + top) / 2.0
     out.append('<text x="15" y="%.1f" text-anchor="middle" font-size="%d" fill="%s" '

@@ -94,6 +94,35 @@ def ensemble_file(run):
     return path if os.path.isfile(path) else ""
 
 
+def numbering(run, count, record=None):
+    """One residue number per sampled residue, and where the numbers came from.
+
+    The structure's own numbers when the run was given one and the chain it named is the chain
+    that was sampled. BioEmu numbers its samples from zero and the page counted from one, so a run
+    of MDM2 read from 1YCR showed residues 1 to 85 where the protein's are 25 to 109, and Leu54
+    sat at 30, where nobody who knows the protein would look for it. Counted from one otherwise,
+    and also when the chain's length differs from what was sampled or a number repeats (an
+    insertion code), rather than labeling a residue with another's number.
+    """
+    from .. import structure as structuremod
+    record = record if record is not None else (read_json(os.path.join(run, "submission.json"),
+                                                          {}) or {})
+    count = int(count or 0)
+    counted = {"numbers": list(range(1, count + 1)), "from": "the sequence, counted from one"}
+    given = record.get("structure") or ""
+    if not count or not given or not os.path.isfile(given):
+        return counted
+    try:
+        chain = structuremod.chain_named(structuremod.read(given), record.get("chain") or "")
+    except structuremod.Unreadable:
+        return counted
+    numbers = list((chain or {}).get("numbers") or [])
+    if len(numbers) != count or len(set(numbers)) != count:
+        return counted
+    return {"numbers": numbers,
+            "from": "chain %s of the structure given, in its own numbering" % chain["id"]}
+
+
 def samples(run):
     """The files the sampling left, as the page lists them for download.
 
@@ -212,6 +241,7 @@ def detail(run, log_lines=240):
                  for one in shapes],
         "total": len(shapes)}
     info["analysis"] = got
+    info["numbering"] = numbering(run, info["residues"])
     info["ensemble"] = (os.path.relpath(ensemble_file(run), run) if ensemble_file(run) else "")
     info["files"] = samples(run)
     info["told"] = _told(run)

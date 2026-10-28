@@ -957,7 +957,7 @@ body.dragpane{cursor:col-resize;user-select:none}
 body .creditbar{height:auto;min-height:calc(32px * var(--ui-scale));line-height:var(--lh);font-size:var(--fs-xs);
   padding:var(--sp-1) var(--sp-4);gap:0 var(--sp-2);flex-wrap:wrap;align-items:center;color:var(--dim)}
 .creditbar span.credittext{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;
-  -webkit-line-clamp:1;line-clamp:1;overflow:hidden;flex:1 1 0;min-width:0;text-overflow:ellipsis}
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden;flex:1 1 0;min-width:0;text-overflow:ellipsis}
 .creditbar .hlc-more{flex:0 0 auto;border:0;background:none;color:var(--teal);font-size:var(--fs-xs);
   font-weight:600;padding:2px var(--sp-1);text-decoration:underline;border-radius:4px}
 .creditbar .hlc-more:hover{color:var(--ink)}

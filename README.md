@@ -1,4 +1,6 @@
-# HOPE Labs
+<p align="center">
+  <img src="docs/brand/banner.png" alt="HOPE Labs" width="100%">
+</p>
 
 One front for a set of molecular design and simulation tools on a cluster. Sign in once, pick a
 tool, and it opens in a tab of its own: binder design, folding, molecular dynamics and ensemble

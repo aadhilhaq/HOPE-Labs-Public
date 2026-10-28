@@ -49,6 +49,12 @@ OPTIONS = [
 #: so that the report's figures and its tables agree.
 SAMPLED, SIMULATED = rk.SERIES[0], rk.SERIES[1]
 
+#: Each shape's color, in the order the page's viewer and shapes table use (web/app.js, COLORS),
+#: with the word the caption says it in, so the figure, the page and the table agree.
+SHAPE_COLORS = [("#0d5c6b", "teal"), ("#c98a3c", "amber"), ("#7a5ea7", "purple"),
+                ("#2f9e6e", "green"), ("#b4362f", "red"), ("#1f6f9c", "blue"),
+                ("#8a6d3b", "brown"), ("#555555", "gray")]
+
 
 class Report:
     """One run, read once, written out as the document reportkit lays out."""
@@ -60,6 +66,8 @@ class Report:
         self.sub = runsmod.read_json(os.path.join(self.run, "submission.json"), {}) or {}
         self.got = runsmod.analysis(self.run)
         self.shapes = (self.got.get("states") or {}).get("states") or []
+        self.numbering = runsmod.numbering(
+            self.run, self.sub.get("residues") or len(self.got.get("sequence") or ""), self.sub)
         self.comparisons = self._comparisons()
         self.limits = {"shapes": max(1, len(self.shapes))}
         self.declared = OPTIONS
@@ -317,23 +325,28 @@ class Report:
         if len(rmsf) < 2:
             return None
         mean = sum(rmsf) / len(rmsf)
+        numbers = self.numbering["numbers"]
         blocks = [{"kind": "figure", "id": "rmsf",
                    "svg": rk.value_chart(rmsf, x_label="residue", y_label="fluctuation (nm)",
-                                         mean_at=mean, digits=2),
+                                         mean_at=mean, digits=2,
+                                         numbers=numbers if len(numbers) == len(rmsf) else None),
                    "caption": rk.cap(rk.sentences([
                        "How far each residue sits from where it sits in the mean shape, across "
                        "every sample, with the chain's own mean of %s nm dashed" % rk.num(mean, 2),
                        "a loop or a terminus shows as a few residues far above that line while "
                        "the rest hold still, and a chain that is loose everywhere has no such "
-                       "peak at all"]))}]
+                       "peak at all",
+                       "residues are numbered as in %s" % self.numbering["from"]]))}]
         parts = (self.got.get("secondary") or {}).get("per_residue") or []
         if parts:
             # Two lines along the chain rather than a bar per residue: a stacked bar is read down
             # the page, and three hundred of them is a figure nobody can see at once.
+            at = lambda one: (numbers[one["residue"] - 1]                            # noqa: E731
+                              if 0 < one["residue"] <= len(numbers) else one["residue"])
             series = [{"name": "helix",
-                       "points": [(one["residue"], one["helix"]) for one in parts]},
+                       "points": [(at(one), one["helix"]) for one in parts]},
                       {"name": "sheet",
-                       "points": [(one["residue"], one["sheet"]) for one in parts]}]
+                       "points": [(at(one), one["sheet"]) for one in parts]}]
             blocks.append({"kind": "figure", "id": "secondary",
                            "svg": rk.line_chart(series, x_label="residue",
                                                 y_label="share of the samples", digits=2,
@@ -355,18 +368,55 @@ class Report:
         if not where:
             return None
         shown = [one for one in self.shapes if one.get("rank") in set(self.got.get("shown") or [])]
+        text, chains = self._shapes_text(where)
+        if not chains:
+            return None
+        # reportkit draws a figure from {url | text, format, layers}. A bare URL was read as a
+        # spec with no url in it, so the report fetched "undefined" without its token and the
+        # figure said "missing or wrong token" in its place. The text goes in the document
+        # instead: the shapes are a few hundred atoms each, and nothing has to be fetched.
+        layers = [{"sel": {"chain": chain}, "style": {"cartoon": {"color": color}}}
+                  for chain, (color, _name) in zip(chains, SHAPE_COLORS * 8)]
+        said = ["shape %s in %s" % (one.get("rank"), name)
+                for one, (_c, name) in zip(shown, SHAPE_COLORS * 8)][:len(chains)]
         return {"id": "structure", "heading": "The shapes themselves", "label": "structure",
                 "blocks": [{"kind": "figure", "id": "ensemble",
-                            "structure": self._url(where),
+                            "structure": {"text": text, "format": "pdb", "layers": layers,
+                                          "zoom": 1.05},
                             "caption": rk.cap(rk.sentences([
                                 "The representative of each shape, aligned onto one another, %s "
-                                "in all" % rk.count(len(shown) or 1, "structure"),
+                                "in all: %s" % (rk.count(len(chains), "structure"),
+                                                rk.and_list(said)),
                                 "they are drawn overlaid rather than one after another on "
                                 "purpose: stepped through, a spread of structures reads as a film "
                                 "of a protein moving, and it is nothing of the kind"]))}]}
 
-    def _url(self, path):
-        return "/api/download?path=%s&file=%s" % (self.run, os.path.relpath(path, self.run))
+    def _shapes_text(self, where):
+        """The ensemble file's models as one model, a chain per shape (A, B, ...), its residues
+        numbered as the page numbers them: (PDB text, [chain ids])."""
+        numbers = self.numbering["numbers"]
+        out, chains, letters = [], [], "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        try:
+            text = open(where, encoding="utf-8", errors="replace").read()
+        except OSError:
+            return "", []
+        for n, model in enumerate(part for part in text.split("ENDMDL") if "ATOM" in part):
+            if n >= len(letters):
+                break
+            chain, seen = letters[n], {}
+            for line in model.splitlines():
+                if not line.startswith(("ATOM", "HETATM")) or len(line) < 27:
+                    continue
+                key = line[22:27]
+                if key not in seen:
+                    seen[key] = len(seen)
+                at = seen[key]
+                number = numbers[at] if at < len(numbers) else at + 1
+                out.append(line[:21] + chain + ("%4d" % number)[-4:] + " " + line[27:])
+            out.append("TER")
+            chains.append(chain)
+        out.append("END")
+        return "\n".join(out) + "\n", chains
 
     # -------------------------------------------------------------- 6. the comparison
 
@@ -434,26 +484,34 @@ class Report:
     # -------------------------------------------------------------- the appendix
 
     def appendix(self):
+        """Lettered sections, each {heading, blocks}, as reportkit lays an appendix out. A flat
+        list of blocks was read as one section with no heading and nothing in it: "A." alone."""
         out = []
         told = runsmod._told(self.run)
         if told.get("command"):
-            out.append({"kind": "heading", "text": "The line that sampled"})
-            out.append({"kind": "pre", "text": told["command"]})
+            out.append({"heading": "The line that sampled",
+                        "blocks": [{"kind": "pre", "text": told["command"]}]})
         if told.get("what"):
-            out.append({"kind": "heading", "text": "The alignment, %s" % told["what"]})
-            out.append({"kind": "pre", "text": (told.get("text") or "")[:4000]})
+            out.append({"heading": "The alignment, %s" % told["what"],
+                        "blocks": [{"kind": "pre", "text": (told.get("text") or "")[:4000]}]})
         sequence = self.got.get("sequence") or self.sub.get("sequence") or ""
         if sequence:
-            out.append({"kind": "heading", "text": "The sequence, read back out of the samples"})
-            out.append({"kind": "pre", "text": sequence})
+            numbers = self.numbering["numbers"]
+            out.append({"heading": "The sequence, read back out of the samples",
+                        "blocks": [{"kind": "p", "html": rk.cap(rk.sentences([
+                                       "%s, numbered as in %s, from %s to %s"
+                                       % (rk.count(len(sequence), "residue"),
+                                          self.numbering["from"], numbers[0] if numbers else 1,
+                                          numbers[-1] if numbers else len(sequence))]))},
+                                   {"kind": "pre", "text": sequence}]})
         told_slurm = rk.sacct(str(self.sub.get("job_id") or ""))
         if told_slurm:
-            out.append({"kind": "heading", "text": "What Slurm remembers of the job"})
-            out.append(rk.facts(sorted(told_slurm.items())))
+            out.append({"heading": "What Slurm remembers of the job",
+                        "blocks": [rk.facts(sorted(told_slurm.items()))]})
         log = runsmod.log_path(self.run)
         if log:
-            out.append({"kind": "heading", "text": "The end of the job's log"})
-            out.append({"kind": "pre", "text": rk.tail(log, 60)})
+            out.append({"heading": "The end of the job's log",
+                        "blocks": [{"kind": "pre", "text": rk.tail(log, 60)}]})
         return out
 
     # -------------------------------------------------------------- methods
@@ -488,7 +546,9 @@ class Report:
             text += (" Each sampled shape was compared with the simulation named above by the "
                      "least alpha carbon deviation to any frame read, and the per residue "
                      "fluctuations of the two were correlated over the residues they share.")
-        return text, references
+        # Numbered entries, {n, text}, as reportkit lists and copies them: plain strings came out
+        # as four numbers with nothing beside them.
+        return text, [{"n": n, "text": one} for n, one in enumerate(references, 1)]
 
 
 def document(tool, rundir, raw=None, install=""):
