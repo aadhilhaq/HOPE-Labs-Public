@@ -1,0 +1,114 @@
+<h1>HOPE-MD</h1>
+<p class="lead">Molecular dynamics of a complex on Texas A&amp;M's Grace cluster, from one page in
+your browser: import the structure, prepare it, choose an engine and a protocol, submit, and read
+the run back as plots, a trajectory, MM-GBSA binding energies, a report and videos.</p>
+
+<h2 id="what-it-does">What it does</h2>
+<p>You give it a structure: a docked pose, a PDB entry, an AlphaFold model or a complex file.
+HOPE-MD prepares it, writes every input file and job script the engine needs, submits the whole job
+graph to Slurm, follows it, and reads the results back. No input file or job script is written by
+hand.</p>
+<p>A run is one spec, <code>spec.json</code> in the run's folder. Five engines, Amber, OpenMM,
+GROMACS, NAMD and Desmond, each render the same spec into their own inputs, so the same complex
+moves to another engine by changing one field.</p>
+<p>Every setting is chosen, detected or derived. You choose the ones in the form. What the import
+finds (the chains, the partner's class, the waters, a model's confidence) is detected and shown,
+never typed. What follows from the rest (the box, the atoms, the frames, the run time) is derived
+and shown in the panel under the form. A value that cannot work turns its field red with a sentence
+in the field's own units, and Submit stays off while anything is red.</p>
+<p>HOPE-MD does not dock: it simulates the pose it is given, and says so when the partner it is
+given does not touch the receptor. The engines and tools it drives belong to their authors, and each
+job loads them from the cluster's own modules.</p>
+
+<h2 id="the-page">The page</h2>
+<p>Two screens, <b>Setup</b> and <b>Runs</b>, under one header, with a bar along the bottom.</p>
+<table>
+<tr><th>Part</th><th>What it holds</th></tr>
+<tr><td>The header</td><td>The cluster and the runs folder open, with <b>dry run</b> when
+nothing is queued; the <b>Setup</b> and <b>Runs</b> tabs, Runs with the number of submitted runs
+in the folder; the text-size control, <b>&#8722; 100% +</b>; <b>Dark</b> (or <b>Light</b>), which
+switches the colors of the page and of these pages; and <b>Docs</b>, which opens these pages in a
+tab of their own. The version and the commit being served are in the bar along the
+bottom.</td></tr>
+<tr><td>The text size</td><td><b>&#8722;</b> and <b>+</b> step the whole page between 80% and
+150%; the figure in the middle puts it back to 100%. Everything grows together, the panels
+included, and the 3D viewers keep their own geometry, so a click still lands on the residue under
+the pointer. HOPE Labs opens each tool at the size you chose there, and this page takes that size
+from the address it was opened with.</td></tr>
+<tr><td>Setup: the structure</td><td>The first card. <b>Choose a structure</b> opens the browser,
+which reaches this computer, the RCSB, your scratch and home, this tool's runs and the other
+tools' run folders; a file dropped on the card does the same. What was chosen is shown with its
+chains, and <b>Change</b> picks another.</td></tr>
+<tr><td>Setup: the viewer</td><td>The structure as imported, with a bar above it: color by chain,
+by element or in colors of your own; cartoon, trace or sticks; surfaces, solid, see-through or
+mesh, computed by MSMS; the receptor and the ligand shown or hidden; one chain drawn differently
+from the rest; the contacts by kind, with their distances; a figure mode for a paper; labels you
+can drag aside; reset, spin and save image; and the viewer itself, 3Dmol or Mol*. Click a residue to hold it in place during production, and click it
+again to release it.</td></tr>
+<tr><td>Setup: the checks</td><td>A row of short notes under the viewer: the chains and their
+missing residues, the hetero groups, the waters, a model's confidence, the transmembrane segments,
+the disulfides, and, once Prepare has run, each step it took. A note marked &#9650; is worth
+reading before you submit.</td></tr>
+<tr><td>Setup: the steps</td><td>The cards down the middle, in order: <b>Structure</b>,
+<b>Prepare</b> (for an RCSB entry, a complex file or an AlphaFold model), <b>Engine and force
+field</b>, <b>Solvent and ions</b>, <b>Protocol</b> and <b>Analysis</b>. Each says <b>Ready</b> or
+<b>Needed</b> beside its title, and the row of steps at the top takes you to one. Settings that
+are not among the first things anybody needs are under the card's <b>More</b> line. The <b>?</b>
+beside a title or a label opens what that setting is for.</td></tr>
+<tr><td>Setup: the rail</td><td>On the right: <b>Resources</b>, which is where the run goes in the
+queue, and <b>Where it goes</b>, the run's name. Under them the <b>Run plan</b>, once there is
+something to run: the stages in order, each with where it happens and how long it should take,
+the atoms and the box, the folder the results land in, and the quota when it is close. <b>Show the
+job</b> prints the stages and the lines each job script carries. Then <b>Submit</b>, with one line
+under it saying what it is waiting for.</td></tr>
+<tr><td>Runs</td><td>Every run in the runs folder with its state, a row for every job of the one you
+pick, the results as tiles beside a trajectory viewer, the MM-GBSA table, the jobs table, and the
+buttons that act on the run: see <a href="runs.html">The Runs screen</a>.</td></tr>
+<tr><td>The bar along the bottom</td><td>The version, the copyright and whose tools do the work,
+then <b>Docs</b> and <b>How to cite</b>.</td></tr>
+</table>
+<p>The panels are as wide as the text asks for: step the text size and the whole page follows.</p>
+
+<h2 id="the-path-through-a-run">The path through a run</h2>
+<ol class="steps">
+<li><b>Choose a structure.</b> Press <b>Choose a structure</b> on the first card and pick the
+file, folder or PDB code; the viewer and the checks show what was found. See
+<a href="sources.html">Sources</a>.</li>
+<li><b>Prepare it</b>, for an RCSB entry, a complex file or an AlphaFold model: set what Clean keeps
+and press <b>Prepare</b> to see the result, or let Submit run it first. See
+<a href="prepare.html">Prepare</a>.</li>
+<li><b>Choose the engine and the force fields.</b> The lists follow each other: an engine offers its
+force fields, a force field its waters. See <a href="engines.html">Engines and force
+fields</a>.</li>
+<li><b>Set the protocol</b> with a preset, and change what you need. See
+<a href="protocol.html">Protocol and compute</a>.</li>
+<li><b>Read the run plan and Submit.</b> The run's folder is written, the job graph is queued,
+and the page moves to Runs.</li>
+<li><b>Follow it on Runs.</b> The tiles and the trajectory appear when the analysis job has run, the
+MM-GBSA table when its own job ends. Then <b>Report</b> and <b>Video</b>. See
+<a href="runs.html">The Runs screen</a> and <a href="reports.html">Reports and media</a>.</li>
+</ol>
+
+<h2 id="where-to-go-next">Where to go next</h2>
+<div class="cards">
+<a class="card" href="getting-started.html"><span><b>Getting started</b>Open the page from the
+launcher or HOPE Labs, and a first run.</span></a>
+<a class="card" href="sources.html"><span><b>Sources</b>Every way a structure comes in, and what
+each one detects.</span></a>
+<a class="card" href="prepare.html"><span><b>Prepare</b>What Clean keeps, what is modeled, and
+what is refused.</span></a>
+<a class="card" href="engines.html"><span><b>Engines and force fields</b>The five engines and what
+each pairs with.</span></a>
+<a class="card" href="membranes.html"><span><b>Membranes</b>A protein in a lipid bilayer, and how
+it is oriented.</span></a>
+<a class="card" href="protocol.html"><span><b>Protocol and compute</b>Presets, the ladder,
+segments, GPUs and the estimate.</span></a>
+<a class="card" href="analysis.html"><span><b>Analysis and MM-GBSA</b>What is measured, and the
+binding energy.</span></a>
+<a class="card" href="runs.html"><span><b>The Runs screen</b>Following a run, its logs, resubmitting
+and tidying.</span></a>
+<a class="card" href="reports.html"><span><b>Reports and media</b>The report, the videos, the
+snapshots and the PDF portfolio.</span></a>
+<a class="card" href="troubleshooting.html"><span><b>When something goes wrong</b>What each
+message means, and what to do.</span></a>
+</div>

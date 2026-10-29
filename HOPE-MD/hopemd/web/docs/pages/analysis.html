@@ -1,0 +1,102 @@
+<h1>Analysis and MM-GBSA</h1>
+<p class="lead">When the production ends, one job measures every replicate's trajectory, and another
+scores the binding energy of the partner over a window of it that you choose.</p>
+
+<h2 id="what-is-measured">What is measured</h2>
+<p>The analysis job runs on a CPU node after the last production segment and reads every part of
+every replicate with cpptraj, from the Amber module, on all five engines. For each replicate:</p>
+<table>
+<tr><th>Measure</th><th>How</th></tr>
+<tr><td>Receptor RMSD</td><td>Of the receptor's C&alpha; atoms (P and C4&prime; for a nucleic
+acid), fitted to the first frame.</td></tr>
+<tr><td>Partner or ligand RMSD</td><td>Of its heavy atoms, with the receptor fitted and no fit of
+its own: how far it moved against the receptor.</td></tr>
+<tr><td>Interface RMSD</td><td>For a protein or nucleic-acid partner: the traced atoms of each side
+within 8 &Aring; of the other in the starting structure, with the receptor fitted.</td></tr>
+<tr><td>Buried surface</td><td>For a protein or nucleic-acid partner: the receptor's surface and the
+partner's, less the complex's, frame by frame.</td></tr>
+<tr><td>RMSF</td><td>Per residue of the receptor, by its traced atoms.</td></tr>
+<tr><td>Radius of gyration</td><td>Of the solute.</td></tr>
+<tr><td>Contacts kept</td><td>The heavy-atom pairs of the partner and the receptor within
+4.5 &Aring; of each other in the first frame, and how many of them hold. A contact present in under
+half of the frames is lost.</td></tr>
+<tr><td>Area per lipid</td><td>In a bilayer: see <a href="membranes.html#reading-a-membrane-run">Reading
+a membrane run</a>.</td></tr>
+</table>
+<p>An apo run, with no partner, has the receptor's RMSD, its RMSF and its radius of gyration. The
+analysis also writes the trajectory the Runs screen's viewer plays: every 20th saved frame, without
+the water, the salt and any lipids.</p>
+<p>On the Runs screen the measures are tiles, each with replicate 1's numbers and a plot; the
+report shows them the same way, with the contacts that were lost.</p>
+
+<h2 id="mm-gbsa">MM-GBSA</h2>
+<p>The binding energy of the partner or ligand over frames of the production: one job per replicate,
+after the production, on a CPU node. It is on by default for any run with a partner, and an apo
+run has nothing to score. The Analysis step sets the window:</p>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>MM-GBSA binding energy</b></td><td>on</td><td>Whether the run scores it at all.</td></tr>
+<tr><td><b>from (ns)</b></td><td>0</td><td>The first nanosecond of the production the frames come
+from. Skipping the first few leaves the relaxation out.</td></tr>
+<tr><td><b>to (ns, 0 = end)</b></td><td>0</td><td>The last; 0 is the end of the run.</td></tr>
+<tr><td><b>one frame every (ps)</b></td><td>200</td><td>One frame every this many picoseconds inside
+the window, no closer than the save interval. 200 ps over 10 ns is 50 frames, enough for the mean and
+its error; over a Standard run's 100 ns it is 500.</td></tr>
+</table>
+<p>The line beside the fields counts the frames per replicate. Each replicate's result is the mean
+binding energy over its frames with its standard error; the report adds the standard deviation.
+MM-GBSA counts each ion the run keeps with the side whose residues bind it.</p>
+
+<h3 id="covalently-linked">When the two sides are bonded</h3>
+<p>MM-GBSA scores the complex against the receptor and the partner taken apart. When a disulfide
+joins them, taking them apart cuts that bond: each side keeps a cysteine bonded to nothing, and the
+terms of the bond itself would go into the difference as if they were binding. That number is not a
+binding energy, so HOPE-MD does not compute it. The Analysis step says so in place of the MM-GBSA
+fields, no MM-GBSA job is queued, a job queued before Prepare found the bond stops at once with the
+reason in its log, <b>MM-GBSA&hellip;</b> on the Runs screen is refused, and the report says the two
+sides are covalently linked.</p>
+
+<h3 id="sander">On Amber, OpenMM, GROMACS and NAMD</h3>
+<p>MMPBSA.py from AmberTools scores the frames on the run's own Amber topology, so the force field
+that ran the dynamics scores the binding. It uses the GB-Neck2 solvent model with its mbondi3 radii
+and the run's salt concentration, and it computes the energies through sander: MMPBSA.py's own
+code agrees with sander under GB-Neck2 on proteins, but not on phosphates or nucleic acids, whose
+parameters sander carries. The topologies of the complex, the receptor and the partner are made
+once, with the water and the salt stripped. On 8 CPUs, 500 frames of a replicate take about 3.5
+minutes.</p>
+
+<h3 id="prime">Prime MM-GBSA on Desmond</h3>
+<p>MMPBSA.py needs an Amber topology, and a Desmond run has none, so its MM-GBSA is
+Schr&ouml;dinger's Prime: each frame is minimized and scored with OPLS4 and the VSGB 2.1 solvent
+model. Its numbers compare with other Prime numbers only.</p>
+<ul>
+<li>It runs under the full Schr&ouml;dinger suite, which needs your account on HPRC's
+Schr&ouml;dinger users list.</li>
+<li>Each Prime subjob holds 8 license tokens from HPRC's shared pool of 25, so the job runs one
+subjob. It scores a frame in 2.6 to 3.8 minutes, and its walltime follows its frames: a 50-frame
+window takes about 3 hours.</li>
+<li>When fewer than 8 tokens are free, the job waits for them, counting every 5 minutes for up to 2
+hours. If they are still taken, it ends red with that reason in its log, and <b>MM-GBSA&hellip;</b>
+on the Runs screen runs it again later.</li>
+</ul>
+<p>A failed MM-GBSA does not hold the run back: tidy waits only for it to end, and the run can be
+scored again once tidied.</p>
+
+<h3 id="reading-mm-gbsa">Reading the numbers</h3>
+<ul>
+<li>Compare runs scored the same way: MMPBSA.py's numbers with MMPBSA.py's, Prime's with
+Prime's.</li>
+<li>For a DNA or RNA partner, the solvation cost of a polyanion is large and can outweigh the
+attraction of a basic protein, so the total may come out positive: read it as a trend between
+replicates and poses rather than as an absolute binding energy.</li>
+<li>In a bilayer on the Amber-topology engines the lipids are stripped with the water, so the
+interface is scored in implicit solvent alone: read it as a trend between replicates, not as an
+energy. Prime, on Desmond, puts its own implicit membrane in their place.</li>
+</ul>
+
+<h2 id="a-new-window">Scoring again, over a new window</h2>
+<p><b>MM-GBSA&hellip;</b> on the Runs screen scores a run that has its production over a window you
+set there, and works on a run submitted without MM-GBSA too: the stage joins its graph. The window
+goes into the run's spec, the MM-GBSA input is written again, and the job is submitted with
+everything after it. The result joins the tiles and the report when the job is done. See
+<a href="runs.html#the-buttons">The buttons</a>.</p>

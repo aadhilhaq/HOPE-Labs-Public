@@ -1,0 +1,129 @@
+<h1>Engines and force fields</h1>
+<p class="lead">Five engines run the same spec. Four of them, Amber, OpenMM, GROMACS and NAMD, run one
+Amber topology built by tleap; Desmond builds its own system. The lists on the Engine step follow
+each other: an engine offers its force fields, and a force field its waters.</p>
+
+<h2 id="the-five-engines">The five engines</h2>
+<table>
+<tr><th>Engine</th><th>Topology and force fields</th><th>Time step</th><th>MM-GBSA</th></tr>
+<tr><td><b>Amber</b> (<code>pmemd.cuda</code>)</td><td>tleap: ff19SB or ff14SB with OPC, TIP3P or
+TIP4P-Ew; GAFF2 with AM1-BCC charges for a small molecule; OL21 or bsc1, with OL3, for DNA and
+RNA</td><td>4 fs with hydrogen mass repartitioning, or 2 fs</td><td>MMPBSA.py (AmberTools,
+GB-Neck2)</td></tr>
+<tr><td><b>OpenMM</b></td><td>the Amber topology</td><td>4 or 2 fs</td><td>MMPBSA.py</td></tr>
+<tr><td><b>GROMACS</b></td><td>the Amber topology, converted by ParmEd</td><td>4 or 2 fs</td>
+<td>MMPBSA.py</td></tr>
+<tr><td><b>NAMD 3</b></td><td>the Amber topology, read directly</td><td>4 or 2 fs</td>
+<td>MMPBSA.py</td></tr>
+<tr><td><b>Desmond</b></td><td>Schr&ouml;dinger's System Builder: OPLS_2005 with SPC or TIP3P, for
+protein, DNA and RNA alike (OPLS4 needs Schr&ouml;dinger's OPLS license)</td><td>2/2/6 fs RESPA,
+fixed</td><td>Prime MM-GBSA: each frame minimized and scored with OPLS4 and VSGB 2.1</td></tr>
+</table>
+<p>Because the four Amber-topology engines run the same topology, the same complex in the same
+force field moves between them with nothing else changed, and their analysis and MM-GBSA are
+alike. Each job loads its engine from the cluster's modules, and each run's README and report name
+the module line it loaded.</p>
+<table>
+<tr><th>Engine</th><th>On Grace</th><th>On ACES</th></tr>
+<tr><td>Amber</td><td>Amber 24</td><td>Amber 24</td></tr>
+<tr><td>OpenMM</td><td>8.3.1</td><td>8.3.1</td></tr>
+<tr><td>GROMACS</td><td>2024.4</td><td>2023.1</td></tr>
+<tr><td>NAMD</td><td>3.0.1</td><td>none: not offered</td></tr>
+<tr><td>Desmond</td><td>2024-4</td><td>2023-4</td></tr>
+<tr><td>Prime MM-GBSA</td><td>Schr&ouml;dinger 2025-3</td><td>Schr&ouml;dinger 2025-3</td></tr>
+</table>
+<p>An engine the cluster has no module for is not in the list: ACES has no NAMD 3, so the page leaves
+NAMD out there.</p>
+
+<h2 id="protein-and-water">Protein force fields and waters</h2>
+<p>The water list follows the protein force field, and the first water is the one the force field
+was fitted with.</p>
+<table>
+<tr><th>Protein force field</th><th>Engines</th><th>Waters offered</th></tr>
+<tr><td><b>ff19SB</b> (the default)</td><td>Amber, OpenMM, GROMACS, NAMD</td><td>OPC, TIP3P,
+TIP4P-Ew</td></tr>
+<tr><td><b>ff14SB</b></td><td>Amber, OpenMM, GROMACS, NAMD</td><td>TIP3P, OPC, TIP4P-Ew</td></tr>
+<tr><td><b>OPLS_2005</b> (Desmond's default)</td><td>Desmond</td><td>SPC, TIP3P</td></tr>
+<tr><td><b>OPLS4</b></td><td>Desmond</td><td>SPC, TIP3P, TIP4P, TIP4P-Ew</td></tr>
+</table>
+<p>ff19SB with OPC is the current Amber recommendation. A water the force field was not fitted with
+is refused, with the ones it was. A bilayer narrows the lists further: see
+<a href="membranes.html">Membranes</a>.</p>
+<h3 id="namd-water">NAMD: three-site water only</h3>
+<p>NAMD 3.0.1 cannot run a four-site water (OPC, TIP4P-Ew) from the Amber topology: it stops before
+the minimization. On NAMD the water list holds the three-site ones alone, so ff19SB runs with TIP3P
+there. Run OPC or TIP4P-Ew on Amber, OpenMM or GROMACS.</p>
+<h3 id="gromacs-water">GROMACS with a four-site water</h3>
+<p>A four-site water's extra point is a virtual site, which GROMACS does not take in its GPU update,
+so with OPC or TIP4P-Ew the update stays on the CPU threads. Such a run is slower than its atoms
+say, about 360 ns/day for 33 000 atoms on an A100 against 1 190 for 26 000 in TIP3P, and its speed
+is estimated apart from the three-site runs. TIP3P runs entirely on the GPU.</p>
+
+<h2 id="nucleic-acids">Nucleic acids</h2>
+<p>When DNA or RNA is in the run, as the partner or as the receptor, its force field is a field of
+its own, and the run is refused until it is chosen. Each choice loads a DNA set and RNA's OL3
+together, so a system with both is covered.</p>
+<table>
+<tr><th>Engine</th><th>Choices</th></tr>
+<tr><td>Amber, GROMACS, NAMD</td><td><b>OL21+OL3</b>, <b>bsc1+OL3</b></td></tr>
+<tr><td>OpenMM</td><td><b>OL15+OL3</b>, <b>bsc1+OL3</b></td></tr>
+<tr><td>Desmond</td><td>none: the run's OPLS force field types the nucleic acid with the rest of the
+system</td></tr>
+</table>
+
+<h2 id="small-molecules">Small molecules</h2>
+<p>On the Amber-topology engines a small molecule is parameterized with <b>GAFF2 and AM1-BCC
+charges</b>, the one choice under <b>ligand parameters</b>. A parameter job runs antechamber and
+parmchk2 on a CPU node before the build, at the net charge the run carries, and its log says when
+parmchk2 had to guess a parameter. It is the slow step of the setup.</p>
+<p>The net charge has to be right, because AM1-BCC with the wrong total runs to completion and is
+wrong in every frame:</p>
+<ul>
+<li>a ligand with bond orders (an SDF or MOL2 file, or a ligand taken from the structure) runs as it
+is drawn, so its formal charges fix the net charge, and the field shows it read-only as
+<b>net charge (the file's)</b>. To run another charge, load a file protonated for it;</li>
+<li>a PDB ligand has no charges, so you type it;</li>
+<li>either way, tick <b>charge is right</b> once you have checked it. Submit waits for the
+tick.</li>
+</ul>
+<p>On Desmond the System Builder types the ligand with the run's own OPLS force field from the
+file's bond orders and formal charges: there is nothing to choose and no charge to confirm.</p>
+
+<h2 id="desmond">Desmond</h2>
+<p>Desmond is the one engine that builds its own system, with Schr&ouml;dinger's System Builder, so
+a few things work differently there.</p>
+<ul>
+<li><b>OPLS_2005 or OPLS4.</b> OPLS_2005 is what the academic Desmond license covers, and the
+default. OPLS4 needs Schr&ouml;dinger's OPLS license, which the academic license on Grace lacks: a
+build that asks for it stops with a license error. The page says so in OPLS4's label
+(<b>needs the OPLS license</b>), beside the choice, under Submit, and once more in a question when
+you press Submit.</li>
+<li><b>The license is per user.</b> An account not on the Desmond users list (the
+<code>desmond</code> group on Grace) stops at the build with a license error.</li>
+<li><b>The box is rectangular.</b> The System Builder builds an orthorhombic box with the padding as
+its buffer on every side, so <b>rectangular</b> is the one shape offered.</li>
+<li><b>The time step is fixed</b>: Desmond's RESPA scheme, 2/2/6 fs, without hydrogen mass
+repartitioning.</li>
+<li><b>One GPU per replicate.</b> Any more asked for would sit idle.</li>
+<li><b>Its disulfides</b> go to Maestro as SSBOND records, those across the split of a complex
+among them: Maestro's PDB reader bonds two sulfurs only when a record says so.</li>
+<li><b>Its trajectory</b> is converted to DCD in the production job, and cpptraj analyzes it as on
+the other engines.</li>
+<li><b>Its MM-GBSA is Prime's</b>, under the full Schr&ouml;dinger suite and its license tokens:
+see <a href="analysis.html#prime">Prime MM-GBSA on Desmond</a>.</li>
+</ul>
+
+<h2 id="the-box">The box and the salt</h2>
+<p>The <b>Solvent and ions</b> card sets the water box around the solute.</p>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>box</b></td><td>compact</td><td><b>compact</b> is a truncated octahedron, the fewest
+waters; <b>cubic</b>; or <b>rectangular</b>, which a bilayer and Desmond need.</td></tr>
+<tr><td><b>padding (&Aring;)</b></td><td>12</td><td>The least distance from any solute atom to the
+box's edge. Under the 10 &Aring; cutoff the complex would see its own periodic image, so 10 is the
+least accepted.</td></tr>
+<tr><td><b>salt</b></td><td>NaCl</td><td>NaCl, KCl or MgCl<sub>2</sub>, added after the system is
+neutralized.</td></tr>
+<tr><td><b>concentration (mM)</b></td><td>150</td><td>The salt's concentration, 0 to 1000 mM;
+150 is physiological.</td></tr>
+</table>

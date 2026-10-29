@@ -1,0 +1,366 @@
+<h1>When something goes wrong</h1>
+<p class="lead">HOPE-MD says what it found in a sentence: under Load, under Prepare, in red under a
+field, under Submit, or in a job's log. Here are those sentences, what each means, and what to do.
+Words in <i>italics</i> stand for what the sentence names.</p>
+
+<h2 id="opening-the-page">Opening the page</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td>The launcher says <b>Could not connect:</b> <i>user</i>@<i>host</i> <b>was not
+accepted</b></td><td>Grace refused the sign in: check the NetID, the password and the Duo approval,
+and connect again.</td></tr>
+<tr><td><b>Could not connect: there is no directory</b> <i>folder</i> <b>on the
+cluster</b></td><td>The tool directory is wrong. Set up installs it in <code>&lt;HOPE Labs folder&gt;/HOPE-MD/MD</code>.</td></tr>
+<tr><td><b>Could not connect: HOPE-MD was not found at</b> <i>folder</i></td><td>The folder exists
+but holds no HOPE-MD. Point the tool directory at the shared install, or at the <code>MD</code>
+folder of an install of your own.</td></tr>
+<tr><td><b>Could not connect: permission denied on the far end</b></td><td>Usually a folder your
+account cannot read, such as an install in a folder of another account.</td></tr>
+<tr><td><b>Could not connect: the Python on the cluster is too old</b>, or <b>the cluster ran this
+with a Python older than 3.10</b></td><td>The install's environment did not load. The shared install
+finds its own through <code>activate.sh</code>; an install of your own needs its environment beside
+the checkout, as <code>install.sh</code> makes it.</td></tr>
+<tr><td><b>Could not connect: the port the server was asked for is taken</b></td><td>Leave the port
+box on <b>auto</b>.</td></tr>
+<tr><td><b>Could not connect: the server did not report a URL within 90s</b>, or <b>the server
+stopped before it printed a URL</b></td><td>A slow login node, or a server that stopped: its own
+last lines follow in the launcher's log. Connect again; if it happens again, send those
+lines.</td></tr>
+<tr><td>The browser shows <b>missing or wrong token; use the URL the server printed</b></td><td>The
+address was typed or kept without its token, or the page was started again since. Use <b>Open in
+browser</b> in the launcher, or the address the server printed.</td></tr>
+<tr><td>The header says <b>DRY RUN</b></td><td>This server cannot queue anything: it found no Slurm
+where it runs, or it was started that way (the launcher's <b>This computer</b>). Submit writes the
+run folder and queues nothing.</td></tr>
+<tr><td>A page started by hand stops with <b>Address already in use</b></td><td>Another user holds
+that port on the login node: choose another number, in the tunnel too.</td></tr>
+</table>
+
+<h2 id="loading">Loading a structure</h2>
+<p>The browser stays open with the reason under it, and nothing is loaded.</p>
+<table>
+<tr><th>The note says</th><th>What it means, and what to do</th></tr>
+<tr><td><b>receptor file not found:</b>, <b>ligand file not found:</b>, <b>poseviewer file not
+found:</b> or <b>file not found:</b> <i>path</i></td><td>No file at that path, as the server sees it
+on the cluster. Choose it in the browser.</td></tr>
+<tr><td><b>no protein or nucleic-acid chain was read from</b> <i>the file</i>: <b>there is nothing in
+it to simulate</b></td><td>The file holds no chain HOPE-MD can build: check it is a structure with its
+coordinates, and the receptor's.</td></tr>
+<tr><td><b>chain</b> <i>X</i> <b>is not in the receptor file, which has chains</b> <i>list</i></td>
+<td>The <b>chains</b> field names a chain the file has not. Name its chains, or empty the field to
+keep them all.</td></tr>
+<tr><td><b>the receptor file has modified nucleotides</b>, or <b>modified amino acids whose charge is
+not their parent's</b> (the same for the partner file)</td><td>No force field here has parameters
+for them: give the structure without the modifications. See
+<a href="prepare.html#modified-residues">Modified residues</a>.</td></tr>
+<tr><td><b>the ligand</b> <i>file</i> <b>contains</b> <i>a metal</i></td><td>The ligand force fields
+here have no parameters for a metal complex, so HOPE-MD does not simulate it.</td></tr>
+<tr><td><b>the first molecule of</b> <i>file</i> <b>could not be read</b></td><td>RDKit could not read
+the small molecule: check its bond orders and charges, or give it as SDF.</td></tr>
+<tr><td><i>'x'</i> <b>is not a PDB id</b></td><td>A PDB id is four characters with a digit first,
+such as <code>4CMM</code>.</td></tr>
+<tr><td><b>rcsb import failed:</b> <i>reason</i></td><td>The RCSB did not send the entry: the id does
+not exist, the assembly is not one it has, or the RCSB could not be reached. Check the id and the
+assembly, or try <code>asu</code>.</td></tr>
+<tr><td><b>no AlphaFold model in</b> <i>result</i>, or <i>result</i> <b>has no model</b> <i>k</i></td><td>Not
+an AlphaFold result as AlphaFold writes one, or the model asked for is not in it: the sentence
+names the models it holds, and the number to give for each.</td></tr>
+<tr><td><i>n</i> <b>pose(s) found under</b> <i>folder</i><b>, so there is no pose</b> <i>k</i>, or
+<i>file</i> <b>has</b> <i>n</i> <b>structures: no pose</b> <i>k</i></td><td>The pose asked for is
+past the last one: lower <b>pose</b>.</td></tr>
+</table>
+<h3 id="bound-ligand-refused">A bound ligand refused</h3>
+<p>Choosing a ligand bound in the structure imports the structure again with it; when it cannot be
+typed, the note says why and the choice goes back to what it was.</p>
+<table>
+<tr><th>The note says</th><th>What it means</th></tr>
+<tr><td><i>ligand</i> <b>is covalently bound to</b> <i>residue</i></td><td>A covalent ligand is part
+of the polymer, not a separate molecule.</td></tr>
+<tr><td><i>ligand</i> <b>is bonded to</b> <i>residue</i></td><td>It is one residue of a ligand spread
+over several, which one component of the dictionary cannot type.</td></tr>
+<tr><td><i>ligand</i> <b>contains</b> <i>a metal</i></td><td>No ligand force field here has
+parameters for a metal complex.</td></tr>
+<tr><td><i>ligand</i> <b>has</b> <i>n</i> <b>of the</b> <i>m</i> <b>heavy atoms the CCD
+defines</b></td><td>Atoms are missing: model them first.</td></tr>
+<tr><td><i>ligand</i> <b>has</b> <i>n</i> <b>heavy atoms where the CCD defines</b> <i>m</i>, or
+<b>the bonds</b> <i>ligand</i><b>'s coordinates make are not those the CCD defines</b></td><td>It is
+not the component its name says.</td></tr>
+<tr><td><b>the CCD definition of</b> <i>code</i> <b>could not be fetched from the RCSB</b></td><td>The
+ligand's bond orders come from it: try again when the RCSB answers.</td></tr>
+<tr><td><b>a bound ligand is typed with RDKit, which this server's Python does not have</b></td>
+<td>The page is running without the lab's environment: start it from the shared install, whose
+<code>activate.sh</code> provides it.</td></tr>
+</table>
+
+<h2 id="prepare">Prepare</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td>Under the button: <b>the Prepare job</b> <i>n</i> <b>ended</b> (<i>state</i>) <b>without a
+report</b>, and the job's log under Submit</td><td>The job stopped before it finished. Its log's last
+lines say why; the most likely are below.</td></tr>
+<tr><td><b>Clean left no protein or nucleic-acid chain in the imported structure</b></td><td>The
+chains asked for are not in the structure, or Clean removed everything: import it again and check
+its chains.</td></tr>
+<tr><td><i>residues</i><b>: modified amino acids whose charge is not their parent's</b> &hellip;
+<b>so Prepare does not go on</b></td><td>Leave the chain out of the receptor and partner chains, or
+start from a structure without the modification.</td></tr>
+<tr><td><b>the prepared structure holds no residue of the receptor chain</b></td><td>The receptor
+chains named are empty after Clean: import it again and check its chains.</td></tr>
+<tr><td><b>the</b> <i>n</i> <b>residue(s) built in the structure's gaps do not join the measured
+chain</b></td><td>No relaxation made the built loops fit, from any of the three seeds, with every
+peptide bond in and beside them trans and every residue of the L hand; the message names the bond
+or residue that failed. Lower
+<b>model loops up to</b>, or set it to 0, to prepare the structure as measured: the gaps are then
+left open and capped. See <a href="prepare.html#loops">Missing residues</a>.</td></tr>
+<tr><td>A step in the checks marked &#9650;: <b>pdb2pqr failed</b>, <b>PDBFixer failed</b>,
+<b>minimization failed</b>, or a program <b>not importable</b> or <b>not found</b></td><td>The stage
+went on without that step, and the line says what applies instead: read it before you
+submit.</td></tr>
+<tr><td><b>sbatch refused the Prepare job:</b> <i>Slurm's words</i></td><td>Slurm did not take the
+job: its words say why.</td></tr>
+</table>
+
+<h2 id="red-fields">A field in red</h2>
+<p>A setting that cannot work turns its field red with the sentence under it, the step's number turns
+red, and Submit stays off with every sentence listed under it, beginning <b>Submit is off:</b>.</p>
+<h3 id="red-system">System and Prepare</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>Name the run: letters, digits,</b> <code>_ . -</code> <b>and no spaces</b></td><td>Fix
+the run name, up to 64 characters, or empty it for the derived one.</td></tr>
+<tr><td><b>A PDB id is four characters, digit first</b></td><td>Type the id as the RCSB gives
+it.</td></tr>
+<tr><td><b>A chain cannot be on both sides of the interface.</b></td><td>Take it out of the receptor
+or of the partner chains.</td></tr>
+<tr><td><b>Chains in this file:</b> <i>list</i></td><td>A chain named is not in the file: use one of
+those listed.</td></tr>
+<tr><td><i>ligand</i> <b>is the partner, so no chain is</b></td><td>With a bound ligand as the
+partner every chain is the receptor: empty the partner chains, or run no bound ligand.</td></tr>
+<tr><td><b>Chain</b> <i>X</i> <b>has modified nucleotides</b>, or <b>has modified amino acids whose
+charge is not their parent's</b></td><td>Leave the chain out of the receptor and partner chains, or
+start from a structure without the modifications.</td></tr>
+<tr><td><i>name</i> <b>is kept by Clean, but no force field here covers it</b></td><td>A cofactor,
+ligand or glycan Clean keeps has no parameters here: drop it under <b>also drop</b>, or run it as
+the partner. See <a href="prepare.html#clean">Clean</a>.</td></tr>
+<tr><td><b>The receptor holds no residue</b>, or <b>The partner holds no residue</b></td><td>The
+structure has no chain the build can use: import it again and check its chains.</td></tr>
+<tr><td><b>pH must be between 0 and 14.</b></td><td>As it says.</td></tr>
+<tr><td><b>Gaps longer than 12 residues are not built here</b></td><td>Set <b>model loops up
+to</b> to 12 or less. A longer gap is left open and capped; for the missing stretch itself, use an
+AlphaFold model.</td></tr>
+<tr><td><b>pLDDT is 0 to 100.</b></td><td>As it says; 0 keeps every residue.</td></tr>
+</table>
+<h3 id="red-ligand">The ligand</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>The ligand file has no hydrogens.</b></td><td>Give the ligand as SDF or MOL2 with its bond
+orders and formal charges, and its hydrogens are added as drawn; a PDB ligand needs them in the
+file.</td></tr>
+<tr><td><b>The ligand's net charge was not detected; set it.</b></td><td>Type the net charge: a PDB
+ligand carries none.</td></tr>
+<tr><td><b>The ligand file's formal charges sum to</b> <i>q</i></td><td>The file decides the charge,
+since HOPE-MD runs the molecule the file draws: to run another, load a file protonated for that
+charge.</td></tr>
+<tr><td><b>Confirm the net charge</b> (<i>q</i>) <b>before charging</b></td><td>Check it, then tick
+<b>charge is right</b>: AM1-BCC with the wrong total runs to completion and is wrong in every
+frame.</td></tr>
+<tr><td><b>A small molecule needs parameters</b></td><td>Choose <b>GAFF2 + AM1-BCC</b> under
+<b>ligand parameters</b>.</td></tr>
+</table>
+<h3 id="red-engine">Engine, force field and box</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>ACES has no NAMD 3 module</b></td><td>Run Amber, OpenMM, GROMACS or Desmond there, or NAMD
+on Grace.</td></tr>
+<tr><td><i>engine</i> <b>does not load</b> <i>force field</i></td><td>Choose one of the force fields
+it lists.</td></tr>
+<tr><td><i>force field</i> <b>is not fitted for</b> <i>water</i></td><td>Choose one of the waters it
+lists; the first is the one the force field was fitted with.</td></tr>
+<tr><td><b>NAMD 3 cannot run</b> <i>water</i><b>, a 4-site water, from the Amber
+topology</b></td><td>Use TIP3P on NAMD, or run that water on Amber, OpenMM or GROMACS.</td></tr>
+<tr><td><b>A nucleic acid is present; choose its force field</b></td><td>Choose one under <b>nucleic
+acid</b>.</td></tr>
+<tr><td><b>Desmond's System Builder builds an orthorhombic box</b></td><td>Choose
+<b>rectangular</b>.</td></tr>
+<tr><td><i>p</i> <b>&Aring; is under the 10 &Aring; cutoff</b></td><td>The complex would see its own
+periodic image: use 10 &Aring; or more; 12 is the default.</td></tr>
+<tr><td><b>Salt concentration must be between 0 and 1000 mM.</b></td><td>As it says.</td></tr>
+</table>
+<h3 id="red-membrane">A bilayer</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><i>force field</i> <b>cannot be used with a bilayer</b>, or <i>water</i> <b>cannot be used
+with a bilayer</b></td><td>On the Amber-topology engines a bilayer is ff14SB with TIP3P: choose
+those.</td></tr>
+<tr><td><i>water</i> <b>cannot be used with a Desmond bilayer</b></td><td>Choose SPC or
+TIP3P.</td></tr>
+<tr><td><b>Desmond's System Builder ships POPC, POPE, DPPC, DMPC bilayers</b></td><td>Choose one of
+those, or Amber or OpenMM for the lipid you wanted.</td></tr>
+<tr><td><b>A</b> <i>shape</i> <b>box cannot hold a bilayer</b></td><td>Choose
+<b>rectangular</b>.</td></tr>
+<tr><td><i>salt</i> <b>cannot be placed in a bilayer build</b></td><td>Choose NaCl or KCl.</td></tr>
+<tr><td><b>A small molecule is not built into a bilayer here</b></td><td>A membrane run takes a
+protein, peptide or nucleic-acid partner, or none.</td></tr>
+<tr><td><b>Crystal waters are not built into a bilayer here</b></td><td>Set Prepare's waters to
+<b>drop all</b>, or the crystal waters to <b>none</b>.</td></tr>
+<tr><td><i>p</i> <b>&Aring; of water above and below the bilayer is outside 5 to 40
+&Aring;</b></td><td>Use 5 to 40 &Aring;; 10 is the default.</td></tr>
+<tr><td><i>reason</i><b>: type the transmembrane segments as chain:start-end</b></td><td>Type them as
+<code>A:30-56, A:71-96</code>.</td></tr>
+<tr><td><b>The solute's residue range is not known</b>, or <b>The partner's residue range is not
+known</b></td><td>Import the structure again, or run Prepare.</td></tr>
+</table>
+<h3 id="red-protocol">Protocol and MM-GBSA</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>Length must be positive, in ns.</b></td><td>As it says.</td></tr>
+<tr><td><b>Timestep is 2 fs, or 4 fs with hydrogen mass repartitioning.</b></td><td>As it
+says.</td></tr>
+<tr><td><b>Desmond runs its RESPA scheme; the timestep is fixed at 2 fs</b></td><td>Leave it at
+2.</td></tr>
+<tr><td><b>Save interval must be a whole number of steps</b></td><td>Make the save interval a multiple
+of the time step.</td></tr>
+<tr><td><b>Replicates: 1 to 5.</b></td><td>As it says.</td></tr>
+<tr><td><b>The seed is a whole number</b>, or <b>The seed is -1 for a new one per
+replicate</b></td><td>-1, or a whole number from 0 to 2 000 000 000.</td></tr>
+<tr><td><b>Temperature between 250 and 400 K.</b></td><td>As it says.</td></tr>
+<tr><td><b>MM-GBSA starts inside the run</b></td><td>Set <b>from</b> between 0 and the run's
+length.</td></tr>
+<tr><td><b>MM-GBSA ends after it starts and within the run</b></td><td>Set <b>to</b> after
+<b>from</b> and no later than the run's length, or 0 for the end.</td></tr>
+<tr><td><b>MM-GBSA can use at most every saved frame</b></td><td>Set the stride to the save interval
+or more.</td></tr>
+<tr><td><b>The MM-GBSA window holds no frame at this stride.</b></td><td>Widen the window or shorten
+the stride.</td></tr>
+</table>
+<h3 id="red-compute">Compute</h3>
+<table>
+<tr><th>The sentence begins</th><th>What to do</th></tr>
+<tr><td><b>The CPU check runs Amber</b> &hellip; <b>on CPU is too slow to be worth a node</b></td>
+<td>Use Amber or GROMACS for a CPU check, or run on a GPU.</td></tr>
+<tr><td><b>A CPU check is at most 10 ns.</b></td><td>Shorten it; anything longer waits for a
+GPU.</td></tr>
+<tr><td><b>A CPU check keeps at most 500 frames</b></td><td>Save less often: the sentence gives the
+interval.</td></tr>
+<tr><td><b>Grace CPU partitions:</b> or <b>Grace GPU partitions:</b> <i>list</i></td><td>The partition
+does not fit the device: choose one listed, or leave it on default.</td></tr>
+<tr><td><b>Grace has</b> <i>types</i><b>, not</b> <i>type</i>, or <b>Partition</b> <i>p</i> <b>on
+Grace has</b> <i>types</i></td><td>The GPU type is not on the cluster, or not in that partition:
+choose one listed, or <b>auto</b>.</td></tr>
+<tr><td><b>Walltime as HH:MM:SS or D-HH:MM:SS.</b></td><td>As it says, or empty the field for the
+estimate.</td></tr>
+<tr><td><i>partition</i> <b>on Grace allows</b> <i>h</i> <b>h per job</b></td><td>Ask for the limit
+or less: a longer run is chained as segments.</td></tr>
+<tr><td><i>h</i> <b>h is under the 1 h floor</b>, or <b>is over</b> <i>partition</i><b>'s</b>
+<i>h</i> <b>h limit</b></td><td>Set the segment cap from 1 h to the limit, or 0 for the
+limit.</td></tr>
+<tr><td><b>At least one GPU per replicate.</b></td><td>As it says.</td></tr>
+</table>
+
+<h2 id="submitting">Submitting</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td><b>Load a structure to enable Submit.</b></td><td>Nothing is loaded in this session: press
+the structure. After <b>Copy to Setup</b>, choose the structure again.</td></tr>
+<tr><td><i>name</i> <b>exists and was submitted; pick another name.</b></td><td>A run of that name is
+in the runs folder: name this one differently.</td></tr>
+<tr><td><b>The imported structure is no longer here</b></td><td>Its staging folder was cleared and no
+run holds it: load it again.</td></tr>
+<tr><td><b>This run cannot fit in</b> <i>space</i></td><td>Your quota cannot take it: tidy or delete
+finished runs, or open a runs folder in another space. See <a href="protocol.html#the-quota">The
+quota</a>.</td></tr>
+<tr><td>A question ending <b>Submit with OPLS4 all the same?</b></td><td>OPLS4 needs the OPLS
+license, which the academic Desmond license lacks: press Cancel and choose OPLS_2005, unless you know
+the license is there.</td></tr>
+<tr><td>In Submit's output: <i>stage</i><b>: sbatch refused:</b> <i>Slurm's words</i></td><td>Slurm
+did not take that job, and the rest of the graph was not queued: its words say why. Put it right,
+then use <b>Start again</b> on the Runs screen.</td></tr>
+</table>
+<p>For one run per pose, each refused selection is reported in the box with its reason, and the
+others go. A small molecule's pose is refused with <b>net charge</b> <i>q</i> <b>in this pose's file,
+not the confirmed</b> <i>q</i>: load that pose and confirm its charge.</p>
+
+<h2 id="runs-screen">On the Runs screen</h2>
+<table>
+<tr><th>What you see</th><th>What it means, and what to do</th></tr>
+<tr><td>A row <b>timed out</b></td><td>The job reached its walltime. For a production segment,
+<b>Start again</b> it: it continues from its last restart point. A longer walltime gives a slow
+node room next time.</td></tr>
+<tr><td>A row <b>failed</b> or <b>out of memory</b></td><td>Click the row to read its log, put right
+what it names, and <b>Start again</b> that stage.</td></tr>
+<tr><td><b>jobs still queued or running</b> &hellip; <b>tidy runs by itself when the graph
+ends</b></td><td><b>Tidy</b> waits for the run to finish.</td></tr>
+<tr><td><b>an apo run has no partner or ligand to score</b></td><td>MM-GBSA needs a partner.</td></tr>
+<tr><td><b>no production trajectory yet: MM-GBSA reads the finished parts</b></td><td>Wait for a
+production part to finish.</td></tr>
+<tr><td><b>no production trajectory in r</b><i>i</i><b>/ yet: the videos are cut from the finished
+parts</b></td><td>The videos need a finished production part of that replicate.</td></tr>
+<tr><td><b>no production frames near</b> <i>t</i> <b>ns yet for replicate</b> <i>i</i></td><td>The
+dense window asked for lies past the production so far.</td></tr>
+<tr><td><b>not a folder:</b> or <b>cannot read</b> <i>folder</i> <b>(permissions)</b></td><td>The
+runs folder chosen in Browse does not exist, or your account cannot read it.</td></tr>
+<tr><td><b>outside the places this server may browse</b></td><td>Browse reaches your scratch, the
+lab's folders, the runs folder and your home; start from one of its places.</td></tr>
+</table>
+
+<h2 id="surfaces">Surfaces in the viewer</h2>
+<p>The surfaces the Setup and Runs viewers draw are computed by MSMS on the server, from the file
+the viewer shows: the structure on Setup, the frame shown on Runs. A quiet note in the viewer's top right
+corner says when what you see is something else.</p>
+<table>
+<tr><th>The note says</th><th>What it means, and what to do</th></tr>
+<tr><td><b>Computing the surface with MSMS</b></td><td>The server is computing it, which takes a
+second or two; the surface appears when it is done. Each structure, and each frame, is computed
+once and kept in the run folder, in a hidden <code>.surfaces</code> folder that can be deleted at
+any time.</td></tr>
+<tr><td><b>Surface drawn by the viewer:</b> <i>reason</i></td><td>MSMS gave no surface, so the
+viewer drew its own, and the reason says why. <b>MSMS is not installed here</b>: the server found
+neither the ADCP 1.1 suite, whose MSMS library (mslib) it runs, nor an <code>msms</code> program; it
+looks for the suite where <code>$ADCPSUITE_HOME</code> points, then in the group folder's
+<code>tools/docking/adcpsuite</code>, and for a
+program where <code>$MSMS_EXE</code> points or on the <code>PATH</code>. <i>n</i> <b>atoms is more
+than this server triangulates</b>, or <b>MSMS took longer than 30 s</b>: the structure is too
+large to surface on a login node. A figure of the viewer's own surface cites the viewer
+alone.</td></tr>
+</table>
+
+<h2 id="in-a-log">In a job's log</h2>
+<table>
+<tr><th>The log says</th><th>What it means, and what to do</th></tr>
+<tr><td><b>Prime MM-GBSA: fewer than the 8 Prime (PSP_PLOP) license tokens it needs were
+free</b></td><td>The shared pool stayed busy for the whole two-hour wait. Run it again later with
+<b>MM-GBSA&hellip;</b>: the rest of the run is not held back by it.</td></tr>
+<tr><td>A license error at Desmond's build</td><td>Your account is not on the Desmond users list (the
+<code>desmond</code> group), or the run asked for OPLS4: see
+<a href="engines.html#desmond">Desmond</a>.</td></tr>
+<tr><td><b>segment</b> <i>s</i> <b>stopped at multisim's walltime checkpoint</b></td><td>A Desmond
+segment reached its walltime and checkpointed: <b>Start again</b> it to continue.</td></tr>
+<tr><td><b>some parameters are guessed (ATTN)</b></td><td>parmchk2 guessed some of the small
+molecule's parameters: the log names the file to read. The run goes on.</td></tr>
+<tr><td><b>pdb2pqr not found</b> or <b>pdb2pqr failed</b> in the build</td><td>The receptor got the
+build's default protonation states, not PROPKA's at your pH. The line says which were used.</td></tr>
+<tr><td><b>Prepare stopped:</b> <i>reason</i></td><td>See <a href="#prepare">Prepare</a>.</td></tr>
+<tr><td><b>a disulfide joins the receptor and the partner that the run was set up without</b>, or
+<b>the run bonds topology residues</b> <i>p</i> <b>and</b> <i>q</i><b>, but in the build's files no
+disulfide joins them</b></td><td>The build found a disulfide across the split that the run does
+not bond, or the run bonds residues the files no longer pair. Import the structure again, so the
+import measures the bonds on the files the build reads. See
+<a href="prepare.html#split-disulfides">A disulfide across the split</a>.</td></tr>
+<tr><td><b>MM-GBSA is not run: the receptor and the partner are covalently linked</b></td><td>As it
+says: a disulfide joins the two sides. See
+<a href="analysis.html#covalently-linked">When the two sides are bonded</a>.</td></tr>
+<tr><td>A <code>module load</code> error</td><td>Your account cannot load that module; for Amber,
+the <code>amber</code> group is missing. The module audit shows which lines load for
+you.</td></tr>
+</table>
+<p>The module audit tries every <code>module load</code> line the jobs run and writes what it found
+to a file in the folder you run it from; a line marked <code>CANNOT LOAD</code> is one your account
+cannot load:</p>
+<pre>cd $SCRATCH &amp;&amp; bash &lt;HOPE Labs folder&gt;/HOPE-MD/MD/scripts/audit.sh</pre>
+
+<h2 id="reporting-a-problem">Reporting a problem</h2>
+<p>Give the run folder's path: it holds the spec, the job scripts, the Slurm job ids and a log for
+every job, which is almost always enough. For a problem opening the page, tick <b>Show technical
+details</b> in the launcher and copy what is under <b>What is happening</b>. Open an issue on the
+HOPE-MD repository, or write to Aadhil Haq at aadhil.haq@tamu.edu. Cluster access, quotas and
+licenses are HPRC's: help@hprc.tamu.edu.</p>

@@ -66,8 +66,11 @@ as its prefix and you get exactly that layout.</p>
 
 
 <h2 id="hope-md">HOPE-MD</h2>
+<p>Set up installs it for you on Grace and ACES. By hand, the copy this edition carries, in the
+<code>HOPE-MD</code> folder of the checkout, is put in place and its installer run on it, which
+finds the copy and uses it as it is:</p>
 <pre>P=&lt;folder&gt;
-git clone https://github.com/aadhilhaq/HOPE-MD.git $P/HOPE-MD/MD &amp;&amp; bash $P/HOPE-MD/MD/install.sh $P</pre>
+mkdir -p $P/HOPE-MD &amp;&amp; cp -r &lt;HOPE Labs checkout&gt;/HOPE-MD $P/HOPE-MD/MD &amp;&amp; bash $P/HOPE-MD/MD/install.sh $P</pre>
 <p>That gives <code>&lt;prefix&gt;/HOPE-MD/MD</code> for the checkout and
 <code>&lt;prefix&gt;/HOPE-MD/env</code> for its environment, with caches in
 <code>&lt;prefix&gt;/HOPE-MD/.cache</code>. The environment is a venv on a base Python that already

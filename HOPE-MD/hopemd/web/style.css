@@ -1,0 +1,636 @@
+/* HOPE-MD's page: one palette, one type scale and one spacing scale, the same ones the HOPE Labs
+   pages carry, so the tools read as kin and nobody has to work out which one they are looking at
+   from the size of the letters.
+
+   Every size is a token on :root and every token multiplies by --ui-scale, which the text-size
+   control in the header sets (/static/zoom.js, the file HOPE Labs carries, byte for byte). A rule
+   never writes a size of its own: it names a token, so the page cannot drift below the smallest
+   size and the whole page grows together when somebody asks for larger text. The 3D viewers keep
+   their own pixel geometry: it is not CSS zoom and not a transform, both of which move the mouse's
+   coordinates away from what a canvas thinks they are, and the viewers would then pick the residue
+   next to the one under the pointer.
+
+   The scale: 13px is the smallest anything (hints, table headings), 14px labels and secondary
+   text, 15px body, inputs, buttons and chips, 17px card titles, 20px the page title. Monospace is
+   for a sequence, a residue list, a numeric column or a log, never for a header, a path, a build
+   string or a box somebody types a name into.
+
+   The palette is hopemd/brand.py's: regenerate the color block from there when it changes. */
+:root{
+  --ground:#eef3f3; --card:#ffffff; --ink:#0f1719; --dim:#5f6f71;
+  --line:#d7e2e2; --line-soft:#e7eeee; --wait:#e9f0f0;
+  --teal:#0d5c6b; --green:#146b47; --rust:#c2603a; --amber:#b07a1c; --good:#146b47;
+  --teal-soft:#e3eef0; --rust-soft:#f7ece7; --good-soft:#e4f1ea; --amber-soft:#f6eedd;
+  --rec:#b9c9c9; --on-accent:#ffffff;
+  --sans:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+
+  /* Each type token is its size times --ui-scale, and below 100% it stops at a floor of its
+     own: 13px plus half the distance that size stands above 13px. A flat 13px floor on every
+     token put the body, the labels, the state pill and the card title inside 0.6px of each
+     other at 80%, which is four levels of the page saying the same thing. With a floor per
+     token the ramp compresses but keeps its steps - at 80% it is 13 / 13.5 / 14 / 15 / 16.5 /
+     20.8 - and nothing is ever under 13px.
+
+     What the steps below 100% are for is density, not smaller letters: the spacing, the control
+     heights, the rails and the cards all multiply by --ui-scale with no floor, so 80% is a
+     tighter page with the same readable type, and every step of the control changes something. */
+  --ui-scale:1;
+  --fs-xs:max(13px, calc(13px * var(--ui-scale)));
+  --fs-sm:max(13.5px, calc(14px * var(--ui-scale)));
+  --fs-md:max(14px, calc(15px * var(--ui-scale)));
+  --fs-lg:max(15px, calc(17px * var(--ui-scale)));
+  --fs-xl:max(16.5px, calc(20px * var(--ui-scale)));
+  --fs-big:max(19.5px, calc(26px * var(--ui-scale)));
+  --lh:1.45;
+
+  --sp-1:calc(4px * var(--ui-scale));
+  --sp-2:calc(8px * var(--ui-scale));
+  --sp-3:calc(12px * var(--ui-scale));
+  --sp-4:calc(16px * var(--ui-scale));
+  --sp-5:calc(20px * var(--ui-scale));
+  --sp-6:calc(28px * var(--ui-scale));
+
+  --ctl-h:calc(38px * var(--ui-scale));
+  --ctl-h-sm:calc(32px * var(--ui-scale));
+  --q-size:calc(20px * var(--ui-scale));
+  /* The rails grow with the text, up to a share of the window: at 150% on a laptop a rail at its
+     full width would leave the form a column too narrow to read. */
+  --railw:min(calc(360px * var(--ui-scale)), 36vw);
+  --rrailw:min(calc(300px * var(--ui-scale)), 28vw);
+  --radius:12px; --radius-sm:8px;
+}
+/* dark: the computer's setting unless the header button said otherwise (data-theme on <html>,
+   remembered per browser). Both blocks carry the same values so the button wins either way. */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a; --good:#4cbf94;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --good-soft:#15291f; --amber-soft:#2a2316;
+  --rec:#46595b; --on-accent:#0b1113; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ground:#0b1113; --card:#141d1f; --ink:#e6eeef; --dim:#94a6a8;
+  --line:#22302f; --line-soft:#1b2729; --wait:#1a2527;
+  --teal:#5fb3c4; --green:#4cbf94; --rust:#e08a63; --amber:#d9a54a; --good:#4cbf94;
+  --teal-soft:#16292e; --rust-soft:#2a1e19; --good-soft:#15291f; --amber-soft:#2a2316;
+  --rec:#46595b; --on-accent:#0b1113; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:var(--fs-md);line-height:var(--lh);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.mono{font-family:var(--mono)}
+
+/* ---------------------------------------------------------------- the header */
+.apphead{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-4);
+  border-bottom:1px solid var(--line);background:var(--card);flex:0 0 auto;flex-wrap:wrap;
+  row-gap:var(--sp-2)}
+.mark{display:flex;align-items:center;gap:var(--sp-2);flex:0 0 auto}
+.mark svg{width:calc(24px * var(--ui-scale));height:calc(24px * var(--ui-scale))}
+.nm{font-weight:600;font-size:var(--fs-xl);line-height:1.2;white-space:nowrap}
+/* One muted line in the page's own type, never monospace: the cluster, and where the runs go.
+   The version and the commit are in the bar along the bottom, which is where a build string
+   belongs. */
+.bd{font-size:var(--fs-sm);color:var(--dim);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;min-width:0;flex:0 1 auto}
+.headtools{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto;flex-wrap:wrap}
+.tabs{display:inline-flex;background:var(--wait);border:1px solid var(--line);border-radius:10px;padding:2px}
+.tab{font-size:var(--fs-md);font-weight:500;color:var(--dim);padding:var(--sp-1) var(--sp-4);
+  border-radius:8px;border:0;background:none;display:inline-flex;gap:var(--sp-2);align-items:center;
+  min-height:var(--ctl-h-sm)}
+.tab.on{background:var(--teal);color:var(--on-accent);font-weight:600}
+.tab em{font-style:normal;font-size:var(--fs-xs);font-weight:600;background:var(--rust);
+  color:var(--on-accent);border-radius:999px;padding:0 var(--sp-2);line-height:1.45}
+.pill{font-size:var(--fs-sm);padding:var(--sp-1) var(--sp-3);border-radius:999px;
+  border:1px solid var(--line);background:var(--card);color:var(--dim);line-height:1.35;
+  min-height:var(--ctl-h-sm)}
+.pill.on{background:var(--teal);border-color:var(--teal);color:var(--on-accent);font-weight:600}
+.pill:hover{border-color:var(--teal);color:var(--teal)}
+.pill.on:hover{color:var(--on-accent)}
+.pill.docs{text-decoration:none;font-weight:600;display:inline-flex;align-items:center}
+.pill.theme{font-family:var(--sans)}
+
+/* The text-size control: smaller, the size now (press to reset), larger. /static/zoom.js. */
+/* The ends are rounded on the buttons themselves rather than by clipping the strip they sit in:
+   clipping a rounded strip cut the "+" button's box by a pixel at every text size. */
+.hlzoom{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;
+  background:var(--card);flex:0 0 auto}
+.hlzoom .hlzoom-out{border-radius:999px 0 0 999px}
+.hlzoom .hlzoom-in{border-radius:0 999px 999px 0}
+.hlzoom button{border:0;background:none;color:var(--ink);font-size:var(--fs-sm);
+  min-height:var(--ctl-h-sm);padding:0 var(--sp-2);line-height:1}
+.hlzoom .hlzoom-out,.hlzoom .hlzoom-in{font-size:var(--fs-lg);font-weight:600;
+  min-width:calc(32px * var(--ui-scale))}
+.hlzoom .hlzoom-pct{min-width:calc(54px * var(--ui-scale));font-variant-numeric:tabular-nums;
+  color:var(--dim);border-left:1px solid var(--line-soft);border-right:1px solid var(--line-soft)}
+.hlzoom button:hover:not(:disabled){background:var(--teal-soft);color:var(--teal)}
+.hlzoom button:disabled{color:var(--dim);opacity:.4;cursor:default}
+.hlzoom button:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+
+/* ---------------------------------------------------------------- the Setup screen
+   Two columns: the steps as cards in the main column, which scrolls, and a rail of resources,
+   where it goes and Submit. Nothing is in both. */
+.screen{display:grid;grid-template-columns:minmax(0,1fr) var(--railw);flex:1;min-height:0}
+.stage{padding:var(--sp-4) var(--sp-5) var(--sp-6);display:flex;flex-direction:column;
+  gap:var(--sp-4);min-width:0;overflow:auto;scroll-padding-top:var(--sp-4)}
+.stage>*{flex-shrink:0}
+/* The rail scrolls once. Everything it carries - where the run goes, the resources, the run
+   plan - is in one column with one scrollbar, and Submit stands under it, always on screen.
+   A rail that scrolled and then held two more boxes that scrolled inside it put three vertical
+   scrollbars in a 768px window and showed the resources through an 83px slit: a scroll inside a
+   scroll is the defect, not a height that needed raising. */
+.rail{min-width:0;min-height:0;padding:var(--sp-4);border-left:1px solid var(--line);
+  background:var(--card);display:flex;flex-direction:column;overflow:hidden}
+.railscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding-bottom:var(--sp-3);padding-right:var(--sp-2);overscroll-behavior:contain}
+/* The field boxes in the rail take the whole column: a select here is as narrow as half a
+   360px rail, which is narrower than the words inside it ("Default (a100)" came out as
+   "Default (a100"). One control per line, nothing cut. */
+.rail .sfields{display:flex;flex-direction:column;gap:var(--sp-2)}
+.rail .sfields .fld,.rail .sfields .fld.wide{flex:0 0 auto;width:100%}
+
+/* The steps along the top: where you are, and one press to get to a step. */
+.steprail{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;margin:0;padding:0;list-style:none}
+.steprail li{display:flex;align-items:center;gap:var(--sp-2)}
+.steprail .st{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm);
+  border:1px solid var(--line);background:var(--card);color:var(--dim);border-radius:999px;
+  padding:var(--sp-1) var(--sp-3);min-height:var(--ctl-h-sm)}
+.steprail .st:hover{border-color:var(--teal);color:var(--teal)}
+.steprail .st b{font-weight:600}
+.steprail .n{width:calc(22px * var(--ui-scale));height:calc(22px * var(--ui-scale));border-radius:50%;
+  background:var(--wait);color:var(--dim);font-size:var(--fs-xs);font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.steprail .st.done .n{background:var(--good);color:#fff}
+.steprail .st.bad{border-color:var(--rust);color:var(--rust)}
+.steprail .st.bad .n{background:var(--rust);color:#fff}
+.steprail .sep{width:calc(14px * var(--ui-scale));height:1px;background:var(--line)}
+
+/* ---------------------------------------------------------------- a card
+   A step of the form. Its title is sentence case at 17px: no uppercase, no letter-spacing and no
+   number glued to a shouted word. The state pill says whether the step still needs something. */
+.box{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+  padding:var(--sp-4);display:flex;flex-direction:column;gap:0;scroll-margin-top:var(--sp-3)}
+.box>h2{font-size:var(--fs-lg);font-weight:600;color:var(--ink);line-height:1.3;margin:0;
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.box>h2 .why{font-weight:400;color:var(--dim);font-size:var(--fs-sm)}
+.box.lit{outline:2px solid var(--teal);outline-offset:3px}
+.cstate{margin-left:auto;font-size:var(--fs-xs);font-weight:600;border-radius:999px;
+  padding:2px var(--sp-2);background:var(--wait);color:var(--dim);white-space:nowrap}
+.cstate.need{background:var(--rust-soft);color:var(--rust)}
+.cstate.done{background:var(--good-soft);color:var(--good)}
+/* The one note a card is allowed: a short line that says what to do next. Everything else that
+   used to sit in a gray box on the form is behind the card's ? or in the docs. */
+.cardnote{margin:var(--sp-2) 0 0;font-size:var(--fs-sm);color:var(--dim);line-height:1.45}
+/* Not a note: a warning that will stop the run or change what it computes. */
+.cardwarn{margin:var(--sp-2) 0 0;font-size:var(--fs-sm);color:var(--rust);line-height:1.45;
+  background:var(--rust-soft);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3)}
+.cardwarn.soft{color:var(--amber);background:var(--amber-soft)}
+.q{width:var(--q-size);height:var(--q-size);flex:0 0 auto;border:1px solid var(--line);
+  border-radius:50%;background:var(--card);color:var(--dim);font-size:var(--fs-xs);font-weight:700;
+  line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.q:hover{border-color:var(--teal);color:var(--teal)}
+.q:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+details.more{margin-top:var(--sp-4);border-top:1px solid var(--line-soft);padding-top:var(--sp-2)}
+details.more>summary{font-size:var(--fs-sm);color:var(--teal);font-weight:600;cursor:pointer;
+  list-style:none;padding:var(--sp-1) 0}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"\25B8 ";color:var(--dim)}
+details.more[open]>summary::before{content:"\25BE "}
+
+/* ---------------------------------------------------------------- fields
+   A label is at most four words and is never cut: it wraps instead, and the boxes of a row line
+   up at their tops so a message under one never lifts the other. */
+label.f{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--dim);
+  margin:0 0 var(--sp-1);line-height:1.35;flex-wrap:wrap}
+label.f .fname{min-width:0;overflow-wrap:anywhere}
+label.f.bad{color:var(--rust);font-weight:600}
+.fld{min-width:0;display:flex;flex-direction:column;align-items:stretch}
+/* A button standing on its own in a field keeps to its own width, at the left margin: stretched
+   across the row its label would sit in the middle of nowhere. */
+.fld>.btn{align-self:flex-start}
+.inp{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);
+  padding:var(--sp-1) var(--sp-3);font-size:var(--fs-md);font-family:var(--sans);color:var(--ink);
+  min-height:var(--ctl-h);line-height:1.35}
+.inp:focus{outline:2px solid var(--teal-soft);border-color:var(--teal)}
+.inp.bad{border-color:var(--rust);box-shadow:0 0 0 1px var(--rust)}
+.inp::placeholder{color:var(--dim);opacity:.85}
+.inp[disabled],.inp.off{color:var(--dim);background:var(--wait)}
+/* A checkbox is a checkbox: the setting's own words beside the box, not the word "Yes" in
+   something shaped like a field somebody types into. */
+.tickrow{display:flex;align-items:center;gap:var(--sp-2);min-height:var(--ctl-h);flex-wrap:wrap}
+.tickrow input[type=checkbox]{margin:0;width:calc(17px * var(--ui-scale));
+  height:calc(17px * var(--ui-scale));accent-color:var(--teal);flex:0 0 auto;cursor:pointer}
+.tickrow .tlab{font-size:var(--fs-md);color:var(--ink);cursor:pointer;min-width:0;
+  overflow-wrap:anywhere;line-height:1.35}
+.tickrow.bad .tlab{color:var(--rust);font-weight:600}
+/* Something the page worked out and is showing you, not a box to type in: no border, no gray
+   fill that reads as a field switched off, and the word "detected" beside it. */
+.shown{font-size:var(--fs-md);color:var(--ink);font-weight:600;min-height:var(--ctl-h);
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;overflow-wrap:anywhere}
+.shown::after{content:attr(data-tag);font-size:var(--fs-xs);font-weight:600;color:var(--dim);
+  background:var(--wait);border-radius:999px;padding:0 var(--sp-2);white-space:nowrap}
+select.inp{appearance:auto}
+.withbtn{display:flex;gap:var(--sp-2)}.withbtn .inp{flex:1;min-width:0}
+.errmsg{font-size:var(--fs-sm);color:var(--rust);margin:var(--sp-1) 0 0;line-height:1.45}
+/* A row of fields that wraps: four short settings are four columns on a desktop and two on a
+   laptop, rather than four rows of one. */
+.sfields{display:flex;gap:var(--sp-3) var(--sp-4);flex-wrap:wrap;align-items:flex-start;margin-top:var(--sp-3)}
+.sfields .fld{flex:1 1 calc(210px * var(--ui-scale))}
+.sfields .fld.wide{flex:1 1 100%}
+.grp{font-size:var(--fs-sm);font-weight:600;color:var(--dim);margin:var(--sp-4) 0 var(--sp-2);
+  display:flex;align-items:center;gap:var(--sp-2)}
+.grp:first-child{margin-top:0}
+.why{color:var(--dim);font-size:var(--fs-sm)}
+.row{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+.presets{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-1)}
+.chip{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);
+  padding:var(--sp-1) var(--sp-3);border-radius:999px;background:var(--teal-soft);color:var(--teal);
+  border:1px solid transparent;font-family:var(--mono);cursor:pointer}
+.chip:hover{border-color:var(--teal)}
+
+/* ---------------------------------------------------------------- buttons */
+.btns{display:flex;gap:var(--sp-2);margin-top:var(--sp-3)}
+/* On a card the action takes the room it needs; in the rail Submit fills the column. */
+.box .btns{justify-content:flex-start}
+.box .btns .btn{flex:0 0 auto;padding-left:var(--sp-5);padding-right:var(--sp-5)}
+.btn{flex:1;text-align:center;border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);
+  font-size:var(--fs-md);font-weight:600;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);min-height:var(--ctl-h);line-height:1.3}
+.btn:hover:not(:disabled){border-color:var(--teal);color:var(--teal)}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:var(--on-accent)}
+.btn.pri:hover:not(:disabled){filter:brightness(1.08);color:var(--on-accent)}
+.btn.quiet{background:none;border-color:transparent;color:var(--teal);font-weight:600}
+.btn.quiet:hover:not(:disabled){background:var(--teal-soft);border-color:transparent}
+.btn.sm{flex:0 0 auto;padding:var(--sp-1) var(--sp-3);font-weight:500;min-height:var(--ctl-h-sm)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.pri:disabled{opacity:1;background:var(--dim);border-color:var(--dim);color:var(--on-accent)}
+.linkbtn{border:0;background:none;padding:var(--sp-1) 0;color:var(--teal);font-size:var(--fs-sm);
+  font-weight:600;text-decoration:underline;cursor:pointer}
+.linkbtn:hover{color:var(--ink)}
+
+/* ---------------------------------------------------------------- choosing a structure
+   One primary button, the structure browser behind it, and a file dropped on the card doing the
+   same thing. What was chosen is shown as its name, where it came from and its chains. */
+.pickzone{border:2px dashed var(--line);border-radius:var(--radius);padding:var(--sp-5) var(--sp-4);
+  display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);margin-top:var(--sp-3);text-align:center}
+.pickzone.over{border-color:var(--teal);background:var(--teal-soft)}
+.pickzone .pickbtns{display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:center}
+.pickzone .pickbtns .btn{flex:0 0 auto}
+.pickzone .hint{margin:0;font-size:var(--fs-sm);color:var(--dim)}
+.picked{border:1px solid var(--line);border-radius:var(--radius);padding:var(--sp-3) var(--sp-4);
+  background:var(--ground);margin-top:var(--sp-3)}
+.picked.ok{border-color:var(--good)}
+.picked-head{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.picked-head .pic{width:calc(20px * var(--ui-scale));height:calc(20px * var(--ui-scale));flex:0 0 auto;
+  fill:none;stroke:currentColor;stroke-width:1.6;color:var(--teal)}
+.picked-head b{font-size:var(--fs-md);min-width:0;overflow-wrap:anywhere}
+.picked-from{font-size:var(--fs-sm);color:var(--dim);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.picked-head .btn{margin-left:auto}
+.picked-head .btn+.btn{margin-left:0}
+.pchains{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-top:var(--sp-3)}
+.pchain{display:inline-flex;align-items:center;gap:var(--sp-1);border:1px solid var(--line);
+  border-radius:999px;padding:var(--sp-1) var(--sp-3);font-size:var(--fs-sm);background:var(--card);
+  color:var(--ink);min-height:var(--ctl-h-sm);cursor:default}
+.pchain .pk{color:var(--dim);font-size:var(--fs-sm)}
+/* A chip drawn in a second color has to say what the color means, or it is a warning nobody
+   can read: the role is written in the chip, in the color that marks it. */
+.pchain .pr{font-size:var(--fs-xs);font-weight:600;border-radius:999px;padding:0 var(--sp-2);
+  background:var(--wait);color:var(--dim);white-space:nowrap}
+.pchain.rec{border-color:var(--teal)}
+.pchain.rec .pr{background:var(--teal-soft);color:var(--teal)}
+.pchain.lig{border-color:var(--rust)}
+.pchain.lig .pr{background:var(--rust-soft);color:var(--rust)}
+
+/* ---------------------------------------------------------------- the viewer
+   Its own pixel geometry, whatever the text size: the canvas is not scaled, so a click lands on
+   the residue under the pointer at every step of the control. */
+.viewerbox{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+  overflow:hidden;display:flex;flex-direction:column;margin-top:var(--sp-3)}
+.vbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1) var(--sp-2);
+  padding:var(--sp-2) var(--sp-3);background:var(--card);border-bottom:1px solid var(--line-soft)}
+.vgrp{display:inline-flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap}
+.lb{font-size:var(--fs-sm);color:var(--dim);font-weight:600}
+.vsplit{width:1px;align-self:stretch;background:var(--line);margin:0 var(--sp-1)}
+.vsel{font-size:var(--fs-sm);padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);
+  border-radius:999px;background:var(--card);color:var(--ink);min-height:var(--ctl-h-sm)}
+.cpick{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--dim)}
+.cpick input[type=color]{width:calc(26px * var(--ui-scale));height:calc(22px * var(--ui-scale));
+  padding:0;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer}
+.viewer{flex:1;background:var(--card);position:relative;min-height:300px;overflow:hidden}
+.vlabel{position:absolute;left:var(--sp-3);top:var(--sp-2);font-size:var(--fs-sm);color:var(--dim);
+  font-weight:600;z-index:2;pointer-events:none;max-width:70%}
+/* the trajectory's legend: one chip per ion on the screen, in the color it is drawn */
+.vkey{display:inline-flex;align-items:center;gap:4px;margin-left:10px;font-weight:600;color:var(--ink)}
+.vkey i{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid var(--line)}
+.vhint{position:absolute;left:var(--sp-3);bottom:var(--sp-2);font-size:var(--fs-sm);color:var(--dim);
+  z-index:2;pointer-events:none}
+.vnote{position:absolute;right:var(--sp-3);top:var(--sp-2);max-width:55%;text-align:right;
+  font-size:var(--fs-sm);line-height:1.35;color:var(--dim);z-index:2;pointer-events:none}
+.viewer .msp-plugin{position:absolute;inset:0}
+.chainsel{display:inline-flex;gap:var(--sp-1);flex-wrap:wrap;align-items:center}
+/* What the file holds: short facts, read off the structure, under a heading of their own.
+   They are square and flat and nothing about them hovers, because none of them is pressable -
+   a row of identical rounded pills that mixed a chain list, a warning and two findings gave
+   nobody a way to tell which was which or what to press. What is wrong with the structure is
+   not a fact: it leaves the row and is written as a warning line under it. */
+.checks{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-2);margin-top:var(--sp-2)}
+.chk{font-size:var(--fs-sm);border:1px solid var(--line-soft);border-radius:var(--radius-sm);
+  padding:var(--sp-1) var(--sp-2);background:var(--ground);color:var(--dim);line-height:1.35;
+  cursor:default}
+.chk b{color:var(--ink);font-weight:600}
+.chk .ck{color:var(--good);font-weight:600}
+.ctcbox{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-top:var(--sp-3)}
+.ctckinds{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-4);align-items:center;font-size:var(--fs-sm)}
+.ctckind{display:inline-flex;align-items:center;gap:var(--sp-1);font-weight:600;cursor:pointer;
+  min-height:var(--ctl-h-sm)}
+.ctckind input{margin:0;width:auto;accent-color:var(--teal)}
+.ctcrows{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.ctcrow{font-family:var(--mono)}
+.diagwrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:var(--sp-2) var(--sp-3);margin-top:var(--sp-3)}
+.diagwrap h3{font-size:var(--fs-md);color:var(--ink);font-weight:600;margin:0 0 var(--sp-2);
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.diagwrap h3 .why{font-weight:400}
+/* The diagram is as tall as it is drawn and scrolls only sideways: a second box that scrolls
+   down inside the page's own scroll is one scrollbar too many. */
+.diagbox{overflow-x:auto;overflow-y:visible}
+.diagbox svg{display:block;margin:0 auto}
+
+/* ---------------------------------------------------------------- the Submit foot
+   Submit and the one line that says what pressing it does. Nothing else: it is the last thing
+   in the rail and it does not scroll, so the button is on the screen at every text size and in
+   every window. The run plan is above it, in the rail's own scroll, where it can be as long as
+   it needs to be. */
+.submitbox{flex:0 0 auto;border-top:1px solid var(--line);
+  padding-top:var(--sp-3);margin-top:var(--sp-2)}
+.runplan{background:var(--ground);border:1px solid var(--line-soft);border-radius:var(--radius);
+  padding:var(--sp-3);margin-top:var(--sp-4)}
+.runplan-head{font-size:var(--fs-md);font-weight:600;margin-bottom:var(--sp-1);
+  display:flex;align-items:center;gap:var(--sp-1)}
+.runplan-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
+/* One step, two lines: the number, its name and the time across the top, where it happens under
+   the name. A rail is too narrow for the three on one line without wrapping into four. */
+.runplan-steps li{display:grid;grid-template-columns:var(--q-size) minmax(0,1fr) auto;
+  grid-template-areas:"n name time" ". what what";column-gap:var(--sp-2);row-gap:0;
+  align-items:center;font-size:var(--fs-sm)}
+.runplan-steps .pn{grid-area:n;width:var(--q-size);height:var(--q-size);border-radius:50%;
+  background:var(--teal-soft);color:var(--teal);font-size:var(--fs-xs);font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center}
+.runplan-steps .pw{display:contents}
+.runplan-steps .pw b{grid-area:name;font-weight:600;color:var(--ink)}
+.runplan-steps .pw span{grid-area:what;color:var(--dim);line-height:1.4}
+.runplan-steps .pt{grid-area:time;color:var(--teal);font-weight:600;white-space:nowrap}
+/* A step with nothing to estimate from keeps the column: a plan where one step has a time and
+   the next has an empty space reads as a step that takes no time. */
+.runplan-steps .pt.none{color:var(--dim);font-weight:400}
+.runplan-where{margin:var(--sp-1) 0 0;font-size:var(--fs-sm);color:var(--dim);overflow-wrap:anywhere}
+/* Where this run's folder will be, under the box it is named in, and whole: it is the one
+   thing the rail exists to tell you, so it wraps rather than being cut at the rail's edge with
+   the rest on hover. It is also the only copy on the screen. */
+.runfolder{margin:var(--sp-1) 0 0;font-size:var(--fs-sm);color:var(--dim);line-height:1.4;
+  overflow-wrap:anywhere}
+.runfolder b{color:var(--ink);font-weight:600}
+.submitbox .btns{margin-top:0}
+.gowhy{margin:var(--sp-2) 0 0;font-size:var(--fs-sm);color:var(--rust);line-height:1.4}
+.gowhy.ok{color:var(--dim)}
+.note{font-size:var(--fs-sm);color:var(--rust);margin:var(--sp-2) 0 0}
+
+/* ---------------------------------------------------------------- the Runs screen */
+.rscreen{display:grid;grid-template-columns:var(--rrailw) minmax(0,1fr);flex:1;min-height:0}
+.rrail{padding:var(--sp-3);background:var(--ground);border-right:1px solid var(--line);
+  overflow-y:auto;overflow-x:hidden;min-width:0}
+#runsroot2{overflow-wrap:anywhere}
+/* One run, on two lines: a long name is not cut to make room for the engine and the date. */
+.runrow{display:flex;align-items:flex-start;gap:var(--sp-2);padding:var(--sp-2);
+  border-radius:var(--radius-sm);font-size:var(--fs-sm);cursor:pointer}
+.runrow .dot{margin-top:calc(0.45 * var(--fs-sm))}
+.runrow .what{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+.runrow .when{font-size:var(--fs-xs);color:var(--dim);font-weight:400}
+.runrow:hover{background:var(--wait)}
+.runrow.on{background:var(--teal-soft);font-weight:600}
+.runrow .name{min-width:0;overflow-wrap:anywhere}
+.runrow .dot,.legend .dot{width:calc(9px * var(--ui-scale));height:calc(9px * var(--ui-scale));
+  border-radius:50%;background:var(--dim);flex:0 0 auto}
+.dot.run{background:var(--teal);animation:blink 1.1s ease-in-out infinite}
+.dot.fin{background:var(--good)}.dot.stop{background:var(--rust)}.dot.q{background:var(--amber)}
+.dot.dry{opacity:.45}.dot.unk{background:var(--line)}
+@keyframes blink{50%{opacity:.15}}
+.legend{display:flex;align-items:center;gap:var(--sp-1) var(--sp-3);flex-wrap:wrap;
+  font-size:var(--fs-xs);color:var(--dim);margin:var(--sp-1) 0 var(--sp-2)}
+.legend span{display:inline-flex;align-items:center;gap:var(--sp-1)}
+.bar{height:calc(6px * var(--ui-scale));background:var(--wait);border-radius:4px;overflow:hidden;
+  margin:2px 0 var(--sp-2)}
+.bar i{display:block;height:100%;background:var(--teal)}
+.bar i.q{background:var(--amber);opacity:.5}.bar i.bad{background:var(--rust)}
+.stg{display:flex;font-size:var(--fs-sm);color:var(--dim);gap:var(--sp-2);cursor:pointer;
+  border-radius:5px;padding:var(--sp-1) var(--sp-1);margin:0 calc(-1 * var(--sp-1))}
+.stg:hover{background:var(--wait)}
+.stg.on{background:var(--teal-soft)}.stg.on b{color:var(--teal)}
+.stg b{font-weight:500;color:var(--ink);min-width:calc(84px * var(--ui-scale))}
+.stg .r{margin-left:auto;font-size:var(--fs-sm)}
+/* One scroll for the whole main column: nothing inside shrinks or scrolls on its own, so the
+   bottom of the page is always reachable. */
+.rmain{padding:var(--sp-4) var(--sp-5) var(--sp-6);display:flex;flex-direction:column;
+  gap:var(--sp-3);overflow:auto;min-width:0}
+.rmain>*{flex-shrink:0}
+.runhead{display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
+.runhead .why{min-width:0;overflow-wrap:anywhere}
+/* The buttons under a run, in named groups: ten of them in one wrapped row, with a list in the
+   middle of it that had no label, is a row nobody can read from left to right. */
+.actgrp{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+  border:1px solid var(--line-soft);border-radius:var(--radius-sm);
+  padding:var(--sp-2) var(--sp-3)}
+.actgrp>.gl{font-size:var(--fs-xs);font-weight:600;color:var(--dim);white-space:nowrap}
+.runhead strong{font-size:var(--fs-lg)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(210px * var(--ui-scale)),1fr));
+  gap:var(--sp-3)}
+.tile{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+  padding:var(--sp-3);min-width:0}
+.tk{font-size:var(--fs-sm);color:var(--dim);font-weight:600;line-height:1.35}
+.tile .tv{font-size:var(--fs-md);font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .tv small{font-size:var(--fs-sm);color:var(--dim);font-weight:400}
+.tile svg{display:block;width:100%;height:auto;margin-top:var(--sp-2)}
+.tile .big{font-size:var(--fs-big);font-weight:600;color:var(--teal);line-height:1.1;margin-top:var(--sp-1)}
+.tile .sub{font-size:var(--fs-sm);color:var(--dim);line-height:1.4;margin-top:var(--sp-1)}
+/* The sparkline's own axis labels are HTML beside the drawing, not text inside the SVG: text in
+   a scaled viewBox cannot honor the type scale. */
+.axes{display:flex;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-xs);
+  color:var(--dim);margin-top:2px;font-variant-numeric:tabular-nums}
+.spark .ax{stroke:var(--line);stroke-width:1}
+.spark .ln{fill:none;stroke-width:1.6}.spark .fill{fill:var(--teal);opacity:.1}
+/* The trajectory and the tables side by side while both fit, and one under the other when
+   they do not: a jobs table of eight columns in half of a 1366px window ran 276px past its box
+   at 100% and 702px at 150%, and the Device column read "NVIDIA A100-PCIE-4". */
+.poserow{display:grid;gap:var(--sp-3);
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(620px * var(--ui-scale))),1fr))}
+.posebox{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:300px}
+.viewerR{flex:1;position:relative;min-height:240px}
+.posebox .vbar{border-radius:0}
+.scrub{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);
+  border-top:1px solid var(--line);font-size:var(--fs-sm);color:var(--dim);flex-wrap:wrap}
+.scrub .pl{width:calc(26px * var(--ui-scale));height:calc(26px * var(--ui-scale));border-radius:50%;
+  background:var(--teal);color:var(--on-accent);border:0;font-size:var(--fs-xs);flex:0 0 auto}
+.scrub select{font-size:var(--fs-sm);padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);color:var(--ink);min-height:var(--ctl-h-sm)}
+.scrub input[type=range]{flex:1 1 calc(120px * var(--ui-scale));min-width:0;accent-color:var(--teal)}
+.scrub .fi{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* The box takes its content's height (the column above scrolls as one). A cell wraps rather
+   than holding the table open wider than the window: a column cut mid-word by a sideways
+   scrollbar is a number nobody can read. */
+.tblbox{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+  padding:var(--sp-3);min-width:0;overflow-x:auto}
+table.t{border-collapse:collapse;width:100%;font-size:var(--fs-sm);font-variant-numeric:tabular-nums;
+  table-layout:auto}
+table.t th{text-align:left;font-size:var(--fs-xs);color:var(--dim);font-weight:600;
+  padding:var(--sp-1) var(--sp-2);border-bottom:1px solid var(--line);
+  white-space:normal;overflow-wrap:anywhere}
+table.t td{padding:var(--sp-1) var(--sp-2);border-bottom:1px solid var(--line-soft);
+  white-space:normal;overflow-wrap:anywhere}
+.mmform{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);width:100%;
+  margin-bottom:var(--sp-2);padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);
+  border-radius:var(--radius-sm)}
+.mmform .inp{width:calc(84px * var(--ui-scale));flex:0 0 auto}
+.log{font-family:var(--mono);font-size:var(--fs-xs);line-height:1.5;background:var(--wait);
+  border-radius:var(--radius-sm);padding:var(--sp-3);max-height:calc(280px * var(--ui-scale));
+  overflow:auto;white-space:pre-wrap;margin:var(--sp-2) 0 0}
+
+/* ---------------------------------------------------------------- the bar along the bottom
+   The version, the commit and one short line of copyright: what a build string is for. Whose
+   tools did the work is a list of five sentences, which cannot be read out of a line cut at the
+   window's edge - it is behind Credits, beside the docs. */
+/* A short note on a control, shown at once on hover or focus, under it and over what is below,
+   so the bar it sits in cannot clip it. */
+.tipwrap{position:relative;display:inline-flex}
+.tipbox{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);z-index:30;
+  width:max-content;max-width:calc(300px * var(--ui-scale));padding:var(--sp-2) var(--sp-3);
+  background:var(--ink);color:var(--card);border-radius:var(--radius-sm);font-size:var(--fs-xs);
+  line-height:1.45;font-weight:400;white-space:normal;text-align:left;pointer-events:none;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;visibility:hidden;transition:opacity .12s}
+.tipwrap:hover .tipbox,.tipwrap:focus-within .tipbox{opacity:1;visibility:visible}
+.creditbar{flex:0 0 auto;display:flex;gap:0 var(--sp-2);align-items:center;
+  min-height:calc(30px * var(--ui-scale));padding:0 var(--sp-4);font-size:var(--fs-xs);
+  color:var(--dim);background:var(--card);border-top:1px solid var(--line)}
+.creditbar .credittext{min-width:0;flex:1 1 auto;display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden;text-overflow:ellipsis}
+.creditbar .creditlinks{flex:none;white-space:nowrap}
+.creditbar a{color:var(--dim)}
+.creditbar a:hover{color:var(--teal)}
+
+/* ---------------------------------------------------------------- a modal dialog
+   The shape every <dialog> of ours takes: a title bar, a body that scrolls, a foot of buttons. */
+dialog.hlmodal{border:1px solid var(--line);border-radius:var(--radius);padding:0;
+  background:var(--card);color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.25);
+  max-height:calc(100vh - 32px);width:min(calc(640px * var(--ui-scale)),calc(100vw - 32px))}
+dialog.hlmodal[open]{display:flex;flex-direction:column}
+dialog.hlmodal::backdrop{background:rgba(8,14,16,.45)}
+.hlmodal .mhead{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+.hlmodal .mhead h2{font-size:var(--fs-lg);margin:0;font-weight:600;flex:1 1 auto}
+.hlmodal .mbody{padding:var(--sp-3) var(--sp-4);font-size:var(--fs-md);line-height:1.6;overflow:auto}
+.hlmodal .mbody p{margin:0 0 var(--sp-2)}
+.hlmodal .mfoot{display:flex;gap:var(--sp-2);align-items:center;justify-content:space-between;
+  padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);flex:0 0 auto}
+.hlmodal .mx,.hlp .hlp-x{border:0;background:none;color:var(--dim);font-size:var(--fs-xl);
+  line-height:1;width:calc(34px * var(--ui-scale));height:calc(34px * var(--ui-scale));
+  border-radius:var(--radius-sm)}
+.hlmodal .mx:hover,.hlp .hlp-x:hover{background:var(--wait);color:var(--ink)}
+.hlmodal a{color:var(--teal)}
+.citelist{margin:0;padding-left:var(--sp-5);font-size:var(--fs-md);line-height:1.5}
+.citelist li{margin:var(--sp-1) 0}
+.citelist a{overflow-wrap:anywhere}
+.told{font-family:var(--mono);font-size:var(--fs-xs);line-height:1.5;background:var(--wait);
+  border-radius:var(--radius-sm);padding:var(--sp-3);overflow:auto;white-space:pre-wrap;margin:0}
+
+/* ---------------------------------------------------------------- the structure browser
+   /static/picker.js, the file the HOPE Labs pages carry, byte for byte. Places down the left,
+   the folder on show on the right. */
+dialog.hlp{width:min(calc(880px * var(--ui-scale)),calc(100vw - 32px));
+  height:min(calc(600px * var(--ui-scale)),calc(100vh - 32px))}
+dialog.hlp[open]{display:flex;flex-direction:column}
+.hlp .hlp-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--line);flex:0 0 auto}
+.hlp .hlp-head h2{font-size:var(--fs-lg);font-weight:600;margin:0;flex:1 1 auto}
+.hlp .hlp-body{display:grid;grid-template-columns:calc(230px * var(--ui-scale)) minmax(0,1fr);
+  flex:1 1 auto;min-height:0}
+.hlp .hlp-places{border-right:1px solid var(--line);padding:var(--sp-2);overflow-y:auto;
+  background:var(--ground)}
+.hlp .hlp-place{display:flex;align-items:center;gap:var(--sp-2);width:100%;border:0;background:none;
+  text-align:left;padding:var(--sp-2);border-radius:var(--radius-sm);font-size:var(--fs-md);
+  color:var(--ink);line-height:1.3}
+.hlp .hlp-place:hover{background:var(--wait)}
+.hlp .hlp-place.on{background:var(--teal-soft);color:var(--teal);font-weight:600}
+.hlp .hlp-place:focus-visible,.hlp .hlp-row:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.hlp .hlp-pl{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlp .hlp-sep{height:1px;background:var(--line);margin:var(--sp-2) var(--sp-1)}
+.hlp .hlp-sec{display:flex;align-items:center;gap:var(--sp-2);width:100%;border:0;background:none;
+  text-align:left;font-size:var(--fs-xs);font-weight:600;color:var(--dim);
+  padding:var(--sp-3) var(--sp-2) var(--sp-1);border-radius:6px}
+.hlp .hlp-sec::after{content:"\25BE";margin-left:auto;font-size:var(--fs-xs)}
+.hlp .hlp-sec[aria-expanded=false]::after{content:"\25B8"}
+.hlp .hlp-sec:hover{color:var(--ink)}
+.hlp .hlp-sec:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+.hlp .hlp-count{font-weight:500;background:var(--wait);border-radius:999px;padding:0 var(--sp-2)}
+.hlp .hlp-ic{width:calc(18px * var(--ui-scale));height:calc(18px * var(--ui-scale));flex:0 0 auto;
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:var(--dim)}
+.hlp .hlp-place.on .hlp-ic{color:var(--teal)}
+.hlp .hlp-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.hlp .hlp-bar{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);
+  border-bottom:1px solid var(--line-soft);flex:0 0 auto}
+.hlp .hlp-crumbs{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-1);
+  flex-wrap:wrap;font-size:var(--fs-sm);color:var(--dim)}
+.hlp .hlp-c{border:0;background:none;padding:2px var(--sp-1);border-radius:6px;color:var(--teal);
+  font-size:var(--fs-sm);text-decoration:underline}
+.hlp .hlp-c:hover{background:var(--teal-soft)}
+.hlp .hlp-c.here{color:var(--ink);font-weight:600;text-decoration:none}
+.hlp .hlp-cs{color:var(--dim)}
+.hlp .hlp-filter{flex:0 0 calc(160px * var(--ui-scale));min-width:0;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--card);padding:var(--sp-1) var(--sp-2);
+  font-size:var(--fs-sm);min-height:var(--ctl-h-sm)}
+.hlp .hlp-list{flex:1 1 auto;overflow-y:auto;padding:var(--sp-1) 0}
+.hlp .hlp-row{display:flex;align-items:center;gap:var(--sp-3);width:100%;border:0;background:none;
+  text-align:left;padding:var(--sp-2) var(--sp-4);font-size:var(--fs-md);color:var(--ink);line-height:1.3}
+.hlp .hlp-row:hover:not(:disabled){background:var(--wait)}
+.hlp .hlp-row.up .hlp-name{color:var(--dim)}
+.hlp .hlp-row.userun{background:var(--teal-soft);color:var(--teal);font-weight:600;margin:var(--sp-1) 0}
+.hlp .hlp-row.userun .hlp-ic{color:var(--teal)}
+.hlp .hlp-row.file .hlp-ic{color:var(--teal)}
+.hlp .hlp-row.off{color:var(--dim);cursor:default}
+.hlp .hlp-row.dir .hlp-ic:last-child{margin-left:auto;width:calc(14px * var(--ui-scale))}
+.hlp .hlp-name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hlp .hlp-size{margin-left:auto;flex:0 0 auto;color:var(--dim);font-size:var(--fs-sm);
+  font-variant-numeric:tabular-nums}
+.hlp .hlp-empty{color:var(--dim);font-size:var(--fs-md);padding:var(--sp-3) var(--sp-4);margin:0}
+.hlp .hlp-empty.bad{color:var(--rust)}
+.hlp .hlp-pane{padding:var(--sp-5) var(--sp-4);display:flex;flex-direction:column;
+  align-items:flex-start;gap:var(--sp-3)}
+.hlp .hlp-lead{font-size:var(--fs-md);font-weight:600;margin:0}
+.hlp .hlp-hint{font-size:var(--fs-sm);color:var(--dim);margin:0}
+.hlp .hlp-codeline{display:flex;gap:var(--sp-2)}
+.hlp .hlp-code{width:calc(140px * var(--ui-scale))}
+.hlp .hlp-foot{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+  border-top:1px solid var(--line);flex:0 0 auto}
+.hlp .hlp-says{flex:1 1 auto;min-width:0;font-size:var(--fs-sm);color:var(--dim)}
+.hlp .hlp-says.bad{color:var(--rust)}
+.hlp.busy .hlp-list,.hlp.busy .hlp-places{opacity:.55;pointer-events:none}
+.hlp.over{outline:3px dashed var(--teal);outline-offset:-6px}
+@media (max-width:640px){
+  .hlp .hlp-body{grid-template-columns:1fr}
+  .hlp .hlp-places{max-height:30vh;border-right:0;border-bottom:1px solid var(--line)}
+}
+
+/* ---------------------------------------------------------------- narrow windows
+   One column, and the rail under the form. */
+@media (max-width:980px){
+  .screen,.rscreen{grid-template-columns:minmax(0,1fr);overflow:auto}
+  .rail{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .railscroll{overflow:visible}
+  .rrail{border-right:0;border-bottom:1px solid var(--line)}
+  .poserow{grid-template-columns:minmax(0,1fr)}
+}

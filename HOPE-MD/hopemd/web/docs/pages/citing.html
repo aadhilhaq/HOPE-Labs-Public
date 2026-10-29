@@ -1,0 +1,76 @@
+<h1>How to cite</h1>
+<p class="lead">HOPE-MD drives other people's engines and tools, and each run's report lists what
+that run used, with the references. Cite those, cite HOPE-MD, and acknowledge the computing.</p>
+
+<h2 id="what-a-run-used">What a run used</h2>
+<p>Open the run on the Runs screen and press <b>Report</b>. Its methods paragraph describes the run
+as its engine ran it, and cites as it goes; the references follow it, numbered in the order the
+paragraph cites them. They cover, as the run used them:</p>
+<table>
+<tr><th>For</th><th>The references name</th></tr>
+<tr><td>the engine</td><td>Amber 24 and <code>pmemd.cuda</code>, OpenMM 8, GROMACS, NAMD 3 or
+Desmond</td></tr>
+<tr><td>the force fields</td><td>ff19SB, ff14SB or OPLS_2005; OL21, OL15 or parmbsc1 for DNA, and
+OL3 for RNA; Lipid17 in a bilayer</td></tr>
+<tr><td>the water and the ions</td><td>OPC, TIP3P, TIP4P-Ew or SPC, and the 12-6 ion parameters
+that go with the water</td></tr>
+<tr><td>a small molecule</td><td>GAFF2 with AM1-BCC charges</td></tr>
+<tr><td>the dynamics</td><td>hydrogen mass repartitioning at 4 fs; the thermostat and barostat on
+GROMACS, and the barostat on NAMD and Desmond</td></tr>
+<tr><td>the preparation</td><td>PDBFixer, and PDB2PQR with PROPKA, where they ran</td></tr>
+<tr><td>the analysis</td><td>cpptraj; ParmEd for a GROMACS topology</td></tr>
+<tr><td>the binding energy</td><td>MMPBSA.py, or Prime MM-GBSA with VSGB</td></tr>
+</table>
+<p>The report's Protocol table gives the module line each job loaded, so the versions are the
+cluster's, and the run's <code>README.txt</code> names them too. Check each reference against the
+version the jobs loaded before it goes into a manuscript, as the report itself says.</p>
+
+<h2 id="a-figure-from-the-viewer">If a figure from the viewer is used</h2>
+<p>A figure made in the page's viewer cites the viewer that drew it, and MSMS when it shows a
+surface: the surfaces the 3Dmol.js viewers draw, on Setup and on Runs, are computed by MSMS. A
+surface the viewer drew itself, where MSMS gave none, says so in the viewer, and a figure of it
+cites the viewer alone. Each run's report lists these after its references, and the page's
+<b>How to cite</b> gives them too.</p>
+<table>
+<tr><th>For</th><th>Cite</th></tr>
+<tr><td>a figure from the viewer</td><td><b>3Dmol.js</b>: Rego N, Koes D. 3Dmol.js: molecular
+visualization with WebGL. Bioinformatics 31(8):1322-1324, 2015.
+<a href="https://doi.org/10.1093/bioinformatics/btu829">doi:10.1093/bioinformatics/btu829</a></td></tr>
+<tr><td>a figure from the Mol* viewer</td><td><b>Mol*</b>: Sehnal D, Bittrich S, Deshpande M, et
+al. Mol* Viewer: modern web app for 3D visualization and analysis of large biomolecular structures.
+Nucleic Acids Res 49(W1):W431-W437, 2021.
+<a href="https://doi.org/10.1093/nar/gkab314">doi:10.1093/nar/gkab314</a></td></tr>
+<tr><td>a figure with a surface from the viewer</td><td><b>MSMS</b>: Sanner MF, Olson AJ, Spehner
+JC. Reduced surface: an efficient way to compute molecular surfaces. Biopolymers 38(3):305-320,
+1996. <a href="https://doi.org/10.1002/(SICI)1097-0282(199603)38:3%3C305::AID-BIP4%3E3.0.CO;2-Y">doi:10.1002/(SICI)1097-0282(199603)38:3&lt;305::AID-BIP4&gt;3.0.CO;2-Y</a></td></tr>
+</table>
+
+<h2 id="namd">If the run used NAMD</h2>
+<p>NAMD is not open source, and its license asks for more than a citation: an acknowledgment, in
+these words, in anything that reports work it did.</p>
+<div class="tip">NAMD was developed by the Theoretical and Computational Biophysics Group in the
+Beckman Institute for Advanced Science and Technology at the University of Illinois at
+Urbana-Champaign.</div>
+<p>A run on any of the other four engines does not need it. The report of a run that used NAMD
+carries the sentence, so it is in front of you when you write the methods up rather than
+something to remember.</p>
+
+<h2 id="hope-md">HOPE-MD itself</h2>
+<p>Cite HOPE-MD from the <code>CITATION.cff</code> in its repository, which is what GitHub's <b>Cite
+this repository</b> reads, with the version you ran. The bar along the bottom of the page shows the
+version and the commit being served, and the last sentence of a report's methods names the version
+and commit that set the run up.</p>
+<p>HOPE-MD is written by Aadhil Haq, Samavath Mallawarachchi and Lasan Manujitha in the HOPE Lab of
+Dr. Sandun Fernando, principal investigator, Department of Biological and Agricultural Engineering,
+Texas A&amp;M University, which holds the copyright. The bar along the bottom of every page states it,
+word for word as the repository's <code>LICENSE</code> has it, and <code>AUTHORS.md</code> beside it
+gives each author's contributions.</p>
+
+<h2 id="the-computing">The computing</h2>
+<p>Runs on Grace use Texas A&amp;M's computing. The launcher prints this sentence when it connects,
+and the page's <b>How to cite</b> gives it too, for the acknowledgments of anything that used
+them:</p>
+<div class="tip">Please acknowledge Texas A&amp;M High Performance Research Computing (HPRC) for the
+computational resources.</div>
+<p>Work run on ACES acknowledges the computing as ACCESS asks, naming ACES at Texas A&amp;M HPRC and
+your allocation; ACES is funded by NSF award 2112356.</p>

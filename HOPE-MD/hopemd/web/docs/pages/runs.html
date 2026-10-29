@@ -1,0 +1,120 @@
+<h1>The Runs screen</h1>
+<p class="lead">Every run in the runs folder with its state, a row for every job of the one you open,
+its results beside its trajectory, and the buttons that act on it.</p>
+
+<h2 id="the-list">The list of runs</h2>
+<p>The column on the left lists the runs in the folder named above it, newest first, each with a dot
+for its state, its name, its engine and when its folder last changed. <b>Rescan</b> reads the folder
+again, and <b>Another folder</b> opens another for the session: see
+<a href="getting-started.html#the-runs-folder">The runs folder</a>. Click a run to open it; the page
+reads it again every 30 seconds while it is open.</p>
+<table>
+<tr><th>Dot</th><th>State</th><th>What it means</th></tr>
+<tr><td>teal, blinking</td><td>running</td><td>a job of the run is on a node</td></tr>
+<tr><td>amber</td><td>pending</td><td>something is queued and nothing is running</td></tr>
+<tr><td>green</td><td>done</td><td>every job completed</td></tr>
+<tr><td>rust</td><td>failed</td><td>a job ended badly and nothing is running</td></tr>
+<tr><td>pale amber</td><td>dry run</td><td>written by a page that queues nothing</td></tr>
+<tr><td>gray</td><td>unknown or not submitted</td><td>Slurm's accounting knows nothing of its jobs,
+or it was never submitted</td></tr>
+</table>
+
+<h2 id="progress">Progress</h2>
+<p>Under the list, <b>Progress</b> has a row for every job of the open run's graph, and for every
+replicate of the jobs that run one per replicate, in the order the run goes through them:
+Prepare, the ligand's parameters, the build, each replicate's equilibration and production
+segments, the analysis, each replicate's MM-GBSA, then tidy. Each row says its state (queued,
+running, done, failed, timed out, canceled, out of memory) with a bar under it; a production row
+gives the nanoseconds done of its segment, and its speed while it runs. Where Slurm's accounting
+has nothing, the state is read from what the run folder holds.</p>
+<p>Click a row to follow that job's log: its last lines appear under the buttons, with the job's
+state, node and time, and they refresh every 5 seconds while it runs. Click the row again to stop
+following it.</p>
+
+<h2 id="results">Results and the trajectory</h2>
+<p>The run's name heads the screen, with its engine, force field and water, its length and
+replicates, and its atoms once built. Under it:</p>
+<ul>
+<li><b>The tiles</b>, once the analysis job has run: the RMSDs, the buried surface, the RMSF, the
+contacts kept, the area per lipid in a bilayer, and an AlphaFold model's ipTM. See
+<a href="analysis.html">Analysis and MM-GBSA</a>.</li>
+<li><b>The trajectory</b> of a replicate, with the same bar as the Setup viewer:
+color, draw, surfaces, what to show, one chain drawn differently, reset, spin, save image and
+<b>add to report</b>, which puts the frame as it is drawn into the run's report
+(<a href="reports.html#views">Adding a view</a>). A
+surface is computed by MSMS on the frame shown when it is drawn, and stays as the trajectory
+plays. Metal ions are drawn as spheres, each in its own color, and named in the legend over the
+viewer; a run that carries a metal keeps the waters nearest its sites, chosen again at every frame,
+and <b>Water</b> shows or hides them. The bulk of the box is not kept.
+Under it, a scrubber with play, the frame and its time, the replicate, and the view: the strided
+one, every 20th saved frame over the whole run, or a dense window.</li>
+<li><b>&plusmn;5 ns here</b> cuts a dense window around the frame shown, at close to the save
+interval and up to 100 frames: a cpptraj job of a few seconds on the <code>short</code> partition.
+It joins the view list when it is ready.</li>
+<li><b>Water</b>, under Show, shows or hides the waters at the metal sites in a run that carries a
+metal. In any other run it draws the 30 waters nearest the partner (or the receptor, in a run
+with none) in each frame of the strided view: a cpptraj job of a minute or less on the
+<code>short</code> partition, queued by the first press, after which the button turns them on and
+off. It is a picture of the shell, not of any one molecule: cpptraj picks the nearest 30 again in
+every frame, so a water is not followed from one frame to the next, and the rest of the box is
+left out. A dense window is cut without water.</li>
+<li><b>MM-GBSA over frames</b>: each replicate's frames, its mean binding energy in kcal/mol and the
+standard error, filled when the MM-GBSA job ends.</li>
+<li><b>Jobs</b>: what ran where, for how long: see <a href="#the-timing-record">The timing
+record</a>.</li>
+</ul>
+
+<h2 id="the-buttons">The buttons</h2>
+<table>
+<tr><th>Button</th><th>What it does</th></tr>
+<tr><td><b>Log tail</b></td><td>Shows the newest log of the run, and hides it again. The list beside
+it picks any job's log instead: every stage and replicate, the jobs a resubmission replaced, and the
+videos'.</td></tr>
+<tr><td><b>Tidy</b>, <b>Undo tidy</b></td><td>Packs the small files of a finished run, or unpacks
+them: see <a href="#tidy">Tidy</a>.</td></tr>
+<tr><td><b>MM-GBSA&hellip;</b></td><td>Opens a line with the window's start, end and stride, and the
+frames per replicate they give; <b>Run MM-GBSA</b> scores the run over it. See
+<a href="analysis.html#a-new-window">Scoring again</a>.</td></tr>
+<tr><td><b>Report (PDF)</b></td><td>Opens the run's report in a new tab, with its own bar and
+<b>Save as PDF</b>: see <a href="reports.html#report">The report</a>.</td></tr>
+<tr><td><b>Video</b></td><td>Queues the two videos of the replicate shown: see
+<a href="reports.html#videos">Videos</a>.</td></tr>
+<tr><td><b>Copy to Setup</b></td><td>Copies the run's spec back into Setup, with the name
+cleared: load the structure again, change what you want (the engine, say), and Submit.</td></tr>
+<tr><td><b>Start again</b></td><td>Submits the stage chosen in the list beside it, and every stage
+after it, again: see <a href="#resubmit">Start again from a stage</a>.</td></tr>
+<tr><td><b>Cancel jobs</b></td><td>Cancels every job of the run's graph, and lists what each answered.
+The run folder stays.</td></tr>
+</table>
+
+<h2 id="resubmit">Start again from a stage</h2>
+<p>Under <b>Run it again</b>, the list beside <b>Start again</b> holds the stages of the run's
+graph, and opens on the last production segment. Pressing it submits that stage and everything that depends on it again, with
+the dependencies rebuilt: the stages before it keep their jobs, and the new jobs replace the old in
+the rows and the Jobs table, the old ones kept in the run's record.</p>
+<p>This is the answer to a segment that hit its walltime, a node that failed, or a stage that failed
+for a reason since put right. A production segment that was stopped continues from its last restart
+point rather than its start, and the frames it wrote past that point are cut first, so none repeats:
+see <a href="protocol.html#segments">Production in segments</a>.</p>
+
+<h2 id="tidy">Tidy</h2>
+<p>Scratch counts files as well as bytes, and a finished run leaves 100 to 250 of them. Tidy packs
+the ones nothing reads any more (stage logs, intermediate restarts and checkpoints, the build's
+scratch files) into one archive in the run's <code>archive/</code> folder, so the run holds tens of
+files instead of hundreds. The trajectories, the restart points a resume needs, the analysis, the
+report and the media stay as they are.</p>
+<p>It is the last job of every run's graph unless <b>pack small files when done</b> was unticked. It
+runs once the production and the analysis have succeeded and MM-GBSA has ended, whether or not
+MM-GBSA succeeded. <b>Tidy</b> on this screen queues it for a run that has none, and is refused while
+any of the run's jobs is still queued or running. Once a run is packed the button reads <b>Undo
+tidy</b>, says how many files are in the archive, and unpacks them with a short queue job.</p>
+
+<h2 id="the-timing-record">The timing record</h2>
+<p>The Jobs table lists every job the run has had, with its state, its node, its GPU or CPUs, its
+steps or frames, its wall time and, for a production part, its speed. Jobs a resubmission replaced
+are dimmed. Under it, one line gives the whole graph's time from the first start to the last end,
+the node time it used, and what the estimate said at Submit, so the two can be compared.</p>
+<p>The record is kept in the run folder once every job has finished, and each finished job adds a
+row to the timing tables the next run's estimate reads: see
+<a href="protocol.html#the-estimate">The estimate</a>. The tidy job records them too, so a run
+nobody opens is counted.</p>

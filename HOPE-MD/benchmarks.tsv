@@ -1,0 +1,14 @@
+site	gpu	engine	atoms	dt_fs	ns_per_day	date	run
+grace	a100	amber	33434	4	656.0	2026-09-28	1BHL_amber_2/r1/prod_s1_p1
+grace	a100	amber	73184	4	438.8	2026-09-28	peptide1_amber_2/r1/prod_s1_p1
+grace	a100	openmm	33470	4	704.1	2026-09-28	1BHL_openmm/r1/prod_s1_p1
+grace	a100	amber	33470	4	657.9	2026-09-28	1BHL_amber_chain/r1/prod_s1_p1
+grace	a100	amber	33470	4	586.6	2026-09-28	1BHL_amber_chain/r1/prod_s2_p2
+grace	cpu48	amber	33470	4	47.1	2026-09-29	1BHL_amber_cpu/r1/prod_s1_p1
+grace	a100	amber	32703	4	634.7	2026-09-29	1BXW_popc_amber/r1/prod_s1_p1
+grace	a100	amber	42747	4	589.5	2026-09-29	peptide2_amber/r1/prod_s1_p1
+grace	a100	gromacs	26067	4	1192.9	2026-09-29	1BHL_gromacs_v/r1/prod_s1_p1
+grace	a100	namd	26067	4	467.3	2026-09-29	1BHL_namd_v/r1/prod_s1_p1
+grace	a100	desmond	39814	2	627.9	2026-09-29	1BHL_desmond_v/r1/prod_s1_p1
+grace	a100	desmond	56325	2	497.9	2026-09-29	peptide1_desmond_v/r1/prod_s1_p1
+grace	a100	openmm	32655	4	549.6	2026-09-29	1BXW_popc_openmm/r1/prod_s1_p1

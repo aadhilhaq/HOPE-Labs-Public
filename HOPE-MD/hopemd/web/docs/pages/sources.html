@@ -1,0 +1,195 @@
+<h1>Sources</h1>
+<p class="lead">Seven ways a structure comes in, all on the Structure card. Each ends the same
+way: a receptor, a partner unless the run is apo, and what the import found, shown in the viewer
+and the checks.</p>
+
+<h2 id="loading">Choosing a structure</h2>
+<p>Press <b>Choose a structure</b>. The browser opens with the places down the left and the folder
+on the right:</p>
+<table>
+<tr><th>Place</th><th>What it offers</th></tr>
+<tr><td><b>This computer</b></td><td>the native file chooser. The file is sent up and kept in
+<code>_uploads/</code> inside the runs folder, then read from there like any other path. A file
+dropped on the card does the same thing.</td></tr>
+<tr><td><b>PDB code</b></td><td>four characters, fetched from the RCSB.</td></tr>
+<tr><td><b>My scratch</b>, <b>Home</b>, <b>HOPE-MD runs</b>, <b>Shared runs</b>, <b>Shared
+install</b></td><td>the structure files and folders in the places this server may read, with
+breadcrumbs back up.</td></tr>
+</table>
+<p>What was chosen is read straight away: the card shows its name, where it came from and its
+chains, and <b>Change</b> picks another. HOPE-MD reads a <code>.pdb</code> or <code>.cif</code> as
+a complex, a <code>.mae</code> or <code>.maegz</code> as a poseviewer and a <code>.zip</code> as an
+AlphaFold result; <b>Read it as</b> on the card says otherwise where that guess is wrong,
+and <b>Read it again</b> runs the import once more. The import goes into a staging folder inside
+the runs folder, <code>_staging/</code>.</p>
+<table>
+<tr><th>Source</th><th>What it reads</th><th>The partner</th></tr>
+<tr><td><b>Receptor + partner</b></td><td>a receptor PDB and, if there is one, a ligand or
+partner file: PDB, or SDF or MOL2 for a small molecule</td><td>the ligand file; none when it is
+empty, and the run is apo</td></tr>
+<tr><td><b>Complex file</b></td><td>one PDB, mmCIF or Maestro file, gzipped or
+not</td><td>the chains you name, or a bound ligand</td></tr>
+<tr><td><b>PDB code (RCSB)</b></td><td>a PDB id and an assembly</td><td>the chains you name, or
+a bound ligand</td></tr>
+<tr><td><b>AlphaFold</b></td><td>the folder AlphaFold 3 writes, a zip of it, or one model file,
+with the confidence written beside it</td><td>the chains you name, or a bound ligand</td></tr>
+<tr><td><b>Maestro poseviewer</b></td><td>a <code>.mae</code> or <code>.maegz</code> file, read
+without Schr&ouml;dinger: the receptor, then the poses</td><td>a pose</td></tr>
+</table>
+<p>The import stays in its staging folder until Submit copies it into the run's own folder, and then
+goes. Submitting the same structure again, with another engine, copies it from the run it went
+into, so it need not be loaded again.</p>
+
+<h2 id="files">Receptor and ligand files</h2>
+<p>The receptor file is a PDB. <b>chains</b> keeps the receptor chains you name, all of them when
+it is empty; a chain the file does not have stops the import, naming the chains it does. The
+<b>ligand file</b> decides what the partner is:</p>
+<table>
+<tr><th>Ligand file</th><th>Detected as</th></tr>
+<tr><td>SDF or MOL2</td><td>a small molecule</td></tr>
+<tr><td>PDB with DNA or RNA</td><td>a nucleic acid</td></tr>
+<tr><td>PDB of amino-acid chains, under 50 residues</td><td>a peptide</td></tr>
+<tr><td>PDB of amino-acid chains, 50 residues or more</td><td>a protein partner, analyzed as an
+interface</td></tr>
+<tr><td>any other PDB</td><td>a small molecule</td></tr>
+</table>
+<p>A small molecule from an SDF or MOL2 file is its first molecule, with the file's bond orders and
+formal charges, and the import says when the file holds more than one. Hydrogens the file lacks are
+added as drawn, and the note says how many: the protonation state drawn is the one that runs, so
+check it against the pH. A PDB ligand has neither bond orders nor charges: it needs its hydrogens
+in the file, and on the Amber-topology engines you give its net charge. A ligand holding a metal is
+refused, as no ligand force field here has parameters for one.</p>
+<p>Two more choices apply to the files:</p>
+<ul>
+<li><b>crystal waters</b>: none, those within 5 &Aring; of the partner or ligand, or all. The waters
+kept go into the build after the solute, as the run's water model.</li>
+<li><b>keep metal ions</b>: the metal ions of the files that the builds have parameters for, as free
+ions where the files have them. The ions a DNA or RNA binds stay either way.</li>
+</ul>
+<p>A change to <b>chains</b>, <b>crystal waters</b> or <b>keep metal ions</b> imports the files
+again, and one the import refuses goes back to what it was.</p>
+<p>The import also takes out of the receptor file what is not simulated from it: the waters and
+ions other than those kept, cofactors and other ligands. A partner file loses its ions and waters
+other than those kept. A small molecule
+to simulate comes in as its own SDF or MOL2 file. Modified amino acids are mapped to their parent
+as Prepare maps them, and residues missing in a chain end it there:
+<a href="prepare.html#modified-residues">Modified residues</a> and
+<a href="prepare.html#chain-breaks">Chain breaks</a> say how.</p>
+
+<h2 id="placement">The placement check</h2>
+<p>Every pose, and every receptor with its partner, is checked for where the partner sits: the
+closest pair of heavy atoms, the pairs within 4.5 &Aring;, and the pairs closer than
+1.5 &Aring;.</p>
+<table>
+<tr><th>The note says</th><th>What it means</th></tr>
+<tr><td><i>partner</i> <b>in contact with the receptor</b></td><td>the usual case: how many
+heavy-atom pairs lie within 4.5 &Aring;, and the closest</td></tr>
+<tr><td><b>heavy-atom pair(s) closer than 1.5 &Aring; between receptor and</b> <i>partner</i></td>
+<td>the two overlap: look at the pose before you submit it</td></tr>
+<tr><td><i>the partner</i> <b>is</b> <i>n</i> <b>&Aring; from the receptor at its closest</b></td>
+<td>more than 6 &Aring; apart. HOPE-MD does not dock, it simulates the pose it is given: place the
+partner first (with a docking program), or import a
+docked pose.</td></tr>
+</table>
+<p>For a complex the check is made by Prepare, on the prepared structure.</p>
+
+<h2 id="complexes">An entry, a complex file or an AlphaFold model</h2>
+<p>These three arrive whole and go through <a href="prepare.html">Prepare</a>, which cleans them and
+splits the receptor from the partner.</p>
+<ul>
+<li><b>PDB code (RCSB)</b> takes a <b>PDB id</b>, four characters with a digit first such as
+<code>4CMM</code>, and an <b>assembly</b>: 1, 2 and so on as the RCSB defines them, or
+<code>asu</code> for the asymmetric unit as deposited. The entry is fetched as mmCIF, and its
+title, method and resolution come with it.</li>
+<li><b>Complex file</b> takes one PDB, mmCIF or Maestro file, gzipped or not.</li>
+<li><b>AlphaFold</b> takes the folder AlphaFold 3 writes (its top-ranked
+<code>&lt;job&gt;_model.cif</code> and a <code>seed-&lt;s&gt;_sample-&lt;n&gt;/</code> folder per
+sample), a zip of it, or one model file: an AlphaFold DB, AlphaFold 2 or ColabFold model, or one of
+AlphaFold 3's. <b>model (1 = top ranked)</b> picks the model: 1 is the top-ranked, and the samples
+follow by ranking score. Its pTM and, for more than one chain, its ipTM are read, and its
+B-factors as pLDDT; an ipTM under 0.6 is marked as a doubtful interface before a step has run.
+A model from the AlphaFold Server, which writes its output terms at the top of every file, is
+read too, with a warning on the page and in the run's report: those terms restrict how the
+Server's models may be used downstream, so check that this use is allowed, or use AlphaFold 3 run
+yourself or the AlphaFold DB.</li>
+</ul>
+<p>The import proposes which chains are the receptor and which the partner, and you can change
+them in <b>receptor chains</b> and <b>partner chains</b>:</p>
+<table>
+<tr><th>The structure holds</th><th>Receptor</th><th>Partner</th></tr>
+<tr><td>a protein with DNA or RNA bound</td><td>the protein chains</td><td>every nucleic-acid strand,
+together</td></tr>
+<tr><td>a nucleic acid alone</td><td>every strand, simulated whole</td><td>none</td></tr>
+<tr><td>anything else</td><td>the largest chain</td><td>the rest</td></tr>
+</table>
+<p>The partner's class follows the chains you choose: DNA or RNA makes it a nucleic acid, protein
+chains a protein partner, and no partner chain an apo run. A chain cannot be on both sides.</p>
+
+<h2 id="bound-ligand">A ligand bound in the structure</h2>
+<p>A small molecule bound in an entry, a complex file or a model can be the partner in place of a
+chain. When there is one to offer, <b>bound ligand as the partner</b> lists it by residue name,
+chain and number, such as <code>BTN A 300</code>, with its heavy atoms. Waters, monatomic ions,
+crystallization additives and polymer residues are not offered, and the checks list any ligand that
+cannot be, with the reason: it holds a metal, it is bound covalently to the polymer, or it is one
+residue of a ligand spread over several.</p>
+<p>The one you pick is typed against its definition in the PDB's Chemical Component Dictionary,
+fetched from the RCSB at import: its bond orders and formal charges come from there. A short list
+of rules then sets its acids and bases for pH 7.4 (carboxylic acids, phosphates, phosphonates,
+sulfates and sulfonates lose a proton; aliphatic amines, amidines and guanidines gain one; anything
+else keeps the dictionary's form) and its hydrogens are added. The structure is imported again with
+it:</p>
+<ul>
+<li>its other copies are removed, as one ligand runs per system;</li>
+<li>every polymer chain Prepare keeps is the receptor, so the partner chains stay empty;</li>
+<li>where it has alternate conformations, the first (A) is taken;</li>
+<li>the checks give its net charge and which groups changed, and the charge waits for you to
+confirm it. At a run pH more than a unit from 7.4 they also say to check the groups.</li>
+</ul>
+<p>A ligand with atoms missing, more atoms than its definition, or bonds that are not the
+definition's is refused with that reason, and the choice goes back to what it was.</p>
+
+<h2 id="poses">Docked poses</h2>
+<p>A poseviewer holds many poses.</p>
+<ul>
+<li><b>Maestro poseviewer.</b> The first structure in the file is the receptor and each one after it
+a pose, in the file's order. A small-molecule pose keeps the file's bond orders and formal
+charges.</li>
+</ul>
+<h3 id="one-run-per-pose">One run per pose</h3>
+<p>For a poseviewer a box on the Structure card, <b>One run per pose</b>, lists what the
+source holds:
+a
+poseviewer's poses with their titles. Tick what to simulate, or <b>tick all</b>, and press
+<b>Submit one run per selection</b>.</p>
+<p>Each selection is imported on its own and submitted with the settings on the page: the same
+engine, protocol, pH and environment. Load one pose first and see that its Submit is on: the page's
+fields have to be right for every run. Each run is named after its peptide or pose and the
+engine, and the box reports each one, submitted or refused, with the reason. Up to 100 selections
+go at a time.</p>
+<p>A small molecule's charge is its own pose's. The charge you confirmed on the loaded pose holds
+for a pose whose file gives the same charge, and for one whose file gives none; a pose whose file
+gives another is refused, to be loaded and confirmed on its own.</p>
+
+<h2 id="dna-and-rna">DNA and RNA</h2>
+<p>A nucleic acid can be the partner (a strand a protein binds) or the whole system (a
+duplex, a quadruplex or an RNA, simulated whole with no partner). Either way:</p>
+<ul>
+<li>the run needs a nucleic-acid force field, chosen on the Engine step: see
+<a href="engines.html#nucleic-acids">Nucleic acids</a>;</li>
+<li>the cations it binds, within 3.5 &Aring; of it, such as the K<sup>+</sup> in a G-quadruplex's
+channel or an Mg<sup>2+</sup> holding an RNA fold, are kept where the other ions of the structure
+are dropped;</li>
+<li>a strand with a modified nucleotide is refused: the force fields here have no parameters for
+one;</li>
+<li>each strand starts at O5&prime;: a 5&prime;-terminal phosphate is dropped, as the force fields
+have no template for it;</li>
+<li>the analysis traces nucleotides by their P and C4&prime; atoms where it traces amino acids by
+their C&alpha;.</li>
+</ul>
+
+<h2 id="the-name">The run's name</h2>
+<p>The run is named from its source, its pose and the engine, such as <code>1BHL_amber</code>, or
+<code>1STP_BTN_amber</code> for the entry 1STP with its bound biotin as the partner. Type a name
+of your own in <b>Run name</b>, in the rail: letters, digits, <code>_ . -</code> and no
+spaces, up to 64 characters. Empty it to go back to the derived one. A name already submitted in the
+runs folder is refused.</p>

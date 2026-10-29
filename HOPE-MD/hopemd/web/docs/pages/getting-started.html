@@ -1,0 +1,97 @@
+<h1>Getting started</h1>
+<p class="lead">Open HOPE-MD from HOPE Labs with one Duo approval,
+then make a first run. The page runs on a login node; everything it computes is a Slurm
+job.</p>
+
+<h2 id="what-you-need">What you need</h2>
+<p>A Grace account at Texas A&amp;M HPRC: your NetID, its password and Duo. Jobs charge your default
+HPRC allocation, which <code>myproject</code> shows on a login node. Your account also needs the
+access below; <code>id -Gn</code> on a login node lists your groups.</p>
+<table>
+<tr><th>Access</th><th>Needed for</th><th>How to get it</th></tr>
+<tr><td><code>amber</code> group</td><td>every run: the Amber 24 module builds the topology of four
+engines, and its <code>cpptraj</code> analyzes all five</td><td>register for Amber at ambermd.org
+(free for academic use), then write to help@hprc.tamu.edu</td></tr>
+<tr><td><code>desmond</code> group</td><td>Desmond runs: the academic license is per user</td>
+<td>register for the academic Desmond and accept its license, then write to
+help@hprc.tamu.edu</td></tr>
+<tr><td>HPRC's Schr&ouml;dinger users list</td><td>Prime MM-GBSA on Desmond runs</td><td>write to
+help@hprc.tamu.edu: the suite is licensed through HPRC</td></tr>
+</table>
+<p>On your computer: HOPE Labs' launcher, and a browser.</p>
+
+<h2 id="from-hope-labs">Opening it from HOPE Labs</h2>
+<p>HOPE Labs opens HOPE-MD in a tab of its own: pick HOPE-MD and press <b>Launch</b>.
+It starts the HOPE-MD that Set up installed in your HOPE Labs folder, on the login node it is signed in
+to, over its one connection, so the one Duo approval you gave HOPE Labs covers HOPE-MD too. The page in the
+tab is the same page, with its own Docs.</p>
+<p>A run handed on from HOPE Labs' Results, a docking run to simulate for instance, arrives as a
+folder path under HOPE Labs' bar with a <b>Copy path</b> button: paste it into the path box of the
+matching source, such as <b>Complex file</b>.</p>
+
+<h2 id="the-runs-folder">The runs folder</h2>
+<p>Every run is a folder in the runs folder the page has open. The header says which one it is.
+You never have to name it: it is your own scratch,
+<code>/scratch/user/&lt;NetID&gt;/hopemd_runs</code>, made the first time.</p>
+<p>The page can open another at any time: <b>Another folder</b> on the Runs screen opens the
+browser on the places this server may read (<b>My scratch</b>, your home and
+the others that exist), and <b>Open this folder</b> takes the folder shown for the rest of the
+session. A folder you cannot
+write to opens too, marked <b>read-only</b> in the header: its runs open and read as any other, and
+a report is shown even where it cannot be saved. In a folder others share, a report, a video or an
+MM-GBSA rerun is written beside the run, under the account that asked for it.</p>
+<div class="note"><b>Submit writes into the folder that is open.</b> After reading another folder's runs,
+browse back to your own (<b>My scratch</b>, then <code>hopemd_runs</code>) before you
+submit.</div>
+
+<h2 id="what-runs-where">What runs where</h2>
+<table>
+<tr><th>Where</th><th>What</th></tr>
+<tr><td>Your computer</td><td>The launcher and the browser. Nothing of HOPE-MD is installed there
+beyond the launcher.</td></tr>
+<tr><td>A login node</td><td>The page's server. It serves the page, reads the structures you load,
+writes the input files and job scripts, submits them, and reads the results back. It also reaches
+the RCSB, OPM, UniProt and EBI for the imports and the transmembrane search.</td></tr>
+<tr><td>The compute nodes</td><td>Every computation, as a Slurm job under your account: Prepare, the
+ligand's parameters, the build, equilibration, production, the analysis, MM-GBSA and tidy, and the
+media (the videos, the snapshots, a dense window of the trajectory).</td></tr>
+</table>
+<p>No stage of a run computes on a login node. The engines are never installed: each job loads its
+engine from the cluster's modules, so the versions are the cluster's.</p>
+
+<h2 id="a-first-run">A first run</h2>
+<ol class="steps">
+<li><b>Choose a structure.</b> On the Structure card press <b>PDB code</b>, type
+<code>1BHL</code> and press <b>Fetch</b>. The two chains appear in the viewer, and the checks list what
+the entry holds: each chain with its resolved and missing residues, the hetero groups, the waters,
+and that it is not prepared yet. Chain A is the receptor and chain B the partner.</li>
+<li><b>Prepare.</b> Press <b>Prepare</b>. The job goes to the <code>short</code> partition and the
+note under the button follows it from queued to done, a minute or so. The checks then say what
+Prepare did: 1BHL's cacodylated cysteines mapped to cysteine, the loops modeled, the chain breaks
+left open, PROPKA's protonation states, the minimization, and the clashes before and after.</li>
+<li><b>Protocol.</b> The page opens on <b>Standard</b> (100 ns &times; 3). Pick <b>Quick check</b>
+(10 ns &times; 1). The walltime follows the estimate.</li>
+<li><b>Submit.</b> The run folder is written as <code>hopemd_runs/1BHL_amber</code> in your
+scratch, the graph is queued (build, equilibration, production, then the analysis and MM-GBSA,
+then tidy) and the page moves to Runs.</li>
+<li><b>Runs.</b> A row for each stage shows its state, and a click on one shows its log. When the
+analysis job has run, the tiles and the trajectory appear; the MM-GBSA table fills when its own job
+ends. <b>Report</b> writes the run's report, and <b>Video</b> queues its two videos.</li>
+</ol>
+<p>A Quick check takes one to three hours from Submit, most of it in the queue. The other sources
+work the same way: <a href="sources.html">Sources</a> says what each one takes.</p>
+
+<h2 id="without-the-launcher">Without the launcher</h2>
+<p>Log in with the port forwarded, so the tunnel ends on the login node the server runs on, and
+start the server in that same session:</p>
+<pre>ssh -L 8098:127.0.0.1:8098 &lt;NetID&gt;@grace.hprc.tamu.edu       # on your computer
+cd &lt;HOPE Labs folder&gt;/HOPE-MD/MD &amp;&amp; . ./activate.sh
+python3 -m hopemd.server --port 8098 --runs $SCRATCH/hopemd_runs</pre>
+<p>It prints a line beginning <code>open</code> with the page's address and its token: open that
+address in your browser. <code>sbatch ready</code> in its first line means Submit queues jobs;
+<code>DRY RUN (no sbatch)</code> means it writes run folders and queues nothing. If another user
+holds port 8098 on that node, the server stops with <code>Address already in use</code>: choose
+another number in both commands. Ctrl-C stops the server.</p>
+<p>ACES, Texas A&amp;M's accelerator cluster, signs in with a certificate from its portal rather
+than a password, and has no NAMD 3, so the page leaves NAMD out there. <code>ACES.md</code> in the
+repository covers installing there and <b>ACES (TAMU)</b> in the launcher.</p>

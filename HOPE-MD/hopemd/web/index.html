@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOPE-MD</title>
+<!-- The palette, the type scale and the shell are in the stylesheet, which also dresses the
+     structure browser and the text-size control: this page is those pieces arranged, and carries
+     no sizes of its own. -->
+<link rel="stylesheet" href="/static/style.css">
+<!-- In the head, so the text size somebody chose (or the size HOPE Labs handed over in ui_scale)
+     is applied before anything is drawn. -->
+<script src="/static/zoom.js" data-page="hopemd"></script>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62 62"><path d="M31 6 L53 18 L53 44 L31 56 L9 44 L9 18 Z" fill="none" stroke="%230d5c6b" stroke-width="4" stroke-linejoin="round"/><polyline points="12,40 17,24 22,36 27,30 32,38 37,26 42,34 47,29 51,32" fill="none" stroke="%23c2603a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>'>
+</head>
+<body>
+<header class="apphead">
+  <span class="mark">
+    <svg width="24" height="24" viewBox="0 0 62 62" aria-hidden="true">
+      <path d="M31 6 L53 18 L53 44 L31 56 L9 44 L9 18 Z" fill="none" stroke="var(--teal)" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="12,40 17,24 22,36 27,30 32,38 37,26 42,34 47,29 51,32" fill="none" stroke="var(--rust)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="nm">HOPE&#8209;MD</span>
+  </span>
+  <!-- One muted line in the page's own type: the cluster, and where the runs go. The version and
+       the commit are in the bar along the bottom, where a build string belongs. -->
+  <span class="bd" id="sitenote"></span>
+  <span class="headtools">
+    <span class="tabs" role="tablist" aria-label="Screens">
+      <button class="tab on" data-screen="setup" id="tab-setup" role="tab" aria-selected="true">Setup</button>
+      <button class="tab" data-screen="runs" id="tab-runs" role="tab" aria-selected="false">Runs <em id="runcount" hidden></em></button>
+    </span>
+    <span data-hl-zoom></span>
+    <button class="pill theme" id="theme" type="button" title="Switch between light and dark">Dark</button>
+    <a class="pill docs" id="docsbtn" href="/docs/index.html" target="_blank" rel="noopener"
+       title="How this page works, step by step, and what each message means">Docs</a>
+  </span>
+</header>
+
+<!-- ============================== SETUP ==============================
+     The steps in order as cards in the main column; the rail holds the resources, where it goes
+     and Submit. Nothing is in both. -->
+<main id="screen-setup" class="screen">
+  <section class="stage" id="stage">
+    <ol class="steprail" id="steps" aria-label="Steps"></ol>
+
+    <!-- 1. The structure. One button opens the browser, which reaches this computer, the
+         cluster, the RCSB and the other tools' run folders. -->
+    <section class="box" id="step-system" data-key="system">
+      <h2><span>Structure</span>
+        <button class="q" type="button" data-help="system" aria-label="About this step">?</button>
+        <span class="cstate need" id="st-system">Needed</span></h2>
+
+      <div class="pickzone" id="pickzone">
+        <div class="pickbtns">
+          <button class="btn pri" id="choose" type="button">Choose a structure</button>
+          <button class="btn quiet" id="codebtn" type="button">PDB code</button>
+        </div>
+        <p class="hint">or drop a .pdb or .cif file here</p>
+      </div>
+
+      <div class="picked" id="picked" hidden>
+        <div class="picked-head">
+          <svg class="pic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>
+          <b id="pname"></b>
+          <span class="picked-from" id="ppath"></span>
+          <button class="btn sm quiet" id="changepick" type="button">Change</button>
+        </div>
+        <div class="pchains" id="pchains"></div>
+      </div>
+      <p class="errmsg" id="pickerr" hidden></p>
+
+      <div class="viewerbox" id="viewerbox">
+        <div class="vbar" id="vbar">
+          <span class="vgrp">
+            <span class="lb">Color</span>
+            <button class="pill on" type="button" data-col="chain">Chain</button>
+            <button class="pill" type="button" data-col="element">Element</button>
+            <button class="pill" type="button" data-col="plain">Plain</button>
+            <button class="pill" type="button" data-col="custom">Custom</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Draw</span>
+            <button class="pill on" type="button" data-draw="cartoon">Cartoon</button>
+            <button class="pill" type="button" data-draw="trace">Trace</button>
+            <button class="pill" type="button" data-draw="sticks">Sticks</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Show</span>
+            <button class="pill on" type="button" data-show="rec">Receptor</button>
+            <button class="pill on" type="button" data-show="lig">Ligand</button>
+            <button class="pill on" type="button" id="vtm" hidden title="The transmembrane segments UniProt annotates, or a hydrophobicity scan predicts, in sand">Membrane span</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <button class="pill" type="button" id="vreset">Reset</button>
+            <button class="pill" type="button" id="vspin">Spin</button>
+            <button class="pill" type="button" id="vshot" title="Save the view as a PNG">Save image</button>
+          </span>
+          <button class="pill" type="button" id="vmore" aria-expanded="false"
+                  title="Surfaces, chains, contacts, labels and the viewer engine">More</button>
+        </div>
+        <!-- The rest of the viewer's controls, out of the way until they are asked for. -->
+        <div class="vbar" id="vbar2" hidden>
+          <span class="vgrp">
+            <span class="lb">Colors</span>
+            <label class="cpick" title="Receptor color">Receptor <input type="color" id="ccol" value="#b9c9c9"></label>
+            <label class="cpick" title="Ligand or partner color">Ligand <input type="color" id="lcol" value="#c2603a"></label>
+            <label class="cpick" title="Everything outside a close-up">Ground <input type="color" id="bcol" value="#dfe3e6"></label>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Surface</span>
+            <button class="pill" type="button" data-surf="rec" title="A surface over the receptor: solid, see-through, mesh, off">Receptor off</button>
+            <button class="pill" type="button" data-surf="lig" title="A surface over the ligand or partner: solid, see-through, mesh, off">Ligand off</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp" id="chaingrp" hidden title="Draw one chain differently from the rest">
+            <span class="lb">Chains</span>
+            <span class="chainsel" id="chainsel"></span>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Contacts</span>
+            <button class="pill on" type="button" id="vcontact" title="The receptor residues within reach of the ligand or partner, colored by what the contact is">On</button>
+            <span class="lb">Distances</span>
+            <button class="pill on" type="button" id="vdist" title="The measured heavy-atom distance on every contact drawn, in angstrom">On</button>
+            <span class="lb">Figure</span>
+            <button class="pill" type="button" id="vpub" title="Active-site view for a paper: pale ribbon, contacting residues and the ligand as sticks">Off</button>
+            <select id="vlabels" class="vsel" title="How residue labels are drawn" aria-label="Residue labels">
+              <option value="auto">Labels: auto</option>
+              <option value="boxed">Labels: boxed</option>
+              <option value="plain">Labels: plain</option>
+              <option value="none">Labels: off</option>
+            </select>
+            <button class="pill" type="button" id="vdrag" title="Drag the residue labels out of the way; a line keeps each one joined to its atom">Move labels</button>
+            <button class="pill" type="button" id="vdragoff" title="Put every label back on its atom">Labels back</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Engine</span>
+            <select id="vengine" class="vsel" title="Which viewer draws the structure" aria-label="Viewer engine">
+              <option value="3dmol">3Dmol</option>
+              <option value="molstar">Mol*</option>
+            </select>
+          </span>
+        </div>
+        <div class="viewer" id="viewer">
+          <span class="vlabel" id="vlabel">Nothing loaded yet</span>
+          <span class="vnote" id="surfnote" hidden></span>
+          <span class="vhint" id="vhint">Click a residue to restrain it &middot; click again to release</span>
+        </div>
+        <div class="viewer" id="viewerM" hidden></div>
+      </div>
+
+      <!-- What was read off the structure, under a heading, as flat facts nobody can mistake
+           for buttons; what is wrong with it is not a fact and is written underneath. -->
+      <div class="grp" id="checkshead" hidden>What the file holds
+        <button class="q" type="button" data-help="checks" aria-label="About these findings">?</button></div>
+      <div class="checks" id="checks"></div>
+      <div id="checkwarn"></div>
+      <div class="ctcbox" id="contactbox" hidden></div>
+      <div class="diagwrap" id="diagwrap" hidden></div>
+
+      <div class="sfields" id="body-system"></div>
+      <details class="more" id="more-system" hidden>
+        <summary>More structure settings</summary>
+        <div class="sfields" id="xbody-system"></div>
+      </details>
+      <div id="warn-system"></div>
+      <p class="cardnote" id="note-system" hidden></p>
+    </section>
+
+    <!-- 2. Prepare: only for a source that is one file holding everything. -->
+    <section class="box" id="step-prep" data-key="prep" hidden>
+      <h2><span>Prepare</span>
+        <button class="q" type="button" data-help="prep" aria-label="About this step">?</button>
+        <span class="cstate need" id="st-prep">Needed</span></h2>
+      <div class="sfields" id="body-prep"></div>
+      <details class="more" id="more-prep" hidden>
+        <summary>More preparation settings</summary>
+        <div class="sfields" id="xbody-prep"></div>
+      </details>
+      <div id="warn-prep"></div>
+      <p class="cardnote" id="note-prep" hidden></p>
+    </section>
+
+    <!-- 3. The engine and its force fields. -->
+    <section class="box" id="step-forcefield" data-key="forcefield">
+      <h2><span>Engine and force field</span>
+        <button class="q" type="button" data-help="forcefield" aria-label="About this step">?</button>
+        <span class="cstate" id="st-forcefield">Ready</span></h2>
+      <div class="sfields" id="body-forcefield"></div>
+      <details class="more" id="more-forcefield" hidden>
+        <summary>More force-field settings</summary>
+        <div class="sfields" id="xbody-forcefield"></div>
+      </details>
+      <div id="warn-forcefield"></div>
+      <p class="cardnote" id="note-forcefield" hidden></p>
+    </section>
+
+    <!-- 4. The box, the water and the ions. -->
+    <section class="box" id="step-box" data-key="box">
+      <h2><span>Solvent and ions</span>
+        <button class="q" type="button" data-help="box" aria-label="About this step">?</button>
+        <span class="cstate" id="st-box">Ready</span></h2>
+      <div class="sfields" id="body-box"></div>
+      <details class="more" id="more-box" hidden>
+        <summary>More solvent settings</summary>
+        <div class="sfields" id="xbody-box"></div>
+      </details>
+      <div id="warn-box"></div>
+      <p class="cardnote" id="note-box" hidden></p>
+    </section>
+
+    <!-- 5. How long, how many, how warm. -->
+    <section class="box" id="step-protocol" data-key="protocol">
+      <h2><span>Protocol</span>
+        <button class="q" type="button" data-help="protocol" aria-label="About this step">?</button>
+        <span class="cstate" id="st-protocol">Ready</span></h2>
+      <div class="sfields" id="body-protocol"></div>
+      <details class="more" id="more-protocol" hidden>
+        <summary>More protocol settings</summary>
+        <div class="sfields" id="xbody-protocol"></div>
+      </details>
+      <div id="warn-protocol"></div>
+      <p class="cardnote" id="note-protocol" hidden></p>
+    </section>
+
+    <!-- 6. What is measured when it is over. -->
+    <section class="box" id="step-analysis" data-key="analysis">
+      <h2><span>Analysis</span>
+        <button class="q" type="button" data-help="analysis" aria-label="About this step">?</button>
+        <span class="cstate" id="st-analysis">Ready</span></h2>
+      <div class="sfields" id="body-analysis"></div>
+      <details class="more" id="more-analysis" hidden>
+        <summary>More analysis settings</summary>
+        <div class="sfields" id="xbody-analysis"></div>
+      </details>
+      <div id="warn-analysis"></div>
+      <p class="cardnote" id="note-analysis" hidden></p>
+    </section>
+  </section>
+
+  <!-- ------------------------------- the rail -------------------------------
+       Where the run goes, what it runs on, and what will happen: one column, one scrollbar.
+       Submit stands under it and never scrolls away. Nothing here is on the form as well.
+
+       Where it goes comes first because it is what the rail is for: the box this run is named
+       in, and the folder that name makes, whole. -->
+  <aside class="rail" id="rail">
+    <div class="railscroll" id="railscroll">
+      <div class="grp">Where it goes</div>
+      <div class="sfields" id="body-where"></div>
+      <p class="runfolder" id="planfolder"></p>
+
+      <div class="grp">Resources
+        <button class="q" type="button" data-help="compute" aria-label="About the resources">?</button></div>
+      <div class="sfields" id="body-compute"></div>
+      <details class="more" id="more-compute" hidden>
+        <summary>Queue and node</summary>
+        <div class="sfields" id="xbody-compute"></div>
+      </details>
+      <div id="warn-compute"></div>
+
+      <!-- What will happen, where, and roughly how long, in plain numbered steps. It appears
+           once there is something to run. It is as long as it is: it scrolls with the rest of
+           the rail rather than in a window of its own. -->
+      <div class="runplan" id="plan" hidden>
+        <div class="runplan-head">Run plan
+          <button class="q" type="button" data-help="plan" aria-label="How the plan is worked out">?</button></div>
+        <ol class="runplan-steps" id="phases"></ol>
+        <p class="runplan-where" id="planwhere"></p>
+        <p class="runplan-where" id="plandisk"></p>
+        <p class="runplan-where" id="planquota" hidden></p>
+        <button class="linkbtn" id="showjob" type="button">Show the job</button>
+      </div>
+    </div>
+
+    <!-- The foot: the one button that commits, and the one line that says what it will do. -->
+    <section class="submitbox" id="step-submit">
+      <div class="gobar">
+        <div class="btns">
+          <button class="btn pri" id="submit" type="button" disabled>Submit</button>
+        </div>
+        <p class="gowhy" id="subnote">Choose a structure first.</p>
+        <pre id="subout" class="log" hidden></pre>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<!-- ============================== RUNS =============================== -->
+<main id="screen-runs" class="rscreen" hidden>
+  <aside class="rrail">
+    <div class="row">
+      <button class="btn sm" id="rescan" type="button">Rescan</button>
+      <button class="btn sm" id="runsbrowse" type="button"
+              title="Open another runs folder for this session: your own scratch, or one somebody shared">Another folder</button>
+    </div>
+    <p class="why" id="runsroot2"></p>
+    <div class="legend">
+      <span><span class="dot run"></span>Running</span><span><span class="dot fin"></span>Done</span>
+      <span><span class="dot q"></span>Pending</span><span><span class="dot stop"></span>Failed</span>
+    </div>
+    <div id="runlist"></div>
+    <div class="grp">Progress</div>
+    <div id="progress" class="why">Pick a run</div>
+  </aside>
+  <section class="rmain">
+    <div class="runhead"><strong id="runname">&mdash;</strong><span class="why" id="rundesc"></span></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="poserow">
+      <div class="posebox">
+        <div class="vbar" id="vbarR">
+          <span class="vgrp">
+            <span class="lb">Color</span>
+            <button class="pill on" type="button" data-rcol="chain">Chain</button>
+            <button class="pill" type="button" data-rcol="element">Element</button>
+            <button class="pill" type="button" data-rcol="plain">Plain</button>
+            <button class="pill" type="button" data-rcol="custom">Custom</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Draw</span>
+            <button class="pill on" type="button" data-rdraw="cartoon">Cartoon</button>
+            <button class="pill" type="button" data-rdraw="trace">Trace</button>
+            <button class="pill" type="button" data-rdraw="sticks">Sticks</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Show</span>
+            <button class="pill on" type="button" data-rshow="rec">Receptor</button>
+            <button class="pill on" type="button" data-rshow="lig">Ligand</button>
+            <!-- Water: the waters at a metal site the view keeps, or those nearest the partner; what
+                 they are said in a tip on hover and on focus, not a title that waits a second and a half. -->
+            <span class="tipwrap">
+              <button class="pill" type="button" id="vwaterR" aria-describedby="vwatertip">Water</button>
+              <span class="tipbox" id="vwatertip" role="tooltip">The 30 waters nearest the partner in
+                each frame, not the whole box. They are picked again every frame, so no one water is
+                followed through time.</span>
+            </span>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <button class="pill" type="button" id="vresetR">Reset</button>
+            <button class="pill" type="button" id="vspinR">Spin</button>
+            <button class="pill" type="button" id="vshotR" title="Save the frame shown as a PNG">Save image</button>
+            <button class="pill" type="button" id="vaddR" title="Put the frame shown into this run's report">Add to report</button>
+          </span>
+          <button class="pill" type="button" id="vmoreR" aria-expanded="false"
+                  title="Surfaces, chains and the custom colors">More</button>
+        </div>
+        <div class="vbar" id="vbarR2" hidden>
+          <span class="vgrp">
+            <span class="lb">Colors</span>
+            <label class="cpick" title="Receptor color">Receptor <input type="color" id="ccolR" value="#b9c9c9"></label>
+            <label class="cpick" title="Ligand or partner color">Ligand <input type="color" id="lcolR" value="#c2603a"></label>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp">
+            <span class="lb">Surface</span>
+            <button class="pill" type="button" data-rsurf="rec" title="A surface over the receptor, computed on the frame shown">Receptor off</button>
+            <button class="pill" type="button" data-rsurf="lig" title="A surface over the ligand or partner, computed on the frame shown">Ligand off</button>
+          </span>
+          <span class="vsplit"></span>
+          <span class="vgrp" id="chaingrpR" hidden title="Draw one chain differently from the rest">
+            <span class="lb">Chains</span>
+            <span class="chainsel" id="chainselR"></span>
+          </span>
+        </div>
+        <div id="viewerR" class="viewerR">
+          <span class="vlabel" id="vlabelR">The trajectory appears after the analysis job</span>
+          <span class="vnote" id="surfnoteR" hidden></span>
+        </div>
+        <div class="scrub">
+          <button class="pl" id="play" type="button" title="Play or pause" aria-label="Play or pause">&#9654;</button>
+          <input type="range" id="frame" min="0" max="0" value="0" aria-label="Frame">
+          <span id="frameinfo" class="fi">&mdash;</span>
+          <select id="reppick" aria-label="Replicate"></select>
+          <select id="viewpick" aria-label="Which view of the trajectory"
+                  title="The strided view of the whole run, or a dense window cut around a moment"></select>
+          <button class="pill" type="button" id="dense"
+                  title="Cut a dense window around the frame shown: a cpptraj job of a few seconds">Dense window</button>
+        </div>
+      </div>
+      <div class="tblbox">
+        <div class="tk">MM&#8209;GBSA over frames</div>
+        <table class="t" id="mmgbsa"><thead><tr><th>Replicate</th><th>Frames</th><th>&Delta;G kcal/mol</th><th>&plusmn; SEM</th></tr></thead><tbody></tbody></table>
+        <p class="why" id="mmgbsanote"></p>
+        <div class="tk" style="margin-top:var(--sp-4)">Jobs</div>
+        <table class="t" id="jobs"><thead><tr><th>Stage</th><th>Job</th><th>State</th><th>Node</th><th>Device</th><th>Steps</th><th>Wall</th><th>ns/day</th></tr></thead><tbody></tbody></table>
+        <p class="why" id="timingnote"></p>
+        <!-- What can be done with this run, in named groups. One wrapped row of ten buttons
+             with a list in the middle of it that had no label was three controls for one
+             idea and no way to read it from left to right. -->
+        <div id="mmgbsaform" class="mmform" hidden>
+          <span class="why">Frames from</span><input id="mmfrom" class="inp" type="number" step="1" min="0" aria-label="From, in nanoseconds">
+          <span class="why">ns to</span><input id="mmto" class="inp" type="number" step="1" min="0" aria-label="To, in nanoseconds" title="0 = the end of the run">
+          <span class="why">ns, one every</span><input id="mmevery" class="inp" type="number" step="10" min="1" aria-label="One frame every, in picoseconds">
+          <span class="why">ps</span><span class="why" id="mmcount"></span>
+          <button class="btn sm pri" id="mmgo" type="button">Run MM-GBSA</button>
+        </div>
+        <div class="row" style="margin-top:var(--sp-3)">
+          <div class="actgrp">
+            <span class="gl">Look at it</span>
+            <button class="btn sm" id="showlog" type="button">Log tail</button>
+            <select id="logpick" class="vsel" aria-label="Which log"
+                    title="The log the tail shows: the newest, or any job's"></select>
+            <button class="btn sm" id="report" type="button"
+                    title="This run's report: the summary, the system, the protocol, whether it held, the interface, MM-GBSA, what it cost, and a methods paragraph">Report (PDF)</button>
+            <button class="btn sm" id="video" type="button"
+                    title="Render the replicate shown as two videos on a CPU node: the solute alone, and the solute in its water and ions">Video</button>
+          </div>
+          <div class="actgrp">
+            <span class="gl">Work on it</span>
+            <button class="btn sm" id="mmgbsabtn" type="button"
+                    title="MM-GBSA binding energy on frames of the finished production: pick the window and the stride, one CPU job per replicate">MM-GBSA&hellip;</button>
+            <button class="btn sm" id="tidy" type="button"
+                    title="Pack the small files this finished run no longer needs into one archive. Trajectories, restarts, analysis and the report stay.">Tidy</button>
+          </div>
+          <div class="actgrp">
+            <span class="gl">Run it again</span>
+            <label class="gl" for="refrom">from</label>
+            <select id="refrom" class="vsel" aria-label="Stage to start again from"
+                    title="The stage to submit again, with everything after it"></select>
+            <button class="btn sm" id="resubmit" type="button"
+                    title="Submit that stage again, and every stage after it, into this same run folder">Start again</button>
+            <button class="btn sm" id="runagain" type="button"
+                    title="Copy this run's settings onto the Setup form, to change them and run a new one">Copy to Setup</button>
+          </div>
+          <button class="btn sm" id="cancel" type="button" style="color:var(--rust);border-color:var(--rust)">Cancel jobs</button>
+        </div>
+        <pre id="logtail" class="log" hidden></pre>
+        <div class="why" id="videobox" hidden></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- The bar along the bottom: the version, the commit and one line of copyright. Whose tools
+     did the work is five sentences, which cannot be read out of a line cut at the window's
+     edge: it is behind Credits, with how to cite. -->
+<footer class="creditbar" id="creditbar" role="contentinfo"><span class="credittext" id="credittext"></span><span class="creditlinks">&middot; <a href="/docs/index.html" target="_blank" rel="noopener" id="docslink">Docs</a> &middot; <a href="#" id="citelink">Credits</a></span></footer>
+
+<!-- The reason behind a ?, in the words the card already uses. Nothing is dropped: the sentences
+     that used to sit in gray boxes on the form open here. -->
+<dialog id="helpdlg" class="hlmodal" aria-labelledby="helptitle">
+  <div class="mhead"><h2 id="helptitle"></h2>
+    <button class="mx" id="helpx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody" id="helpbody"></div>
+  <div class="mfoot">
+    <a id="helpdocs" href="/docs/index.html" target="_blank" rel="noopener">More in the docs</a>
+    <button class="btn sm" id="helpclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- The job, for the curious: the queue, the stages and the command behind Submit. Opened from
+     Show the job under the run plan, never a panel on the form. -->
+<dialog id="jobdlg" class="hlmodal" aria-labelledby="jobtitle">
+  <div class="mhead"><h2 id="jobtitle">The job</h2>
+    <button class="mx" id="jobx" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody"><pre class="told" id="jobtext"></pre></div>
+  <div class="mfoot">
+    <span class="why" id="jobnote"></span>
+    <button class="btn sm" id="jobclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<dialog id="citebox" class="hlmodal" aria-labelledby="citetitle">
+  <div class="mhead"><h2 id="citetitle">Credits and how to cite</h2>
+    <button class="mx" id="citex" type="button" aria-label="Close">&times;</button></div>
+  <div class="mbody">
+    <p class="why" id="citebuild"></p>
+    <h3 class="chead">What does the work</h3>
+    <ul class="citelist" id="citecredits"></ul>
+    <h3 class="chead">How to cite</h3>
+    <p id="citetext"></p>
+    <ul class="citelist" id="citeviewer"></ul>
+    <p id="citeack"></p>
+    <p class="why" id="citecopy"></p>
+  </div>
+  <div class="mfoot"><span></span><button class="btn sm" id="citeclose" type="button">Close</button></div>
+</dialog>
+
+<script src="/static/vendor/3Dmol-min.js"></script>  <!-- 3Dmol.js 2.5.5, BSD-3, vendored so the page works with no CDN -->
+<script src="/static/vendor/drag.js"></script>  <!-- label dragging, vendored whole -->
+<script src="/static/picker.js"></script>  <!-- the structure browser, the file the HOPE Labs pages carry, byte for byte -->
+<script src="/static/msms.js"></script>  <!-- the page's half of hopemd/surface.py (its VIEWER_JS): drawing the MSMS surfaces /api/surface computes -->
+<script src="/static/app.js"></script>
+</body>
+</html>

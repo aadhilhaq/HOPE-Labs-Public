@@ -1,0 +1,299 @@
+<h1>Prepare</h1>
+<p class="lead">A short CPU job that takes an RCSB entry, a complex file or an AlphaFold model from
+the file as it came to a structure an engine can build on: cleaned, modeled, protonated, minimized
+and split into receptor and partner. Every step says what it did.</p>
+
+<h2 id="when-it-runs">When it runs</h2>
+<p>The Prepare step appears for the three sources that arrive whole. You need not press anything:
+Submit queues Prepare as the first job of the run's graph whenever the structure has not been
+prepared, the build waits for it, and the job writes the run's files again from the prepared
+structure before the build starts.</p>
+<p>Press <b>Prepare</b> to run it on its own first and look at the result. The job goes to the
+<code>short</code> partition (8 CPUs, 16 GB, an hour at most) and usually takes 20 to 75 seconds
+once it starts, or a few minutes when it builds loops (7A3R's five took five); the note under the button follows it from queued to running to done. The viewer then
+shows the prepared receptor and partner, and the checks list each step Prepare logged, a &#9650;
+beside any that was not done, failed or was skipped. A step whose program is missing is skipped and
+says so.</p>
+<p>The other sources do not go through Prepare: the import does what it needs (see
+<a href="sources.html#files">Receptor and ligand files</a>), and on the Amber-topology engines the
+build job assigns the receptor's protonation states with PROPKA at the run's pH.</p>
+
+<h2 id="clean">Clean: what is kept</h2>
+<p>Clean is the first step, and the fields of the Prepare step are mostly its choices. Each is named
+as the Prepare card names it; those marked <i>More</i> are under the card's <b>More</b> line.</p>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>Drop additives</b> <i>More</i></td><td>on</td><td>Removes what came with the crystal:
+glycerol, sulfate, PEG, ethylene glycol, buffers, detergents and the like. The monovalent ions go
+with them (Na<sup>+</sup>, K<sup>+</sup>, Cl<sup>&minus;</sup> and others), except the cations a
+DNA or RNA binds.</td></tr>
+<tr><td><b>Keep cofactors</b> <i>More</i></td><td>on</td><td>Keeps metal ions and cofactors (heme,
+NAD, FAD, ATP and the like). A metal the builds have parameters for goes into the build as a free
+ion; a cofactor no force field here covers stops Submit, by name, until it is dropped or run as the
+partner.</td></tr>
+<tr><td><b>Keep other ligands</b> <i>More</i></td><td>off</td><td>Keeps other bound ligands and
+glycans instead of removing them; like a cofactor, one no force field covers stops
+Submit.</td></tr>
+<tr><td><b>Also drop</b> <i>More</i></td><td>none</td><td>Removes these residue names whatever
+their class, such as <code>NAD</code> or <code>HEM</code>: a cofactor can go while the metals
+stay.</td></tr>
+<tr><td><b>Waters</b></td><td>drop all</td><td>Drop all crystal waters, keep those within 5 &Aring;
+of the partner or ligand, or keep all: see <a href="#crystal-waters">Crystal waters</a>.</td></tr>
+<tr><td><b>Alternate location</b> <i>More</i></td><td>A</td><td>The conformation kept where the file has two or
+more.</td></tr>
+<tr><td><b>Model loops up to</b></td><td>12</td><td>A gap inside a chain up to this
+length is built: see <a href="#loops">Missing residues</a>. A longer gap is left open, its two ends
+capped. 12 at most, and 0 builds none. A chain's missing ends are never built.</td></tr>
+<tr><td><b>Cap open gaps</b> <i>More</i></td><td>on</td><td>Caps the two ends of every protein gap
+left open, so the protein carries no charged termini at a gap: see
+<a href="#chain-breaks">Chain breaks</a>.</td></tr>
+<tr><td><b>Trim below pLDDT</b> <i>More</i></td><td>50</td><td>Shown only when the B-factors are
+pLDDT: see <a href="#plddt">B-factors and pLDDT</a>.</td></tr>
+<tr><td><b>Protonation</b></td><td>PROPKA</td><td>PROPKA at the pH, PDBFixer's rules, or none: see
+<a href="#protonation">Protonation</a>.</td></tr>
+<tr><td><b>Minimize afterwards</b>, <b>Minimization steps</b> <i>More</i></td><td>on, 500</td><td>A restrained
+minimization: see <a href="#minimisation">Minimization</a>.</td></tr>
+</table>
+<p>Clean also keeps only the receptor and partner chains, every chain when none is named. A hetero
+group Clean keeps goes into the build only as an ion the build has parameters for. Anything else it
+keeps is refused at Submit by name rather than dropped on the way without a word: drop it under
+<b>Also drop</b>, or run it as the partner.</p>
+
+<h2 id="the-steps">What Prepare does, in order</h2>
+<ol>
+<li><b>Clean</b>, as above. The crystal waters kept leave the structure until the split, modified
+amino acids become their parent, and the stage stops on a modified residue whose charge is not its
+parent's, or when no protein or nucleic-acid chain is left.</li>
+<li><b>Trim</b>, for a predicted model only: the terminal residues under the pLDDT threshold. This
+comes before modeling, so a trimmed tail is never rebuilt.</li>
+<li><b>Model</b> with PDBFixer: non-standard residues replaced by standard ones, missing heavy atoms
+added, and the gaps inside a chain up to the limit built, then relaxed: see
+<a href="#loops">Missing residues</a>. A gap in the numbering whose flanking residues are already
+bonded is a skipped number, not a hole, and nothing is built there.</li>
+<li><b>Protonate</b> at the pH. Clean's hetero groups then leave the structure, and the ions the
+builds have parameters for are carried on at their own coordinates. Each protein gap left open is
+capped, an NME on the residue before it and an ACE on the residue after it; a nucleic-acid break
+is ended so that both pieces have their own termini.</li>
+<li><b>Minimize</b>, with the atoms that were in the file held near where they were.</li>
+<li><b>Split</b> the structure into the receptor and the partner, with the carried ions and the kept
+waters in files of their own, and check where the partner sits against the prepared receptor.</li>
+</ol>
+
+<h2 id="loops">Missing residues</h2>
+<p>Prepare finds missing residues from the sequence the file records (its <code>SEQRES</code>), and
+builds them as below.</p>
+<ul>
+<li>Only a gap inside a chain is built, and only up to <b>Model loops up to</b> residues, 12 at
+most. A chain's missing ends are never built: a tail is held at one end only, and built it lies
+across the solvent as a straight strand (7A3R's 38-residue tail spanned 177&nbsp;&Aring;).</li>
+<li>PDBFixer builds the loop from a fixed seed, and the relaxation below is seeded and run on one
+thread per attempt, so the same structure gives the same loop every time.</li>
+<li>The loop is then relaxed before protonation. The built residues move freely. The two measured
+residues either side, its stems, may give a little on a spring. Every other measured atom is held
+where it was measured. While it relaxes, every peptide bond in and beside the loop is held trans,
+and every built residue and stem of the L hand; a built residue PDBFixer left of the D hand is set
+right first.</li>
+<li>Every peptide bond in and beside the loop is then checked: the C-N bond between 1.30 and
+1.37&nbsp;&Aring;, the CA-C-N angle between 105 and 130&deg;, the C-N-CA angle between 110 and
+135&deg;, CA to CA between 3.70 and 3.95&nbsp;&Aring;, and the twist within 30&deg; of trans (a
+cis bond passes only before a proline). Every built residue must be of the L hand, and no heavy
+atom of one may come within 2.5&nbsp;&Aring; of another more than three bonds away. Up to five
+relaxations are tried, each with looser stems than the one before.</li>
+<li>If no relaxation makes the loops fit, they are built again from the next of three seeds. If
+none fits, Prepare stops and says so: lower <b>Model loops up to</b>, or set it to 0, to prepare the
+structure as measured, its gaps capped.</li>
+<li>In the minimization at the end, the built residues are free and the measured ones are held;
+the built loops keep their bonds trans and their residues L, and are checked once more as they
+are written.</li>
+</ul>
+<p>A built residue takes the number PDBFixer gives it, which is that of the missing residue
+(<code>A:191</code> to <code>A:194</code> on 7A3R). Where that number belongs to a residue already
+there, as inside a run of insertion codes, the built residue takes the next free insertion code
+instead, so no built residue takes the id of a measured one. The report lists what was built, from
+which seed, how far the stems moved, and every gap left open with the reason.</p>
+
+<h2 id="crystal-waters">Crystal waters</h2>
+<p>By default every crystal water goes. <b>keep near the partner</b> keeps those whose oxygen is
+within 5 &Aring; of a heavy atom of the partner or ligand: the first shell, and the waters bridging
+it to the receptor. With no partner, none is near one and none is kept. <b>keep all</b> keeps every
+one.</p>
+<p>The waters kept go into the build after the solute and its ions, as the run's own water model
+(OPC waters in an OPC run, for instance), on every engine. The solvation places no water over them,
+and the analysis and MM-GBSA take them as solvent. A kept water that an atom Prepare modeled or
+moved now overlaps, within 2.2 &Aring; of its oxygen, is left out, and the report names it. A
+bilayer is built without crystal waters: see <a href="membranes.html">Membranes</a>.</p>
+
+<h2 id="ions">Metal and other ions</h2>
+<p>The ions Clean keeps (the metals, the cations a nucleic acid binds, and the monovalent ions when
+the additives are kept) go into the build as free ions where the structure has them. These are the
+ones the builds have parameters for:</p>
+<table>
+<tr><th>Charge</th><th>Ions</th></tr>
+<tr><td>+1</td><td>Li<sup>+</sup>, Na<sup>+</sup>, K<sup>+</sup>, Rb<sup>+</sup>,
+Cs<sup>+</sup></td></tr>
+<tr><td>&minus;1</td><td>F<sup>&minus;</sup>, Cl<sup>&minus;</sup>, Br<sup>&minus;</sup>,
+I<sup>&minus;</sup></td></tr>
+<tr><td>+2</td><td>Mg<sup>2+</sup>, Ca<sup>2+</sup>, Sr<sup>2+</sup>, Ba<sup>2+</sup>,
+Zn<sup>2+</sup>, Mn<sup>2+</sup>, Fe<sup>2+</sup>, Co<sup>2+</sup>, Ni<sup>2+</sup>,
+Cu<sup>2+</sup>, Cd<sup>2+</sup>, Hg<sup>2+</sup></td></tr>
+<tr><td>+3</td><td>Fe<sup>3+</sup></td></tr>
+</table>
+<p>Each carries the 12-6 parameters of the ion set that goes with the run's water model; on Desmond,
+OPLS's. The ions a DNA or RNA binds, within 3.5 &Aring; of it, such as the K<sup>+</sup> of a
+G-quadruplex, stay when the additives and their ions are dropped. They go with the metals when
+<b>Keep cofactors</b> is off, and a name under <b>Also drop</b> goes whatever binds
+it.</p>
+<p>MM-GBSA counts each ion with the side whose residues bind it: the ions that bind the partner are
+counted with the partner, the rest with the receptor. Beside a small molecule they are all counted
+with the receptor. The analysis keeps every carried ion with the solute; the box's own salt is
+stripped with the water.</p>
+<div class="note"><b>A metal site is not held by a free ion.</b> A zinc, iron, copper, cobalt,
+nickel, manganese, cadmium or mercury ion in its site goes in as a charge and a sphere with no bond
+to the residues around it, and a cysteine that binds it is neutral, not a thiolate. Nothing holds
+it in place, and it can leave its site during the equilibration. A bonded model of the site (ZAFF,
+MCPB.py) is not built here: the report names the residues around each one, so check the site in the
+trajectory.</div>
+
+<h2 id="modified-residues">Modified residues</h2>
+<p>A modified amino acid whose charge is its parent's becomes the parent: the parent's atoms are
+kept where they were, the rest dropped, and the report names each one. The force fields here have
+templates for the parents only.</p>
+<table>
+<tr><th>In the file</th><th>Becomes</th></tr>
+<tr><td><code>MSE</code>, selenomethionine</td><td>methionine, its selenium in the sulfur's
+place</td></tr>
+<tr><td><code>CAS</code>, <code>CME</code>, <code>CSO</code>, <code>CSD</code>, <code>CSX</code>,
+<code>CSS</code>, <code>OCS</code>, <code>SMC</code>: the cacodylate and mercaptoethanol adducts
+and the oxidized and methylated forms of cysteine</td><td>cysteine</td></tr>
+<tr><td><code>HYP</code>, hydroxyproline</td><td>proline</td></tr>
+<tr><td><code>MLY</code>, <code>MLZ</code>, <code>M3L</code>, methylated lysines</td><td>lysine</td></tr>
+<tr><td><code>HIC</code>, methylhistidine</td><td>histidine</td></tr>
+<tr><td><code>PCA</code>, pyroglutamate</td><td>glutamate, the atom that closes its ring modeled
+again</td></tr>
+</table>
+<p>A modified amino acid whose charge is not its parent's is never mapped: a phosphate on a serine,
+threonine, tyrosine or histidine (<code>SEP</code>, <code>TPO</code>, <code>PTR</code>,
+<code>NEP</code>), a sulfate on a tyrosine (<code>TYS</code>), a carboxylate on a lysine or a
+glutamate (<code>KCX</code>, <code>CGU</code>), or the acetyl that takes a lysine's charge
+(<code>ALY</code>). As the parent the run would be another molecule with another charge, and no
+force field here has parameters for the residue itself, so HOPE-MD does not simulate its chain. The
+import names it, the chain's field turns red, and Prepare stops if it reaches one. A modified
+nucleotide is refused the same way. Leave the chain out of the receptor and partner chains, or
+start from a structure without the modification.</p>
+
+<h2 id="chain-breaks">Chain breaks and stretched bonds</h2>
+<p>On every route, a chain is ended where residues are missing, so the build makes no bond across
+the gap. Two consecutive residues are a break when the link between them (a protein's C to N, a
+nucleic acid's O3&prime; to P) is longer than a bond and either a residue is missing between them
+(a number, or an insertion code of the same number: <code>60A</code> to <code>60C</code>) or they
+are more than 4 &Aring; apart. The checks and the report list the breaks, such as
+<code>A:228-235</code>. A loop Prepare models is not a break, and nor is a skipped number or an
+insertion code between two residues that are bonded.</p>
+<p>Prepare caps the two ends of a protein gap. The residue before the gap gets an N-methylamide
+(NME) and the residue after it an acetyl (ACE), so each end is a neutral amide, as it is in the
+intact protein. Left as termini, the ends of an open gap would be an NH<sub>3</sub><sup>+</sup> and a
+COO<sup>&minus;</sup> the protein does not have, possibly beside the binding site. The chain's own
+termini stay charged. Each cap is built on the backbone of its residue, with standard bond lengths
+and a trans peptide bond, and the minimization leaves it free to settle. The prepared file writes
+the caps as ATOM records under the names the Amber force fields and OpenMM use: C, O, CH3 and H1 to
+H3 for an ACE; N, H, C and H1 to H3 for an NME, whose methyl carbon is called C. With
+<b>Cap open gaps</b> off, and at a nucleic-acid break, each piece ends in charged termini: an OXT
+on the piece before the gap and an NH<sub>3</sub><sup>+</sup> on the piece after it.</p>
+<p>The NME takes the number one past the residue before the gap, and the ACE the number one short
+of the residue after it, so <code>A:228-235</code> is capped by NME <code>A:229</code> and ACE
+<code>A:234</code>. These are the numbers of the missing residues whose backbone atoms the caps
+stand in for. No residue of the structure is renumbered and no cap takes a number a residue
+already has, so a hotspot list still names the residues it named before. Where a single residue is missing, the ACE shares the NME's number
+with an insertion code (<code>A:229A</code>). A gap with no number free beside it takes insertion
+codes of the number before it. Inside a run of insertion codes these are the ids of the missing
+residues: thrombin's <code>H:149A-149E</code> is capped by NME <code>H:149B</code> and ACE
+<code>H:149D</code>. Between two residues numbered in sequence they are the first free ones:
+<code>A:3-4</code> is capped by NME <code>A:3A</code> and ACE <code>A:3B</code>. The build numbers
+every residue in file order, so an insertion code is as good as a number there. The ACE is placed
+clear of its neighbors: it is turned about its residue's N-CA bond until each of its heavy
+atoms is 2.8&nbsp;&Aring; or more from every heavy atom but that residue's N and CA.</p>
+<p>A structure that arrives capped, from an earlier preparation, keeps its caps where they are.
+pdb2pqr has no definition for ACE or NME, so the structure is protonated without them and they go
+back on afterwards; no gap is capped twice.</p>
+<p>A link longer than a bond with no residue missing is a bond the deposited model stretched. It
+stays a bond, the minimization closes it, and the report names it with its length, such as
+<code>A:64-65 (C&ndash;N 3.14 &Aring;)</code>. Look at these in the viewer: a residue lost from a
+renumbered file can leave its neighbors about this far apart. Desmond builds bonds by geometry, so
+from an import of files, which Prepare does not touch, it leaves a stretched link open where the
+Amber-topology engines build it as a bond.</p>
+<p id="numbering">Insertion codes and skipped numbers do not break a chain in the build.
+pdb4amber, which the Amber, OpenMM, GROMACS and NAMD builds read the structure with, joins a residue
+to the next only when their numbers follow each other. A chain numbered with insertion codes
+(thrombin's <code>H:60A</code> to <code>H:60I</code>, an antibody's <code>H:82A</code>) or with
+numbers its scheme skips would come apart at each one, with charged termini on both sides. The
+build therefore ends the real breaks with TER first, on the structure's own numbers, and then gives
+pdb4amber each file with its residues numbered 1, 2, 3 &hellip; in file order, which is how tleap
+numbers the topology anyway. Each residue's own chain, number and insertion code are kept in
+<code>build/receptor_numbering.json</code>, and in <code>build/ligand_numbering.json</code> for a
+partner made of chains. The report and the Runs screen name a residue of the topology by them: a
+contact lost on thrombin reads <code>L:14C@OE2 &ndash; H:202@NZ</code> rather than <code>:284@OE2_:212@NZ</code>,
+and the RMSF tile names the residue that moves most.</p>
+
+<h2 id="plddt">B-factors and pLDDT</h2>
+<p>A predicted model writes its confidence, pLDDT, where an experiment writes B-factors. They are
+read as pLDDT only for a predicted model:</p>
+<ul>
+<li>an AlphaFold result, always;</li>
+<li>a file that says it is a model: ModelCIF declaring a local pLDDT metric, an AlphaFold DB title,
+or a file named as AlphaFold and ColabFold name theirs;</li>
+<li>a file that names no source, when every residue carries one value on all its atoms, as AlphaFold
+writes pLDDT, where refined B-factors differ from atom to atom.</li>
+</ul>
+<p>An RCSB entry is never read so, nor is a file that declares an experimental method, and the
+column has to look like pLDDT in the first place (no C&alpha; above 100, a mean above 30, some
+above 90). Only then are the termini trimmed: from each end of each chain, the residues under the
+threshold, stopping at the first that passes. Low-confidence stretches inside a chain are kept. The
+report says how the B-factors were read, and why.</p>
+
+<h2 id="protonation">Protonation</h2>
+<p>The pH is on the Structure card: 7.4 by default, anything from 0 to 14. Prepare assigns the
+protonation states for it in one of three ways:</p>
+<table>
+<tr><th>Choice</th><th>What it does</th></tr>
+<tr><td><b>propka at the pH (pdb2pqr)</b></td><td>The default. PROPKA decides each titratable
+residue's state at the pH, and the residues are named as the Amber force fields name them (HID, HIE,
+HIP, ASH, GLH, LYN, CYX). The checks list how many of each. A cysteine PROPKA makes a thiolate is
+set back to a neutral cysteine.</td></tr>
+<tr><td><b>PDBFixer rules</b></td><td>PDBFixer's own rules at the pH.</td></tr>
+<tr><td><b>none</b></td><td>Nothing is assigned here, and the build's defaults apply.</td></tr>
+</table>
+<p>Should pdb2pqr fail, the report says so and the defaults apply. A ligand bound in the structure is
+set for pH 7.4 at import, whatever this pH is: see
+<a href="sources.html#bound-ligand">A ligand bound in the structure</a>.</p>
+
+<h2 id="minimisation">Minimization</h2>
+<p>A short minimization with OpenMM, in vacuum, to relieve the clashes the modeling made. The heavy
+atoms of every residue that was in the file are held near their place at 50 kcal/mol/&Aring;&sup2;;
+the residues Prepare modeled are free to find theirs. The report gives how far the held atoms moved
+(their RMSD) and how far the modeled ones went.</p>
+<p>Clashes are counted before the modeling and after the minimization: pairs of heavy atoms closer
+than 2.2 &Aring; that are not in the same or neighboring residues, disulfides and metal sites
+aside. The checks show the two counts, before and after.</p>
+
+<h2 id="the-split">The split</h2>
+<p>The receptor chains and the partner chains are written apart, the ions that bind the partner
+first among the carried ions so the partner's residue range takes them, and the kept waters last.
+Then the placement check of <a href="sources.html#placement">Sources</a> is made on the prepared
+structure. A ligand bound in the structure and run as the partner sat out the minimization, so
+atoms Prepare modeled or moved can overlap it: the check says so in those words, and you should
+look at the pocket before you submit.</p>
+<h3 id="split-disulfides">A disulfide across the split</h3>
+<p>A disulfide can join a receptor chain to a partner chain: thrombin's light chain to its heavy
+chain, insulin's A chain to its B chain, an antibody's light chain to its heavy chain. The split
+finds each one, and the checks strip says <b>covalently linked</b> and names the pair. The build
+bonds it, so the run is one molecule, as the protein is:</p>
+<ul>
+<li>On Amber, OpenMM, GROMACS and NAMD, both cysteines are named CYX and tleap bonds them by their
+places in the topology; in a bilayer, OpenMM's Modeller bonds them. The build checks that the bond
+it makes is the pair the structure has, and stops with the reason if not.</li>
+<li>On Desmond, every disulfide goes to Maestro as an SSBOND record, which is how its reader learns
+of a bond between two sulfurs.</li>
+</ul>
+<p>MM-GBSA is not run on such a run: see
+<a href="analysis.html#covalently-linked">When the two sides are bonded</a>. To score an interface,
+split the complex where no bond crosses.</p>

@@ -24,7 +24,8 @@ installed on your computer.
 
 The first time you sign in to a cluster, HOPE Labs offers to set itself up there, in one folder you
 choose, and to install the tools you tick: the built-in documentation's *Setting up on a cluster*
-says how, and *Installing by hand* covers the tools Set up does not install yet.
+says how, and *Installing by hand* covers the tools Set up does not install yet. HOPE-MD comes in
+this repository, in its `HOPE-MD` folder, and Set up installs it from there on Grace and ACES.
 
 ## Using it
 

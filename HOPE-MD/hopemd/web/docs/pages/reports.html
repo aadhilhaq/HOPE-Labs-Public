@@ -1,0 +1,99 @@
+<h1>Reports and media</h1>
+<p class="lead">A finished run reads back as a report with its methods and references, two videos,
+still images of its first and last frames, and, across many runs, one PDF. Every word and number in
+them comes from the run folder; nothing is typed.</p>
+
+<h2 id="report">The report</h2>
+<p><b>Report (PDF)</b> on the Runs screen opens the run's report in a new tab, laid out by the
+module every lab tool shares, with its own bar: which sections to include, how many rows the
+contact and hydrogen-bond tables carry, which replicates to show, a zoom for reading, <b>Copy the
+methods and references</b>, and <b>Save as PDF</b>. Nothing in it is typed: every number is one the
+run wrote, and every caption is a sentence written from those numbers when the page is opened.</p>
+<table>
+<tr><th>Section</th><th>What it holds</th></tr>
+<tr><td>Summary</td><td>What was simulated and for how long, a verdict for each replicate, and one
+table of the numbers that decide the question: the receptor's RMSD, the partner's, the interface,
+the buried surface, the contacts kept and the MM-GBSA energy.</td></tr>
+<tr><td>The system</td><td>The source, the chains and the split, the hetero groups in the file, the
+partner's class, the transmembrane segments, a model's confidence, the chain breaks, a disulfide
+that crosses the split, the bilayer, and the built system: its atoms, waters, ions and box.</td></tr>
+<tr><td>The protocol</td><td>The engine with the module line its jobs loaded and the version it
+reported of itself, the force fields and the water, the box and the salt, the ladder as it ran, the
+production, and where the jobs ran.</td></tr>
+<tr><td>Did it hold</td><td>RMSD against time with every replicate on it, per-residue RMSF, buried
+surface, the area per lipid on a bilayer run, and the radius of gyration.</td></tr>
+<tr><td>The interface</td><td>The first frame's contacts that did not survive, the hydrogen bonds
+that cross the interface and how long each held, how many bonds the solute held per frame, and the
+residue pairs that carry the interface.</td></tr>
+<tr><td>MM-GBSA</td><td>Every replicate's energy with the window, the stride, the frames scored, the
+SD over those frames and the SEM, then the mean of the replicates with the SD of their means, which
+is the error to quote. A run joined by a disulfide across the split says why it has none.</td></tr>
+<tr><td>The structure as it ended</td><td>The rendered first and last frames, with and without the
+water, and the last frame drawn in the viewer.</td></tr>
+<tr><td>What it cost</td><td>Every job, where it ran and for how long, and the whole graph's time
+beside the estimate made at Submit.</td></tr>
+<tr><td>Views</td><td>Anything added from the viewer with <b>add to report</b>, each with a caption
+written from the run and room under it for your own words.</td></tr>
+<tr><td>Methods</td><td>A paragraph in a journal's form describing the run as it ran, with numbered
+references: see <a href="citing.html">How to cite</a>.</td></tr>
+<tr><td>Appendix</td><td>Every field of the spec, Prepare's log, the built system, the provenance of
+the run and of the pose it started from, the caveats that are true of this run, the job ids and
+module lines, and what the run folder holds.</td></tr>
+</table>
+<p>A caption says what its table or figure shows and then only what is needed to read it: the units,
+which direction is better, and what the spread is over. Where one replicate ran, the captions say so
+instead of implying error bars the run has not got, and where MM-GBSA is averaged over frames they
+give the window, the stride and the spread rather than the mean alone.</p>
+<p>A run that has not been analyzed yet still reads: the system, the protocol, the methods and the
+appendix are there, and the first section says that nothing has been measured. One with fewer
+replicates finished than it asked for says that too.</p>
+<p>The report reads the run folder and writes nothing in it, except the views you add, which go in
+the run's own <code>report/</code> folder. It can also be written without the page, as one file that
+needs no server (the pictures and the 3D view need the page, so that file leaves them out):</p>
+<pre>python3 -m hopemd.export.report &lt;run folder&gt;      # writes export/report.html</pre>
+
+<h2 id="views">Adding a view</h2>
+<p><b>add to report</b> on the trajectory viewer's bar puts the frame as it is drawn now into the
+run's report: the colors, the surfaces, the chain shown and the frame you are on. The report gives
+it a caption from the run's own numbers, and the line under that caption is yours to write, in the
+report itself. Up, Down and Take out on the view reorder it or remove it.</p>
+
+<h2 id="videos">Videos</h2>
+<p><b>Video</b> queues a job that turns the replicate shown into two videos at 1920&times;1080: the
+solute alone, and the solute in its water and ions as it was simulated. About 120 frames are cut
+from the production trajectory itself, drawn by VMD, rendered by POV-Ray and put together by FFmpeg,
+all on a CPU node, in ten to forty minutes.</p>
+<p>They are drawn in the page's colors: the receptor gray, the partner or ligand rust, the interface
+teal (the receptor's residues within 4.5 &Aring; of the partner, followed frame by frame), the water
+pale blue and the salt amber. A metal the build carries is a sphere in its own color, the same one the
+Runs viewer and the report give it, and the residues holding it are sticks colored by element,
+chosen again in every frame so a ligand that leaves is seen leaving. Every frame carries the
+production time, read from the trajectory's own clock rather than from the save interval, and a
+legend that names only what is on the screen. They play under the Runs screen's buttons with a link to each file,
+and the report shows them. The files are <code>export/&lt;run&gt;_r&lt;i&gt;.mp4</code> and
+<code>export/&lt;run&gt;_r&lt;i&gt;_water.mp4</code>. A replicate with no finished production part
+has nothing to cut, and the button says so.</p>
+
+<h2 id="snapshots">Snapshots</h2>
+<p>Still images of the first and the last frame of a replicate, the solute alone and in its water
+(and lipids), as PNG files in <code>export/</code>, drawn the same way as the videos. They are a CPU
+job of a few minutes, queued from the command line:</p>
+<pre>python3 -m hopemd.export.snapshots &lt;run folder&gt; 1      # replicate 1</pre>
+
+<h2 id="portfolio">The portfolio</h2>
+<p>One PDF across many runs, for a reader who will not open the page: an overview table of every run,
+then each run's system, protocol, results with their plots, snapshots and timing beside the
+estimate, then the methods paragraph of each distinct protocol with its references, and where the
+files are.</p>
+<pre>python3 -m hopemd.export.portfolio &lt;runs folder&gt; --out $SCRATCH/runs.pdf</pre>
+<p><code>--runs</code> followed by run names takes only those runs; <code>--title</code> and
+<code>--author</code> set the heading of its first page. Without <code>--out</code> the PDF is
+written into the runs folder, named with the day's date. Make the snapshots first if the PDF should
+show them.</p>
+
+<h2 id="the-commands">Running the commands</h2>
+<p>The three commands run from the HOPE-MD checkout with its environment, on a login node:</p>
+<pre>cd &lt;HOPE Labs folder&gt;/HOPE-MD/MD &amp;&amp; . ./activate.sh</pre>
+<p>The report and the portfolio read the run folders and write a file; the snapshots are submitted
+to Slurm, as everything that computes is. <a href="run-folder.html">The run folder</a> lists the
+other commands that work without the page.</p>

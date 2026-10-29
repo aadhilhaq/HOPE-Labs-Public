@@ -1,0 +1,43 @@
+<h1>The run folder</h1>
+<p class="lead">Each run is one folder in the runs folder, named after the run. It holds everything
+the page wrote and every job's log, and each of its jobs can be run again by hand.</p>
+
+<h2 id="what-it-holds">What it holds</h2>
+<pre>&lt;runs folder&gt;/&lt;run&gt;/
+  spec.json      the run as submitted: its record, and the one file to edit by hand
+  README.txt     the settings, and what was derived at submit
+  input/         the structure as imported, or as Prepare split it
+  build/         the engine's topology and the files that built it
+  md/            equilibration and production inputs
+  r1/ r2/ ...    one folder per replicate: trajectory parts and restart points
+  analysis/      cpptraj and MM-GBSA results, the viewer's trajectory, summary.json
+  export/        the videos, the snapshots and report.html when it has been written by hand
+  report/        the views added from the viewer, and the words written under them
+  jobs/          job scripts, graph.json, ids.json, timing.json, staging.json, software.txt, submit.sh
+  logs/          one Slurm log per job
+  archive/       tidy_&lt;stamp&gt;.tar.gz, once tidy has packed the small files</pre>
+<p><code>README.txt</code> names the module line the run's jobs loaded, and
+<code>jobs/software.txt</code> what each job's engine then reported its own version to be, which is
+what lets a reference be checked against what ran. <code>jobs/graph.json</code> is the job graph, each job with what it waits for, and
+<code>jobs/ids.json</code> the Slurm job ids the Runs screen follows, with those a resubmission
+replaced.</p>
+
+<h2 id="by-hand">Working without the page</h2>
+<p>Every job script runs from its run folder on its own, so a run can be driven from a terminal on a
+login node, from the checkout with its environment:</p>
+<pre>cd &lt;HOPE Labs folder&gt;/HOPE-MD/MD &amp;&amp; . ./activate.sh
+bash &lt;run&gt;/jobs/submit.sh                         # queue the run's job graph again
+(cd &lt;run&gt; &amp;&amp; sbatch jobs/40_analysis.sbatch)      # one stage
+python3 -m hopemd.export.report &lt;run&gt;             # write &lt;run&gt;/export/report.html, on its own
+python3 -m hopemd.export.snapshots &lt;run&gt; 1        # queue the first and last frames of replicate 1
+python3 -m hopemd.export.portfolio &lt;runs folder&gt; --out $SCRATCH/runs.pdf
+python3 -m hopemd.timing &lt;run&gt;                    # record a finished run's timings by hand</pre>
+<p><code>jobs/submit.sh</code> keeps the job ids it gets in <code>jobs/ids.txt</code>, which the page
+does not read: the Runs screen follows the ids in <code>jobs/ids.json</code>, which the page writes.
+To queue a stage again and keep the page following it, use <b>Start again</b> on the Runs
+screen.</p>
+<div class="note"><b>A run resumed by an older HOPE-MD</b> kept the frames a stopped part wrote past
+its restart point twice, in an Amber, OpenMM or NAMD trajectory. Cut them, then resubmit the analysis
+and MM-GBSA; on a tidied OpenMM run, <b>Undo tidy</b> first, since the cut reads its parts' logs:
+<pre>python3 -m hopemd.analysis.parts join &lt;run&gt;</pre></div>
+

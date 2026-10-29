@@ -1,0 +1,95 @@
+<h1>Membranes</h1>
+<p class="lead">A membrane protein can run in a lipid bilayer in place of a water box. The structure
+has to stand in the membrane's frame, so the page finds its transmembrane segments and can orient
+it on them.</p>
+
+<h2 id="the-bilayer">The bilayer</h2>
+<p>Set <b>Environment</b> on the Structure card to <b>Lipid bilayer</b>. What builds it depends on the
+engine:</p>
+<table>
+<tr><th></th><th>Amber, OpenMM, GROMACS, NAMD</th><th>Desmond</th></tr>
+<tr><td>Built by</td><td>OpenMM's Modeller, which tiles a pre-equilibrated patch of the lipid over
+the solute, removes the lipids it overlaps, and writes the same Amber topology the four engines
+run</td><td>the System Builder, from Desmond's own lipid patches</td></tr>
+<tr><td>Lipids</td><td>POPC, POPE, DLPC, DLPE, DMPC, DOPC, DPPC</td><td>POPC, POPE, DPPC,
+DMPC</td></tr>
+<tr><td>Force field and water</td><td>lipid17 with ff14SB and TIP3P, the one combination offered:
+OpenMM's data has lipid17 beside ff14SB only, and no OPC</td><td>OPLS_2005 or OPLS4 with SPC or
+TIP3P, as the patches come hydrated with SPC</td></tr>
+<tr><td>Relaxation</td><td>the usual ladder of minimization, heating and restrained equilibration;
+the lipids are never restrained</td><td>Schr&ouml;dinger's own membrane relaxation protocol, about
+0.5 ns, in place of the ladder</td></tr>
+<tr><td>Pressure</td><td>semi-isotropic, x and y together and z on its own, at zero surface
+tension</td><td>constant pressure and surface tension (NPgT)</td></tr>
+</table>
+<p>A bilayer takes NaCl or KCl and a rectangular box, the one shape periodic in x and y. Its fields
+on the Structure card:</p>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>lipid</b></td><td>POPC</td><td>The lipid of the bilayer. POPC is the usual choice for a
+generic membrane.</td></tr>
+<tr><td><b>water above and below (&Aring;)</b></td><td>10</td><td>The water on each side of the
+bilayer, and the padding in x and y: 5 to 40 &Aring;. Under 5 the head groups see their own image,
+and over 40 is water for nothing.</td></tr>
+<tr><td><b>membrane center z (&Aring;)</b></td><td>0</td><td>Where the bilayer's center sits along
+z: 0 for an OPM entry or a structure oriented on its segments.</td></tr>
+<tr><td><b>orientation</b></td><td>as imported</td><td>How the structure is put into the membrane's
+frame: see <a href="#orientation">Orientation</a>.</td></tr>
+<tr><td><b>typed TM segments</b></td><td>none</td><td>Segments you know, as
+<code>chain:start-end</code> separated by commas, such as <code>A:30-56, A:71-96</code>: see
+<a href="#segments">Transmembrane segments</a>.</td></tr>
+</table>
+<p>A membrane run takes a protein, peptide or nucleic-acid partner, or none: a small molecule is not
+built into a bilayer here. Crystal waters are not built into one either, since the build places its
+own water around the solute, so set Prepare's waters to <b>drop all</b>, or the crystal waters to
+<b>none</b> for files. The run plan adds the number of lipids in the two leaflets to its
+estimate, and the viewer draws a slab where the bilayer will be.</p>
+
+<h2 id="orientation">Orientation</h2>
+<p>The bilayer is built in the xy plane, so the structure's membrane normal must be z, with
+the bilayer's center at the membrane center you give. Three ways to get there:</p>
+<table>
+<tr><th>Orientation</th><th>What happens</th></tr>
+<tr><td><b>as imported</b></td><td>The coordinates are taken as they are: right for a structure
+already in the membrane's frame, such as a file from OPM.</td></tr>
+<tr><td><b>fetch the OPM orientation</b></td><td>For an RCSB entry: the import fetches the entry's
+coordinates from OPM (<code>opm.phar.umich.edu</code>), which puts the membrane normal along z and
+its center at 0, in place of the RCSB's. The checks give the membrane's planes. Where OPM has no
+coordinates for the entry, the RCSB file is imported as deposited and the note says so: check the
+normal in the viewer.</td></tr>
+<tr><td><b>from the transmembrane annotation</b></td><td>The structure is turned so the axis of its
+transmembrane segments is z and their center is at 0, when the segments are known: see
+<a href="#segments">Transmembrane segments</a>.</td></tr>
+</table>
+<p>The checks say which orientation the structure has, and warn when a bilayer is set along z as
+imported, so look at it in the viewer before you submit.</p>
+
+<h2 id="segments">Transmembrane segments</h2>
+<p>Every import is searched for transmembrane segments, so the page can tell a membrane protein from
+a soluble one, in whichever environment you chose. In order, the search uses:</p>
+<ol>
+<li>UniProt's annotation, for an RCSB entry (or a file whose header names one), through PDBe's
+mapping of the entry's chains onto UniProt;</li>
+<li>UniProt's annotation for an AlphaFold job named after a UniProt accession;</li>
+<li>otherwise the best BLAST match in Swiss-Prot. The search runs at EBI, about a minute, and sends
+each protein chain of 30 residues or more, with your account name at <code>tamu.edu</code> as the
+contact address (<code>HOPEMD_EMAIL</code> on the server sets another). Meanwhile a hydrophobicity
+scan of the sequence stands in, and says it is a prediction: it finds helices, not beta
+barrels.</li>
+</ol>
+<p><b>typed TM segments</b> override all three and skip the search; <b>Use these segments</b> applies
+them to the checks, the coloring and, with the annotation as the orientation, the structure's
+orientation.</p>
+<p>The viewer colors the segments sand, and <b>TM</b> in its bar shows or hides them. A protein
+counts as a membrane protein when segments land on the residues the structure holds, not when its
+UniProt entry merely carries the Membrane keyword, so a soluble domain cut from a membrane protein
+is not flagged. The checks warn when a membrane protein is set up in water, and Submit's notes say
+so again; they also warn when a bilayer is set up for a protein with no segment found.</p>
+
+<h2 id="reading-a-membrane-run">Reading a membrane run</h2>
+<p>The analysis adds the <b>area per lipid</b>: the box's area in x and y over the lipids of one
+leaflet, frame by frame, the number that says the membrane has settled. It counts the solute's
+footprint in the area too, so it reads somewhat high, and its tile says so.</p>
+<p>On the Amber-topology engines MM-GBSA strips the lipids with the water, so the interface is
+scored in implicit solvent alone: read it as a trend between replicates, not as an energy. Prime, on
+Desmond, puts its own implicit membrane in their place.</p>

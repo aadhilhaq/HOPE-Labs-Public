@@ -282,7 +282,7 @@ function paintTools() {
       meta.appendChild(document.createTextNode("."));
     }
     row.appendChild(meta);
-    if (blocked) row.appendChild(el("div", "detail", "Set up cannot fetch it here: " + recipe.why_not + "."));
+    if (blocked) row.appendChild(el("div", "detail", "Set up cannot install it here: " + recipe.why_not + "."));
     if (recipe) {
       const steps = el("div", "steps");
       for (const s of recipe.steps) {

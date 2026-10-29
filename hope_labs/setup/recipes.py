@@ -25,6 +25,7 @@ import platform
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import tarfile
 import threading
@@ -78,6 +79,10 @@ class Recipe:
     def repository(self):
         """The git repository this tool's code is cloned from, or "" when it is not cloned:
         what Set up asks the login node about before offering the tool (fetchable)."""
+        return ""
+
+    def not_here(self):
+        """Why this tool cannot be installed on this cluster at all, or "" when it can."""
         return ""
 
     def owns(self, root):
@@ -453,6 +458,239 @@ class Boltz2(Recipe):
     def check_done(self, ctx):
         check = ctx.state.get("check") or {}
         return bool(check.get("ok") and os.path.isfile(check.get("structure") or ""))
+
+
+# ---------------------------------------------------------------------------- HOPE-MD
+
+class HopeMD(Recipe):
+    """HOPE-MD, installed by its own install.sh, which a terminal install runs as well.
+
+    The public edition carries HOPE-MD's code in a folder of its own (HOPE-MD/, beside hope_labs),
+    so that installing it fetches nothing from any repository: this copies that folder into the
+    HOPE Labs folder and runs the script on it, which finds a copy rather than a clone and uses
+    it as it lies. A checkout without the folder clones HOPE-MD's repository instead. The script
+    makes the environment Prepare and the server run from; the engines are never installed,
+    being the cluster's own modules, which is why HOPE-MD is offered only where its site table
+    names them. The check prepares a small protein on the queue, which proves what an import on
+    the login node cannot: that a compute node runs this install's Python, with OpenMM, PDBFixer
+    and pdb2pqr."""
+
+    key = "hopemd"
+    name = "HOPE-MD"
+    install = "HOPE-MD/MD"
+    summary = ("Molecular dynamics of a complex, from Prepare to MM-GBSA and a report, on the "
+               "cluster's own engines. Prepare and the page run from the environment made here.")
+    disk_gb = 4
+    files = 90000
+    minutes = 30
+    licence = ("Academic use: free for non-commercial research and teaching",
+               "https://github.com/aadhilhaq/HOPE-Labs-Public/blob/main/HOPE-MD/LICENSE")
+    needs = {"gpu": False}
+    sources = ("conda-forge", "PyPI", "RCSB")
+    check_verb = "Prepared"
+    check_noun = "preparation"
+
+    #: Where the code comes from when this checkout carries no copy: the repository, or
+    #: HOPELABS_HOPEMD_SOURCE, a git URL or a folder, with "#branch" after it for another branch.
+    SOURCE = "https://github.com/aadhilhaq/HOPE-MD.git"
+    #: The copy the public edition carries, made by tools/make_public.py.
+    BUNDLE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                          "HOPE-MD")
+    #: The clusters HOPE-MD's site table (hopemd/site.py) names the queues and engine modules of,
+    #: by their keys in ours (hope_labs/folding/sites.py). Elsewhere its server would fall back to
+    #: Grace's, and every job would ask for a queue and modules that are not there.
+    SITES = ("grace", "aces")
+    _where = None
+
+    def steps(self):
+        return [
+            Step("room", "Room for it", self.room, None, always=True),
+            Step("micromamba", "The package manager", get_micromamba, have_micromamba),
+            Step("code", "The HOPE-MD code", self.code, self.code_done),
+            Step("installer", "Its environment, by its own install.sh", self.installer,
+                 self.installed),
+            Step("check", "A real preparation on the CPU queue", self.check, self.check_done),
+        ]
+
+    def room(self, ctx):
+        Boltz2.room(self, ctx)
+
+    def bundled(self):
+        """The copy this checkout carries, or "" when it carries none."""
+        return self.BUNDLE if os.path.isfile(os.path.join(self.BUNDLE, "BUNDLED")) else ""
+
+    def not_here(self):
+        """Why HOPE-MD cannot be installed on this cluster, or "" when it can.
+
+        The cluster is told as sites.here() tells it, but from the table alone: a profile Set up
+        wrote would answer for any cluster, Grace included. Asked once a process, because Slurm is
+        asked and the page asks on every refresh."""
+        if self._where is None:
+            from ..folding import sites as sitesmod
+            named = (os.environ.get("HOPELABS_SITE") or "").strip().lower()
+            key = named if named in sitesmod.SITES else sitesmod.cluster_name()
+            if key not in sitesmod.SITES:
+                found = sitesmod.site_for_host(socket.gethostname())
+                key = found.key if found else (key or socket.gethostname().split(".")[0])
+            self._where = key
+        if self._where in self.SITES:
+            return ""
+        return "HOPE-MD names the queues and engine modules of Grace and ACES only, and this is %s" \
+            % self._where
+
+    def repository(self):
+        """The repository the code is cloned from, as code() reads it, without its #branch: ""
+        when it is not cloned, which a checkout carrying its own copy never is."""
+        if self.bundled():
+            return ""
+        return _clone_url(os.environ.get("HOPELABS_HOPEMD_SOURCE") or self.SOURCE)
+
+    def owns(self, root):
+        # install.sh puts the environment, and the conda base when it makes one, beside the code
+        # in the HOPE-MD folder, with its caches and its audit.
+        return [os.path.join(root, "HOPE-MD")]
+
+    def code(self, ctx):
+        here = self.where(ctx.root)
+        part, old = here + ".part", here + ".old"
+        for folder in (part, old):
+            shutil.rmtree(folder, ignore_errors=True)
+        os.makedirs(os.path.dirname(here), exist_ok=True)
+        source = self.bundled()
+        if source:
+            ctx.say("  copying the HOPE-MD this HOPE Labs carries: %s" % self._stamp(source))
+            shutil.copytree(source, part, symlinks=True)
+        else:
+            url, _, branch = (os.environ.get("HOPELABS_HOPEMD_SOURCE") or self.SOURCE).strip().partition("#")
+            if not shutil.which("git"):
+                raise Failed("git is not on this login node, and the HOPE-MD code is fetched with it")
+            argv = ["git", "clone"] + ([] if os.path.isdir(url) else ["--depth", "1"])
+            ctx.sh(argv + (["--branch", branch] if branch else []) + [url, part],
+                   "fetching the HOPE-MD code", timeout=1800)
+        # An older copy is moved aside, not copied over, so nothing it had and this one has not is
+        # left behind; the environment beside it is kept.
+        if os.path.isdir(here):
+            os.replace(here, old)
+        os.replace(part, here)
+        shutil.rmtree(old, ignore_errors=True)
+        ctx.state.setdefault("receipt", {})["hopemd"] = self._stamp(here)
+
+    def code_done(self, ctx):
+        """Done when the code is there, and is the copy this HOPE Labs carries: an update of HOPE
+        Labs brings a new copy, which Install puts in."""
+        here = self.where(ctx.root)
+        if not os.path.isfile(os.path.join(here, "hopemd", "__init__.py")):
+            return False
+        source = self.bundled()
+        return not source or self._stamp(here) == self._stamp(source)
+
+    @staticmethod
+    def _stamp(folder):
+        """The first line of a copy's BUNDLED: which HOPE-MD commit it is, and its date."""
+        try:
+            return open(os.path.join(folder, "BUNDLED"), encoding="utf-8").readline().strip()
+        except OSError:
+            return ""
+
+    def installer(self, ctx):
+        here = self.where(ctx.root)
+        ctx.sh(["bash", os.path.join(here, "install.sh"), ctx.root],
+               "install.sh: HOPE-MD's environment", timeout=4 * 3600, cwd=here)
+        env = os.path.join(ctx.root, "HOPE-MD", "env")
+        ctx.state.setdefault("receipt", {}).update(
+            python=_version_line(os.path.join(env, "bin", "python3")),
+            base=_venv_home(env))
+
+    def installed(self, ctx):
+        """Installed when the environment install.sh makes is there, on its base."""
+        env = os.path.join(ctx.root, "HOPE-MD", "env")
+        return os.access(os.path.join(env, "bin", "python3"), os.X_OK) and bool(_venv_home(env))
+
+    def selfcheck(self, ctx, what, run):
+        """HOPE-MD's own check (hopemd/selfcheck.py), from the install's environment as its page
+        is started: what it printed, one JSON object."""
+        import shlex
+        line = ". ./activate.sh && python3 -m hopemd.selfcheck %s %s" % (what, shlex.quote(run))
+        ctx.say("$ " + line)
+        try:
+            done = subprocess.run(["bash", "-c", line], cwd=self.where(ctx.root), env=ctx.env(),
+                                  stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                  errors="replace", timeout=600)
+        except subprocess.TimeoutExpired:
+            raise Failed("HOPE-MD's check (%s) took more than ten minutes" % what)
+        for text in (done.stderr or "").strip().splitlines()[-6:]:
+            ctx.say("  " + text[:500])
+        try:
+            got = json.loads((done.stdout or "").strip().splitlines()[-1])
+        except (IndexError, ValueError):
+            raise Failed("HOPE-MD's check (%s) printed nothing it could read: %s"
+                         % (what, (done.stderr or done.stdout or "nothing").strip()[-400:]))
+        ctx.say("  " + json.dumps(got)[:500])
+        return got
+
+    def check(self, ctx):
+        """Prepare Trp-cage (PDB 1L2Y) on the CPU queue, as the page's Prepare does, and look at
+        what the job left."""
+        run = ctx.path("setup", "checks", self.key, time.strftime("%Y%m%d-%H%M%S"))
+        os.makedirs(run, exist_ok=True)
+        staged = self.selfcheck(ctx, "stage", run)
+        if staged.get("ok") is False:
+            raise Failed("HOPE-MD could not stage its check: %s" % staged.get("why"))
+        # From the check's own folder: the job works in the folder it was submitted from.
+        argv = ["sbatch", "--parsable"] + (["--account=%s" % ctx.account] if ctx.account else [])
+        try:
+            done = subprocess.run(argv + ["prepare.sbatch"], cwd=run, env=ctx.env(),
+                                  capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired) as why:
+            raise Failed("sbatch could not be asked to queue the check preparation: %s" % why)
+        found = re.search(r"^\s*(\d+)", done.stdout or "")
+        if done.returncode != 0 or not found:
+            raise Failed("sbatch refused the check preparation: %s"
+                         % ((done.stdout or "") + (done.stderr or "")).strip()[-400:])
+        job = found.group(1)
+        ctx.say("  queued the check preparation as job %s" % job)
+        began = time.time()
+        ctx.state["check"] = {"job": job, "run": run, "ok": False,
+                              "partition": staged.get("partition") or "the default"}
+        try:
+            state = engine.wait_for(ctx, job, "the check preparation")
+        except engine.Stopped:
+            engine.cancel_job(job)
+            raise
+        got = self.selfcheck(ctx, "read", run)
+        log = os.path.join(run, "logs", "prepare.%s.out" % job)
+        ctx.state["check"].update(state=state, took=round(time.time() - began),
+                                  atoms=got.get("atoms", 0))
+        if not got.get("ok"):
+            raise Failed("the check preparation (job %s, %s) did not finish: %s. Its log is %s; "
+                         "the last lines say: %s" % (job, state or "gone from the queue",
+                                                     got.get("why"), log, _last_lines(log)))
+        ctx.state["check"]["ok"] = True
+        ctx.say("  prepared %s in %d min: %d atoms in the receptor"
+                % (staged.get("pdb_id", "the check structure"), (time.time() - began) // 60,
+                   got.get("atoms", 0)))
+
+    def check_done(self, ctx):
+        return bool((ctx.state.get("check") or {}).get("ok"))
+
+
+def _clone_url(source):
+    """A source as repository() answers it: the URL without its #branch, or "" for a folder or a
+    source not fetched over the web."""
+    url = source.strip().partition("#")[0]
+    if os.path.isdir(url) or not re.match(r"^(https?|git)://", url):
+        return ""
+    return url
+
+
+def _venv_home(env):
+    """The base a venv was made on, from its pyvenv.cfg: "" when it is not one."""
+    try:
+        text = open(os.path.join(env, "pyvenv.cfg"), encoding="utf-8").read()
+    except OSError:
+        return ""
+    found = re.search(r"^home\s*=\s*(.+)$", text, re.M)
+    return found.group(1).strip() if found else ""
 
 
 def _activate_value(checkout, name):
@@ -854,7 +1092,7 @@ class BioEmu(FromImage):
             handle.write(">check\n%s\n" % self.CHECK_SEQUENCE)
 
 
-RECIPES = {recipe.key: recipe for recipe in (Boltz2(), RFD4(), BioEmu())}
+RECIPES = {recipe.key: recipe for recipe in (Boltz2(), HopeMD(), RFD4(), BioEmu())}
 
 
 # ---------------------------------------------------------------------------- can it be fetched
@@ -919,7 +1157,11 @@ def readable(url, root="", timeout=ASK_SECONDS):
 
 
 def fetchable(recipe, root="", wait=0):
-    """Whether Set up can fetch a recipe's code here: {available, asking, why_not}."""
+    """Whether Set up can fetch a recipe's code here: {available, asking, why_not}. A tool that
+    cannot run on this cluster at all (Recipe.not_here) is not available either, whatever its code."""
+    why = recipe.not_here()
+    if why:
+        return {"available": False, "asking": False, "why_not": why}
     url = recipe.repository()
     if not url:
         return {"available": True, "asking": False, "why_not": ""}

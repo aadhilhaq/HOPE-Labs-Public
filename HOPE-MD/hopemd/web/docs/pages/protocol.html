@@ -1,0 +1,186 @@
+<h1>Protocol and compute</h1>
+<p class="lead">How long, how many repeats, at what temperature and pressure; then where the jobs
+run, for how long, and what the run will cost before you submit it.</p>
+
+<h2 id="presets">Presets</h2>
+<p>A preset fills the protocol with a known set of values, and every field stays editable. The page
+opens on <b>Standard</b>. Changing the length, the replicates, the time step or the save interval
+afterwards makes the protocol a custom one.</p>
+<table>
+<tr><th>Preset</th><th>Length</th><th>What it takes on Grace</th></tr>
+<tr><td><b>Quick check</b></td><td>10 ns &times; 1</td><td>26 000 to 73 000 atoms: production 20 to
+40 minutes, the whole graph about 1 A100-hour and 0.5 CPU-hour, 1 to 3 hours from Submit with the
+queue</td></tr>
+<tr><td><b>Standard</b></td><td>100 ns &times; 3</td><td>a 73 000-atom docked pose: about 5.5
+A100-hours per replicate, 16.5 in all, and 13.5 GB</td></tr>
+<tr><td><b>Long</b></td><td>500 ns &times; 3</td><td>the same pose: about 27 A100-hours per
+replicate, 82 in all</td></tr>
+<tr><td><b>CPU check</b></td><td>5 ns &times; 1, on one 48-core node, Amber or GROMACS</td><td>about
+2.5 hours on Amber for 33 000 atoms</td></tr>
+</table>
+<p>Each saves a frame every 20 ps (the CPU check every 10 ps) and runs at 4 fs.</p>
+
+<h2 id="the-fields">The protocol's fields</h2>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>length (ns)</b></td><td>100</td><td>Production per replicate.</td></tr>
+<tr><td><b>replicates</b></td><td>3</td><td>Independent repeats, 1 to 5, each with its own starting
+velocities: three tell you what is noise.</td></tr>
+<tr><td><b>timestep (fs)</b></td><td>4</td><td>4 fs runs with hydrogen mass repartitioning, done in
+the build; 2 fs is the conservative choice. Desmond's is fixed.</td></tr>
+<tr><td><b>save every (ps)</b></td><td>20</td><td>How often a frame is written: 20 ps over 100 ns is
+5 000 frames. It must be a whole number of steps.</td></tr>
+<tr><td><b>temperature (K)</b></td><td>300</td><td>250 to 400 K.</td></tr>
+<tr><td><b>pressure (bar)</b></td><td>1</td><td>The production pressure.</td></tr>
+<tr><td><b>seed (-1 = new each run)</b></td><td>-1</td><td>See <a href="#the-seed">The
+seed</a>.</td></tr>
+<tr><td><b>restrained in production</b></td><td>none</td><td>Residues held in place during
+production, chosen by clicking them in the viewer: an amino acid by its C&alpha;, C and N, a
+nucleotide by its P and C4&prime;, at 5 kcal/mol/&Aring;&sup2;. Click again, or the cross on its
+chip, to release one.</td></tr>
+</table>
+<table>
+<tr><th>Engine</th><th>Thermostat</th><th>Barostat</th></tr>
+<tr><td>Amber, OpenMM</td><td>Langevin</td><td>Monte Carlo</td></tr>
+<tr><td>GROMACS</td><td>V-rescale</td><td>C-rescale</td></tr>
+<tr><td>NAMD</td><td>Langevin</td><td>Langevin piston</td></tr>
+<tr><td>Desmond</td><td>MTK</td><td>MTK</td></tr>
+</table>
+<p>A bilayer's pressure is coupled semi-isotropically; on Desmond it runs at constant pressure and
+surface tension.</p>
+
+<h3 id="the-seed">The seed</h3>
+<p>The seed decides where the build puts the ions and how each replicate starts: its velocities and
+its thermostat. <b>-1</b> draws new ones every run. A number of your own, 0 to 2 000 000 000, builds
+the same system and starts every replicate the same way, each offset from it so the replicates
+still differ. Amber then repeats the run bit for bit on the same type of GPU; on the other engines
+a repeat starts the same but may drift apart, as their GPU arithmetic is not guaranteed to repeat
+in the last digits.</p>
+
+<h2 id="the-ladder">Heating and equilibration</h2>
+<p>Each replicate first runs the same ladder, as one GPU job, before its production:</p>
+<ol class="steps">
+<li><b>Minimize</b>, 5 000 steps, with the solute's heavy atoms restrained.</li>
+<li><b>Heat</b> from 0 K to the temperature over 200 ps at constant volume, the solute still
+held.</li>
+<li><b>Equilibrate</b> for 1 ns at constant pressure, in four stages of 250 ps, the restraint on
+the solute's heavy atoms released from 5 to 1, 0.1 and then 0 kcal/mol/&Aring;&sup2;.</li>
+</ol>
+<p>The ladder runs at 2 fs on every engine, whatever the production's step. Desmond replaces the
+minimization with 100 ps of Brownian dynamics at 10 K. A bilayer on Desmond relaxes with
+Schr&ouml;dinger's own membrane protocol instead, about 0.5 ns; on the other four engines a
+bilayer's lipids are never restrained.</p>
+
+<h2 id="segments">Production in segments, and resuming</h2>
+<p>A replicate's production is one job when it fits in the partition's time limit, and a chain of
+segments when it does not: each segment is a job of its own that starts where the one before ended.
+The number of segments is in the run plan, on the production line. A production job asks for one
+and a half times its estimated time with 30 minutes on top; when that passes the partition's limit,
+or the segment cap, the production is cut into segments short enough to fit, and each asks for the
+limit.</p>
+<p>Each engine writes a restart point every few minutes of the run. A segment that is stopped, by its
+walltime or by a cancel, continues from its last restart point when it is submitted again with
+<b>Start again</b> on the Runs screen; the frames it wrote past that point are cut first, so none
+repeats in the trajectory. On Desmond the engine checkpoints itself 25 minutes before the walltime
+and the log says to resubmit, while a segment canceled before that runs again from its start. See
+<a href="runs.html#resubmit">Start again</a>.</p>
+
+<h2 id="compute">Resources, in the rail</h2>
+<table>
+<tr><th>Field</th><th>Default</th><th>What it does</th></tr>
+<tr><td><b>run on</b></td><td>GPU</td><td>One GPU per replicate, or a whole CPU node for the short
+check: see <a href="#cpu-check">The CPU check</a>.</td></tr>
+<tr><td><b>partition</b></td><td>default</td><td>The Slurm partition. Left on default, the GPU type
+decides: on Grace the A100, RTX and T4 cards are in <code>gpu</code>, the A40s in
+<code>gpu-a40</code>.</td></tr>
+<tr><td><b>GPU</b></td><td>default (a100)</td><td>The GPU type, or <b>auto</b>: see
+<a href="#gpu-auto">GPU auto</a>.</td></tr>
+<tr><td><b>GPUs per replicate</b></td><td>1</td><td>One is right for these system sizes.</td></tr>
+<tr><td><b>max at once</b></td><td>0</td><td>How many replicates may run at once; 0 means all of
+them.</td></tr>
+<tr><td><b>walltime (from the estimate)</b></td><td>the estimate</td><td>See
+<a href="#walltime">Walltime</a>.</td></tr>
+<tr><td><b>segment cap (h)</b></td><td>0</td><td>A cap on one production segment, in hours, under
+the partition's limit; 0 uses the limit. At least 1 h, since a segment carries its margin on
+top.</td></tr>
+<tr><td><b>pack small files when done</b></td><td>on</td><td>A last job packs what the finished run
+no longer reads into one archive: see <a href="runs.html#tidy">Tidy</a>.</td></tr>
+<tr><td><b>run name</b></td><td>derived</td><td>See <a href="sources.html#the-name">The run's
+name</a>.</td></tr>
+</table>
+
+<h3 id="gpu-auto">GPU auto</h3>
+<p><b>auto: fastest free now</b> takes, at Submit, the fastest GPU type with a free card, and the
+partition that carries it: on Grace the A100, then the A40, the RTX and the T4; on ACES the H100,
+then the A30. On Grace A40 nodes can sit idle while A100 jobs wait, which is what auto is for. With
+nothing free, the run waits for the default type, or for the fastest type the partition you chose
+carries. The run plan says what auto would take now, from the free cards it counted, and the
+type it took is written into the run, so the run says what it ran on.</p>
+
+<h3 id="walltime">Walltime</h3>
+<p>The walltime field fills itself from the estimate as the settings above change. A walltime you
+type becomes each production job's limit: a longer one gives a slow node room, a shorter one cuts
+the run into more segments. <b>Use the estimate</b>, which appears under the box once you have
+typed in it, puts the estimate back, and so does emptying the field. Write it as <code>HH:MM:SS</code> or <code>D-HH:MM:SS</code>. It cannot
+pass the partition's limit: 96 hours on Grace's <code>gpu</code> and <code>gpu-a40</code>, 48 on
+ACES's <code>gpu</code> and 2 on its <code>gpu_debug</code>. A longer run is chained as segments
+instead.</p>
+
+<h3 id="cpu-check">The CPU check</h3>
+<p>For when the GPU queue is full and the question is only whether the pose holds for the first few
+nanoseconds. The <b>CPU check</b> preset runs on one whole CPU node (48 cores on Grace, on the
+<code>medium</code> partition), Amber or GROMACS only: OpenMM on a CPU is too slow to be worth a
+node, and the NAMD and Desmond builds here are for GPUs. It is at most 10 ns and 500 frames. It
+answers whether the pose holds at the start, not how it behaves.</p>
+
+<h2 id="the-estimate">The estimate</h2>
+<p>The <b>Run plan</b>, in the rail above Submit, is worked out from the settings as they stand.
+It appears once there is something to run, and it is the stages in order, numbered, each with
+where it happens and how long it should take: Prepare where one is needed, the build, the ladder,
+the production, the analysis, MM-GBSA and the tidy. The production line also carries the speed in
+ns/day and the segments the run is cut into. Under them: the atoms (marked <b>est.</b> until the
+structure's own count is known), the box, the whole run's time, the disk per replicate, the folder
+the results land in, and, on Grace, your quota when it is close to full: see
+<a href="#the-quota">The quota</a>.</p>
+<p><b>Show the job</b>, under the plan, prints what the queue will actually be asked for: every
+job of the graph, what it waits for, and the <code>#SBATCH</code> lines of its script. It renders
+in memory and writes nothing.</p>
+<p>The speed comes from finished runs on the same cluster, GPU type and engine, each scaled to this
+system's atoms and time step, taking the median. Until there are some, a seed table of published
+benchmarks stands in, and the plan's <b>?</b> says which, for example
+<code>from 3 finished amber runs on a100 (grace)</code> or <code>first run on a40 here: seed table,
+treat as a guess</code>. The other stages come from finished jobs of the same kind in the same way.
+Every run adds its own rows when it ends, in the tables of its runs folder, and the maintainer
+merges the lab's rows into the tables every install reads, so the estimates improve with use.</p>
+<p>Production on one A100 of Grace has run at about:</p>
+<table>
+<tr><th>Engine</th><th>Atoms</th><th>ns/day</th></tr>
+<tr><td>Amber</td><td>33 000</td><td>660</td></tr>
+<tr><td>Amber</td><td>73 000</td><td>440</td></tr>
+<tr><td>OpenMM</td><td>33 000</td><td>700</td></tr>
+<tr><td>GROMACS</td><td>26 000</td><td>1 190</td></tr>
+<tr><td>GROMACS, OPC or TIP4P-Ew</td><td>33 000</td><td>360</td></tr>
+<tr><td>NAMD</td><td>26 000</td><td>470</td></tr>
+<tr><td>Desmond</td><td>40 000</td><td>630</td></tr>
+</table>
+<h3 id="how-close">How close it is</h3>
+<p>The atoms are measured from the structure as tleap's solvation will treat it: its principal axes,
+the box that holds it, and the waters that fill that box. Against the builds on Grace they come
+within 2 % once Prepare has run or when the files carry their hydrogens, and within 4 % from a file
+without them. Side-chain atoms a file lacks are rebuilt by the build, which can make the box larger
+than the estimate says. Desmond's box is estimated from its own rule. The run's own Jobs table, on
+the Runs screen, puts the measured times beside the estimate once the jobs have run.</p>
+
+<h2 id="the-quota">The quota</h2>
+<p>Scratch on Grace counts files as well as bytes: 1 TB and 250 000 files. The Setup page reads your
+use with <code>showquota</code> and sets it beside what the run will write before its tidy job:</p>
+<ul>
+<li>it says <b>Quota:</b> and the numbers when the run fits;</li>
+<li>it warns in red, <b>Close to the quota</b>, when the run takes the files or the bytes past 90 %
+of the limit;</li>
+<li>Submit refuses a run that cannot fit, beginning <b>This run cannot fit in</b>: tidy or delete
+finished runs, or open a runs folder in another space;</li>
+<li>when the quota cannot be read, Submit goes ahead and says <b>The quota was not checked</b>.</li>
+</ul>
+<p>This is why every run ends with tidy, which packs a finished run's small files into one archive;
+unticking <b>pack small files when done</b> skips it.</p>

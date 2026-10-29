@@ -9,7 +9,8 @@ installs the tools you tick. A tool counts as installed once a real job has run 
     nodes need no internet at all: the tools are built to work without it.</li>
   <li><b>A folder with room</b>, in scratch or in a group folder if others will use it too.
     <!-- Measured on Grace: a first-time set-up came to 211 MB and 8,919 files. -->
-    HOPE Labs itself takes about 210 MB and 9,000 files; Boltz-2 about 16 GB and 95,000 files.
+    HOPE Labs itself takes about 210 MB and 9,000 files; Boltz-2 about 16 GB and 95,000 files;
+    HOPE-MD about 4 GB and 90,000 files, nearly all of them the environment its Prepare runs in.
     RFD4-Proteina and BioEmu each come as one image
     file, so they need room (Set up asks for 20 GB and 14 GB) and only a few hundred files.
     Most clusters cap the number of files as well as the space, and Set up checks both before it
@@ -67,7 +68,13 @@ it takes, roughly how long, what it needs from the cluster and under what licens
 it installs, the row shows each step as it is reached.</p>
 <p>A tool whose code is fetched from a repository is offered only when that repository can be read
 without signing in. Set up asks the login node as the page opens, and a row it cannot fetch says
-<b>Not available</b>, with the reason, instead of offering a tick.</p>
+<b>Not available</b>, with the reason, instead of offering a tick.
+HOPE-MD is offered on Grace and ACES only. Its jobs ask for those clusters' queues and engine
+modules by name, and on any other cluster its row says so.</p>
+<p>HOPE-MD comes with this edition, in the <code>HOPE-MD</code> folder of the checkout,
+and Set up copies it in rather than fetching it from anywhere: its install downloads only the
+packages of the environment it runs in, from conda-forge and PyPI. An update of HOPE Labs brings a
+newer copy, and <b>Install</b> puts it in and keeps the environment.</p>
 <p>The install runs on the login node in a process of its own. Closing the page, the launcher or
 the laptop does not stop it; sign in again later and the page shows how far it got. If it stops
 part way, after a failure, a press of <b>Stop</b> or a login node restarting, <b>Install</b>
@@ -80,12 +87,17 @@ RFD4-Proteina's check designs a short monomer and BioEmu's samples four structur
 each inside its image on a GPU node, and their rows say <b>Designed on</b> and <b>Sampled on</b>.
 <b>Check again</b> repeats the check, which is worth doing after a cluster changes its
 drivers.</p>
+<p>For HOPE-MD the check is a preparation on the CPU partition, and its row says <b>Prepared</b>:
+Trp-cage (PDB 1L2Y), twenty residues, fetched on the login node and prepared by a job, as the
+HOPE-MD page's Prepare would. It proves what the install's own import cannot, that a compute node
+runs the install's Python with OpenMM, PDBFixer and pdb2pqr. It does not run an engine: those are
+the cluster's modules, and the install's audit says which of them load.</p>
 <p><b>Remove</b> takes an installed tool off again, to give its room and its files back: its own
 folders are deleted, and nothing else. Runs already made are kept, because they are in your runs
 folders rather than in the tool's, and so are the package manager and its download cache, which
 every tool shares. Remove only takes what Set up installed; a copy it found already there is left
 alone. <b>Install</b> puts the tool back whenever it is wanted.</p>
-<div class="note"><b>Set up installs Boltz-2, RFD4-Proteina and BioEmu.</b> The other tools are listed with whether they are
+<div class="note"><b>Set up installs Boltz-2, HOPE-MD, RFD4-Proteina and BioEmu</b>, HOPE-MD on Grace and ACES. The other tools are listed with whether they are
 there; their own instructions are in <a href="own-installs.html">Installing
 by hand</a>, and they join this page one at a time.</div>
 
@@ -99,6 +111,8 @@ by hand</a>, and they join this page one at a time.</div>
 &lt;folder&gt;/tools/           the package manager
 &lt;folder&gt;/envs/hopelabs    the Python the pages run on
 &lt;folder&gt;/envs/boltz       Boltz-2, with its weights in envs/boltz/cache
+&lt;folder&gt;/HOPE-MD/MD      HOPE-MD's code, with the activate.sh that names its Python
+&lt;folder&gt;/HOPE-MD/env     its environment, on the base in HOPE-MD/conda, with caches and audit beside
 &lt;folder&gt;/images/          RFD4-Proteina's and BioEmu's images, one file each
 &lt;folder&gt;/weights/         their weights, fetched on the login node
 &lt;folder&gt;/setup/           each install's state, its log and its checks</pre>

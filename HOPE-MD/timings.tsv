@@ -1,0 +1,53 @@
+site	engine	device	stage	atoms	steps	frames	elapsed_s	node	partition	date	run
+grace	amber	a100	build	33434			39	c791	medium	2026-09-28	1BHL_amber_2/19896002
+grace	amber	a100	prod	33434	2500000		1339	g079	gpu	2026-09-28	1BHL_amber_2/19896005_1
+grace	amber	a100	analysis	33434		500	401	c265	medium	2026-09-28	1BHL_amber_2/19896671
+grace	amber	a100	mmgbsa	33434		50	144	c142	medium	2026-09-28	1BHL_amber_2/19896007_1
+grace	openmm	a100	build	33470			41	c793	medium	2026-09-28	1BHL_openmm/19896436
+grace	openmm	a100	prod	33470	2500000		1299	g015	gpu	2026-09-28	1BHL_openmm/19896438_1
+grace	openmm	a100	analysis	33470		500	72	c793	medium	2026-09-28	1BHL_openmm/19896439
+grace	openmm	a100	mmgbsa	33470		50	146	c794	medium	2026-09-28	1BHL_openmm/19896440_1
+grace	amber	a100	build	33470			30	c793	medium	2026-09-28	1BHL_amber_chain/19896444
+grace	amber	a100	prod	33470	2500000		1330	g015	gpu	2026-09-28	1BHL_amber_chain/19896446_1
+grace	amber	a100	prod	33470	2500000		678	g060	gpu	2026-09-28	1BHL_amber_chain/19897677_1
+grace	amber	a100	analysis	33470		1000	134	c213	medium	2026-09-28	1BHL_amber_chain/19897678
+grace	amber	a100	mmgbsa	33470		100	227	c239	medium	2026-09-28	1BHL_amber_chain/19897679_1
+grace	amber	cpu48	build	33470			36	c791	medium	2026-09-28	1BHL_amber_cpu/19896451
+grace	amber	cpu48	prod	33470	1250000		9216	c107	medium	2026-09-29	1BHL_amber_cpu/19896453_1
+grace	amber	cpu48	analysis	33470		500	92	c447	medium	2026-09-29	1BHL_amber_cpu/19896454
+grace	amber	cpu48	mmgbsa	33470		25	128	c447	medium	2026-09-29	1BHL_amber_cpu/19896455_1
+grace	amber	a100	build	73184			87	c796	medium	2026-09-28	peptide1_amber_2/19896008
+grace	amber	a100	prod	73184	2500000		1991	g081	gpu	2026-09-28	peptide1_amber_2/19896010_1
+grace	amber	a100	analysis	73184		500	46	c128	medium	2026-09-28	peptide1_amber_2/19896011
+grace	amber	a100	mmgbsa	73184		50	151	c143	medium	2026-09-28	peptide1_amber_2/19896012_1
+grace	amber	a100	build	32703			124	c788	medium	2026-09-29	1BXW_popc_amber/19899612
+grace	amber	a100	prod	32703	2500000		1375	g097	gpu	2026-09-29	1BXW_popc_amber/19899614_1
+grace	amber	a100	analysis	32703		500	41	c790	medium	2026-09-29	1BXW_popc_amber/19899615
+grace	openmm	a100	build	32655			119	c798	medium	2026-09-29	1BXW_popc_openmm/19899616
+grace	openmm	a100	equil	32655	605000		407	g039	gpu	2026-09-29	1BXW_popc_openmm/19899619_1
+grace	openmm	a100	prod	32655	2500000		1645	g039	gpu	2026-09-29	1BXW_popc_openmm/19899620_1
+grace	openmm	a100	analysis	32655		500	33	c267	medium	2026-09-29	1BXW_popc_openmm/19899621
+grace	namd	a100	build	26067			431	c387	medium	2026-09-29	1BHL_namd_v/19902506
+grace	namd	a100	equil	26067	605000		613	g039	gpu	2026-09-29	1BHL_namd_v/19903132_1
+grace	namd	a100	prod	26067	2500000		1889	g020	gpu	2026-09-29	1BHL_namd_v/19903133_1
+grace	namd	a100	analysis	26067		500	69	c269	medium	2026-09-29	1BHL_namd_v/19903134
+grace	namd	a100	mmgbsa	26067		50	136	c123	medium	2026-09-29	1BHL_namd_v/19903135_1
+grace	gromacs	a100	build	26067			130	c388	medium	2026-09-29	1BHL_gromacs_v/19903333
+grace	gromacs	a100	equil	26067	605000		222	g013	gpu	2026-09-29	1BHL_gromacs_v/19903602_1
+grace	gromacs	a100	prod	26067	2500000		751	g010	gpu	2026-09-29	1BHL_gromacs_v/19903603_1
+grace	gromacs	a100	analysis	26067		500	101	c269	medium	2026-09-29	1BHL_gromacs_v/19903834
+grace	gromacs	a100	mmgbsa	26067		50	148	c740	medium	2026-09-29	1BHL_gromacs_v/19903882_1
+grace	amber	a100	prepare	42747			96	c590	short	2026-09-29	peptide2_amber/19902029
+grace	amber	a100	build	42747			57	c402	medium	2026-09-29	peptide2_amber/19902031
+grace	amber	a100	prod	42747	2500000		1808	g058	gpu	2026-09-29	peptide2_amber/19902033_1
+grace	amber	a100	analysis	42747		500	139	c740	medium	2026-09-29	peptide2_amber/19902034
+grace	amber	a100	mmgbsa	42747		50	61	c740	medium	2026-09-29	peptide2_amber/19902035_1
+grace	desmond	a100	build	39814			177	c123	medium	2026-09-29	1BHL_desmond_v/19905080
+grace	desmond	a100	equil	39814	605000		521	g004	gpu	2026-09-29	1BHL_desmond_v/19905081_1
+grace	desmond	a100	prod	39814	5000000		1648	g091	gpu	2026-09-29	1BHL_desmond_v/19905083_1
+grace	desmond	a100	analysis	39814		500	59	c272	medium	2026-09-29	1BHL_desmond_v/19905084
+grace	desmond	a100	build	56325			271	c681	medium	2026-09-29	peptide1_desmond_v/19905204
+grace	desmond	a100	equil	56325	605000		449	g088	gpu	2026-09-29	peptide1_desmond_v/19905207_1
+grace	desmond	a100	prod	56325	5000000		2148	g077	gpu	2026-09-29	peptide1_desmond_v/19905208_1
+grace	desmond	a100	analysis	56325		500	24	c266	medium	2026-09-29	peptide1_desmond_v/19905211
+grace	amber	a100	equil	33374	605000		325	g014	gpu	2026-09-29	1BHL_amber_mgcl2_check/19909484_1
