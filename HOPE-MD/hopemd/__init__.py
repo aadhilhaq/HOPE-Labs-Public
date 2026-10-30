@@ -34,8 +34,8 @@ def _licence_line():
     return line or _FALLBACK_COPYRIGHT
 
 
-#: What the page's bottom bar, each run's report and the desktop launcher state, as the docking
-#: console's bar does. LICENSE is where it is written; this is that line.
+#: What the page's bottom bar, each run's report and the desktop launcher state, as the lab's
+#: other tools' bars do. LICENSE is where it is written; this is that line.
 COPYRIGHT = _licence_line()
 #: The holder and the authors, for the bar along the bottom of the window: everything but the
 #: reservation of rights, which is behind Credits on the page, in every run's report, and in

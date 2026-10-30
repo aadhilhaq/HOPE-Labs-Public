@@ -346,7 +346,7 @@ def count_hydrogens(path: str | Path) -> int:
 
 #: a partner file of amino-acid chains with this many residues or more is a protein, with fewer a peptide: a
 #: protein partner is analyzed as an interface (interface Cα RMSD, buried surface), as a chain group split from a
-#: complex is; a peptide (the docking console's are a few to about twenty residues) as a docked ligand
+#: complex is; a peptide (a docked one is a few to about twenty residues) as a docked ligand
 PROTEIN_MIN_RESIDUES = 50
 
 
@@ -684,10 +684,17 @@ def split_disulfides(receptor: Path, partner: Path, rinfo: PDBInfo, linfo: PDBIn
     in the topology, the receptor's 1 to N in file order and the partner's from N + 1, as the masks count them. The
     build bonds each one (tleap's bond on those numbers; OpenMM's Modeller on a bilayer; an SSBOND record on Desmond),
     since pdb4amber, reading each file alone, bonds neither, and MM-GBSA is not run on a run that has one."""
-    from ..structure import disulfide_pairs
+    from ..structure import _residues, disulfide_pairs
+    rres = _residues(receptor.read_text(errors="replace").splitlines())
+    pres = _residues(partner.read_text(errors="replace").splitlines())
     place_r = {k: i + 1 for i, k in reversed(list(enumerate(rinfo.residue_keys)))}
     place_p = {k: i + 1 for i, k in reversed(list(enumerate(linfo.residue_keys)))}
     out = []
+    for i, j, d in disulfide_pairs(rres, pres):
+        a, b = f"{rres[i]['chain']}:{rres[i]['resi']}", f"{pres[j]['chain']}:{pres[j]['resi']}"
+        if a in place_r and b in place_p:
+            out.append({"receptor": a, "partner": b, "residues": [place_r[a], len(rinfo.residue_keys) + place_p[b]],
+                        "distance_A": d})
     return out
 
 

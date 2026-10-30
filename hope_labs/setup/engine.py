@@ -333,10 +333,12 @@ def run(root, recipe, action="install", account=""):
         raise Failed("%s is already being installed (by %s on %s, started %s)" % (
             recipe.name, previous.get("by", "someone"), previous.get("host", "a login node"),
             time.strftime("%H:%M", time.localtime(previous.get("started") or 0))))
-    where = recipe.where(root)
-    if not previous and os.path.exists(where):
-        raise Failed("there is already something at %s that Set up did not put there. Set up "
-                     "leaves it alone: move it aside, or remove it, to install here." % where)
+    if not previous:
+        for where in recipe.claims(root):
+            if os.path.exists(where):
+                raise Failed("there is already something at %s that Set up did not put there. Set "
+                             "up leaves it alone: move it aside, or remove it, to install here."
+                             % where)
     try:
         os.remove(stop_path(root, key))
     except OSError:
@@ -442,25 +444,33 @@ def removal(root, recipe):
     ctx.say("")
     ctx.say("=== Removing %s from %s, by %s on %s" % (recipe.name, root, ctx.state["by"],
                                                        ctx.state["host"]))
-    files, size = 0, 0
+    files, size, seen = 0, 0, 0
     try:
         for path in paths:
             ctx.say("--- %s" % path)
             for top, dirs, names in os.walk(path, topdown=False):
                 for name in names + dirs:
                     one = os.path.join(top, name)
+                    seen += 1
+                    if seen % 2000 == 0:
+                        # every name, counted or not, so a long run of hard links still beats,
+                        # and a Stop asked for meanwhile is heard
+                        ctx.beat("removed %d files (%s)" % (files, _gb(size)))
                     try:
                         st = os.lstat(one)
                         if os.path.isdir(one) and not os.path.islink(one):
                             os.rmdir(one)
                         else:
                             os.remove(one)
-                            files += 1
-                            size += st.st_size
+                            # Only the last link of a file gives anything back. A conda package
+                            # is hard-linked into the environment from the package cache, so
+                            # counting every name told HOPE-MD's removal 85,266 files and 6.44 GB
+                            # for a folder of 59,953 inodes and 3.8 GB.
+                            if st.st_nlink <= 1:
+                                files += 1
+                                size += st.st_size
                     except FileNotFoundError:
                         continue
-                    if files % 2000 == 0:
-                        ctx.beat("removed %d files (%s)" % (files, _gb(size)))
             if os.path.islink(path) or os.path.isfile(path):
                 os.remove(path)
             elif os.path.isdir(path):

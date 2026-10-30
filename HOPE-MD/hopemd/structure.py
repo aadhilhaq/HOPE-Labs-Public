@@ -971,6 +971,11 @@ def stretched_bonds(pdb_text: str, max_cn_A: float = BREAK_CN_A, max_op_A: float
 #: the residues a gap left open is capped with: an N-methylamide (NME) on the last residue before the gap, an acetyl
 #: (ACE) on the first residue after it. Each end is then an ordinary neutral amide instead of a charged terminus
 CAPS = ("ACE", "NME")
+#: the caps' atoms under the names ff14SB and ff19SB give them (aminont12.lib, aminoct12.lib), which are OpenMM's too:
+#: an ACE is C, O, CH3 and H1-H3; an NME is N, H, C (its methyl) and H1-H3. The older names (ff99SB's, and what the
+#: lab's vendored preparation writes) call an NME's methyl CH3 and the methyl hydrogens of
+#: either cap HH31-HH33, and tleap with ff19SB stops at them: "Atom .R<NME 191>.A<CH3 7> does not have a type".
+#: Some docking programs' models call the methyl of either cap CA, its hydrogens HA1-HA3 and an NME's amide hydrogen HN
 CAP_NAMES = {"ACE": {"HH31": "H1", "HH32": "H2", "HH33": "H3", "CA": "CH3", "HA1": "H1", "HA2": "H2", "HA3": "H3"},
              "NME": {"CH3": "C", "HH31": "H1", "HH32": "H2", "HH33": "H3", "CA": "C", "HA1": "H1", "HA2": "H2", "HA3": "H3",
                      "HN": "H"}}
@@ -978,6 +983,8 @@ CAP_NAMES = {"ACE": {"HH31": "H1", "HH32": "H2", "HH33": "H3", "CA": "CH3", "HA1
 #: NH3+ hydrogens on the residue after it
 _C_TERMINAL = {"OXT", "HXT", "OT2"}
 _N_TERMINAL = {"H1", "H2", "H3", "HT1", "HT2", "HT3", "HN1", "HN2", "HN3"}
+#: an ACE is turned until each of its heavy atoms is this far, in Å, from every heavy atom but the N and CA of the
+#: residue it caps, as the lab's vendored preparation turns its own (cap_gaps)
 ACE_ROOM_A = 2.8
 
 
@@ -1070,6 +1077,28 @@ def cap_gaps(pdb_text: str, taken: dict[str, set[str]] | None = None,
     backbone at standard bond lengths and angles, both peptide bonds trans; with hydrogens=True (a structure that
     carries its hydrogens) the caps get theirs, and the residue after the gap its amide hydrogen. The atoms are named
     as the force fields name them (CAP_NAMES).
+
+    Numbering. The NME is numbered one past the residue before the gap and the ACE one short of the residue after
+    it, as the lab's vendored preparation numbers them: A:190-195 is capped by NME A:191 and ACE A:194. These
+    are the numbers of the residues missing at each end, and the caps are those residues' own backbone atoms (the
+    NME's N and methyl stand where the next residue's N and CA would, the ACE's carbonyl and methyl where the
+    previous residue's C, O and CA would). No residue is renumbered here, and no cap takes an id a residue of the
+    chain has (taken[chain], from the structure as it arrived, with its hetero groups and waters, and the text), so a
+    hotspot list names the residues it named before. A cap whose number is free but whose id is not (one residue
+    missing, where both caps are numbered alike; a water numbered there) takes an insertion code, the first free one
+    from A. A gap with no number free beside it (the residues either side numbered consecutively, as in a renumbered
+    file, or a gap inside a run of insertion codes, thrombin's H:149A-149E) has its caps under insertion codes of the
+    number before it (cap_ids): those of the missing residues where the run has them (NME H:149B, ACE H:149D), else
+    the first free ones (NME A:3A, ACE A:3B between A:3 and A:4). That numbering once had to keep a cap bonded,
+    since ParmEd, which pdb4amber reads with, bonds a residue to the next only when their numbers differ by one; the
+    build now numbers every residue in file order for pdb4amber (number_for_build), so a cap's bond does not rest on
+    its id, and an insertion code is as good as a number.
+
+    The NMEs are placed first, as each stands where its residue's own carbonyl puts it and has no freedom. Each ACE
+    is then turned about its residue's N-CA bond, from extended, to the first turn that leaves its heavy atoms
+    ACE_ROOM_A or more from every heavy atom but that residue's N and CA (the residue's own side chain, the NMEs and
+    the caps placed before it included), or to the turn that leaves the most room; as the lab's vendored preparation
+    turns its own.
 
     Returns the text, the caps ([{"break": "A:190-195", "nme": "A:191", "ace": "A:194"}, ...]) and the gaps left open
     with why ([{"break": "A:179-180", "why": "..."}]). A gap whose ends lack the backbone atoms a cap is built on

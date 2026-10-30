@@ -114,13 +114,19 @@ if [ -f "$AUD" ]; then
   grep -q "CANNOT LOAD" "$AUD" && note "a line that cannot load is fixed in hopemd/site.py (the site's block), never in a template" || true
 fi
 
-# ---- 6. what to do next ----------------------------------------------------------------------------
+# ---- 6. written last, so an install stopped before here is not taken for a finished one -------------
+# The code it finished with: the copy's stamp (BUNDLED), else the clone's commit. HOPE Labs' Set up
+# reads it to know the environment was made, and made for this code.
+STAMP="$( [ -f "$MD/BUNDLED" ] && head -1 "$MD/BUNDLED" || git -C "$MD" rev-parse HEAD 2>/dev/null || echo unknown )"
+printf '%s\n' "$STAMP" > "$ENV/.hopemd-installed"
+
+# ---- 7. what to do next ----------------------------------------------------------------------------
 RUNS="${SCRATCH:-/scratch/user/$USER}/hopemd_runs"
 if [ -f "$MD/BUNDLED" ]; then
   say "done. HOPE Labs opens it from $MD; its runs go to $RUNS"
   note "by hand on a login node:"
   note "    cd $MD && . ./activate.sh && python3 -m hopemd.server --port 8098 --runs $RUNS"
-  note "update later: update HOPE Labs, then Install HOPE-MD again on its Set up page, which copies the new one in"
+  note "update later: update HOPE Labs, then press Update on HOPE-MD's row of its Set up page, which copies the new one in"
 else
   say "done. In the desktop launcher:  tool directory  $MD      runs directory  $RUNS"
   note "by hand on a login node:"

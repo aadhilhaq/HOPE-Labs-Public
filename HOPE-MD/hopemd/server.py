@@ -780,12 +780,33 @@ def api_submit_batch(body: dict) -> dict:
         src["pose"] = int(sel.get("pose", 1))
         if sel.get("peptide"):
             src["peptide"] = str(sel["peptide"])
+        label = f"pose {src['pose']}"
+        try:
+            sysm, stage = _stage_import(kind, src, spec_d.get("system", {}))
+        except ImportRefused as e:
+            out.append({"selection": label, "error": str(e)}); log.append(f"{label}: {e}"); continue
         sysm.pop("note", None); staging = sysm.pop("staging")
+        # a small molecule's net charge is its own pose's: the charge the person confirmed on the
+        # loaded pose holds for a pose that reads the same, and a pose with no charge in its file
+        # (a PDB) takes the confirmed one; any other pose has to be loaded and confirmed itself
+        if sysm.get("ligand_class") == "small_molecule":
+            q, q0 = sysm.get("ligand_charge"), spec_d["system"].get("ligand_charge")
+            confirmed = bool(spec_d["system"].get("ligand_charge_confirmed")) and q0 is not None
+            if q is None and confirmed:
+                sysm["ligand_charge"], sysm["ligand_charge_confirmed"] = q0, True
+            elif q is not None and confirmed and q == q0:
+                sysm["ligand_charge_confirmed"] = True
+            elif q is not None and confirmed:
+                msg = f"net charge {q:+d} in this pose's file, not the confirmed {q0:+d}: load the pose and confirm its charge"
+                out.append({"selection": label, "error": msg}); log.append(f"{label}: refused: {msg}"); _clear_staging(staging); continue
         kept = {k: spec_d["system"].get(k) for k in keep if k in spec_d["system"]}
         spec_d["system"].update(sysm); spec_d["system"].update(kept); spec_d["system"]["source"] = src
         spec_d["name"] = ""
         r = api_render({"spec": spec_d, "staging": staging}, submit=True)
-        if r.get("error"):
+        if r.get("errors"):
+            msg = "; ".join(e["message"] for e in r["errors"])
+            out.append({"selection": label, "error": msg}); log.append(f"{label}: refused: {msg}"); _clear_staging(staging)
+        elif r.get("error"):
             out.append({"selection": label, "error": r["error"]}); log.append(f"{label}: {r['error']}"); _clear_staging(staging)
         else:
             out.append({"selection": label, "name": r["name"], "rundir": r.get("rundir"), "jobs": (r.get("submitted") or {}).get("jobs", {})})

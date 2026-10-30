@@ -84,7 +84,7 @@ const HELP = {
   'system.source.pdb_id': 'The four-character RCSB code (1BHL). The entry, its title and resolution are fetched from the RCSB.',
   'system.source.assembly': 'Which biological assembly to take: 1, 2 … as the RCSB defines them, or asu for the asymmetric unit as deposited.',
   'system.source.ligand_path': 'The ligand or partner file: a small molecule (sdf, mol2, pdb), a peptide or a protein chain (pdb). Empty simulates the receptor alone.',
-  'system.source.peptide': 'Which peptide of the docking run to load now, in the order the docking console ranked them. Every peptide can be simulated at once from the box below.',
+  'system.source.peptide': 'Which peptide of the docking run to load now, in the order the docking ranked them. Every peptide can be simulated at once from the box below.',
   'system.source.pose': 'Which ranked pose (1 = best) of the peptide, or which AlphaFold model (1 = top ranked, the file the server names model_0).',
   'system.receptor_chains': 'The chains that are the receptor: fitted for the RMSD and the interface measures. Letters as in the file. With DNA or RNA bound to a protein the protein chains are proposed, with every strand as the partner; a nucleic acid alone is simulated whole, with no partner.',
   'system.partner_chains': 'The chains on the other side of the interface: the thing being simulated against the receptor.',
@@ -897,12 +897,12 @@ async function doPrepare() {
   await refresh();
 }
 
-/* ---- the viewer: 3Dmol by default, Mol* on request; the same bar the lab's docking console
-   has ("the 3D panel"): color modes with
+/* ---- the viewer: 3Dmol by default, Mol* on request; the same bar the lab's other structure
+   viewers have ("the 3D panel"): color modes with
    custom colors, draw, surfaces, show, contacts with kinds and distances, focus on a residue,
    figure mode, label modes and label dragging (vendor/drag.js), reset / spin / save, engine.
    The structure arrives as two models: 0 the receptor, 1 the ligand or partner. Restraint
-   picking is 3Dmol's; Mol* is for looking. Behavior copied from the console, not reinvented. */
+   picking is 3Dmol's; Mol* is for looking. Behavior copied from the lab's other viewers, not reinvented. */
 const VENDOR = window.HOPEMD_VENDOR || '/static/vendor/';
 const CUSTOM = {rec: '#b9c9c9', lig: '#c2603a', bg: '#dfe3e6'};   // bg: everything outside a close-up
 const SURF = {rec: 0, lig: 0};                      // 0 off, 1 solid, 2 see-through, 3 mesh
@@ -912,7 +912,7 @@ try { const e = localStorage.getItem('hopemd.viewer'); if (e === 'molstar' || e 
 const cssVar = n => getComputedStyle(document.body).getPropertyValue(n).trim();
 
 /* @contacts-start */
-/* Contacts, as the docking console classifies them: H-bond ≤ 3.5 Å between N/O/S, salt bridge
+/* Contacts, as the lab's other viewers classify them: H-bond ≤ 3.5 Å between N/O/S, salt bridge
    ≤ 4.0 Å between the charged groups, ring stacking ≤ 5.0 Å between aromatic carbons, van der
    Waals ≤ 4.0 Å. One line per residue pair, not per atom pair: the closest atom pair wins the
    distance and the most specific kind wins the color. */
@@ -1143,7 +1143,7 @@ function styleStructure(frame) {
       if (dl) V.addLabel(pp.d.toFixed(1) + ' Å', dl);
     });
   }
-  // restrained residues: the docking console's site blue, on top of everything else
+  // restrained residues: the site blue (brand.py), on top of everything else
   // a key is chain:number with any insertion code ("H:60A"), as a click names the residue
   for (const k of SPEC.protocol.restrain) {
     const m = /^(.*?):(-?\d+)(\S*)$/.exec(k);

@@ -1078,7 +1078,7 @@ dialog.hlp[open]{display:flex;flex-direction:column}
   .hlp .hlp-places{max-height:30vh;border-right:0;border-bottom:1px solid var(--line)}
 }
 /* The hub's own, after the block above and a step more particular than it. Only here do the
-   places say whose folder each is - "HOPE-MD runs, sflab's" beside "HOPE-MD runs, yours" - and
+   places say whose folder each is - "HOPE-MD runs, <group>'s" beside "HOPE-MD runs, yours" - and
    held to one line those names were cut in the middle of a word in a 156px column. They wrap. */
 .hlp .hlp-place{align-items:flex-start}
 .hlp .hlp-place .hlp-ic{margin-top:2px}

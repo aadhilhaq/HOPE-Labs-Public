@@ -304,7 +304,7 @@ function paintTools() {
       const bits = [];
       const mins = Math.max(1, Math.round((c.took || 0) / 60));
       const verb = recipe.check_verb || "Checked";
-      if (c.ok) bits.push(verb + " on " + (c.node || "a GPU node") + " in " + mins + " min"
+      if (c.ok) bits.push(verb + " on " + (c.node || (recipe.needs.gpu ? "a GPU node" : "a CPU node")) + " in " + mins + " min"
         + (c.confidence_score !== undefined ? ", confidence " + c.confidence_score : "") + ".");
       if (r.boltz) bits.push("Boltz " + r.boltz + ", PyTorch " + r.torch + (r.kernels === false ? ", without the CUDA kernels" : "") + ".");
       if (bits.length) row.appendChild(el("div", "proof", bits.join(" ")));
@@ -321,6 +321,15 @@ function paintTools() {
         + (recipe.needs.gpu ? "changes its drivers" : "is updated");
       again.onclick = () => act("/api/check", t.key);
       acts.appendChild(again);
+    }
+    // A newer copy came with HOPE Labs (HOPE-MD's): Update puts it in, keeps the environment and
+    // checks it again. Install does not, because an installed row has no tick.
+    if (recipe && state === "ready" && recipe.update) {
+      row.appendChild(el("div", "detail", "A newer " + t.name + " came with HOPE Labs: " + recipe.update + "."));
+      const up = el("button", "btn pri sm", "Update");
+      up.title = "Put in the newer " + t.name + " this HOPE Labs carries, keep its environment, and check it again";
+      up.onclick = () => act("/api/install", t.key);
+      acts.appendChild(up);
     }
     // Anything Set up installed can be taken off again, and put back with Install whenever it
     // is wanted. Only what Set up put there: a copy it found is not its to remove.

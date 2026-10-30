@@ -85,6 +85,16 @@ class Recipe:
         """Why this tool cannot be installed on this cluster at all, or "" when it can."""
         return ""
 
+    def update_due(self, root):
+        """What an Update of an installed tool would bring, or "" when there is nothing newer."""
+        return ""
+
+    def claims(self, root):
+        """The folders a first install makes from nothing. One already there that Set up has no
+        record of is somebody else's, and the install is refused rather than taking it over: it
+        would be Remove's to delete afterwards."""
+        return [self.where(root)]
+
     def owns(self, root):
         """Every folder this tool's install made under the HOPE Labs folder, which Remove takes
         away again. Not the package manager or its cache: the other tools share those."""
@@ -481,7 +491,7 @@ class HopeMD(Recipe):
     summary = ("Molecular dynamics of a complex, from Prepare to MM-GBSA and a report, on the "
                "cluster's own engines. Prepare and the page run from the environment made here.")
     disk_gb = 4
-    files = 90000
+    files = 60000
     minutes = 30
     licence = ("Academic use: free for non-commercial research and teaching",
                "https://github.com/aadhilhaq/HOPE-Labs-Public/blob/main/HOPE-MD/LICENSE")
@@ -523,15 +533,18 @@ class HopeMD(Recipe):
         """Why HOPE-MD cannot be installed on this cluster, or "" when it can.
 
         The cluster is told as sites.here() tells it, but from the table alone: a profile Set up
-        wrote would answer for any cluster, Grace included. Asked once a process, because Slurm is
-        asked and the page asks on every refresh."""
+        wrote would answer for any cluster, Grace included. An answer is kept for the process,
+        because Slurm is asked and the page asks on every refresh; no answer (Slurm did not reply,
+        and a Grace login node's name, login1, says nothing) claims nothing and is asked again."""
         if self._where is None:
             from ..folding import sites as sitesmod
             named = (os.environ.get("HOPELABS_SITE") or "").strip().lower()
             key = named if named in sitesmod.SITES else sitesmod.cluster_name()
             if key not in sitesmod.SITES:
                 found = sitesmod.site_for_host(socket.gethostname())
-                key = found.key if found else (key or socket.gethostname().split(".")[0])
+                key = found.key if found else key
+            if not key:
+                return ""
             self._where = key
         if self._where in self.SITES:
             return ""
@@ -549,6 +562,24 @@ class HopeMD(Recipe):
         # install.sh puts the environment, and the conda base when it makes one, beside the code
         # in the HOPE-MD folder, with its caches and its audit.
         return [os.path.join(root, "HOPE-MD")]
+
+    def claims(self, root):
+        # The whole folder, not only the code in it: Remove takes the whole folder.
+        return [os.path.join(root, "HOPE-MD")]
+
+    def update_due(self, root):
+        """The copy this HOPE Labs carries, when the one installed here is another: what an Update
+        puts in, keeping the environment."""
+        source, here = self.bundled(), self.where(root)
+        if not source or not os.path.isdir(here):
+            return ""
+        have, carried = self._stamp(here), self._stamp(source)
+        if have == carried:
+            return ""
+        new, old = _stamp_short(carried), _stamp_short(have)
+        if new == old:
+            return "%s, made again by a newer HOPE Labs" % new
+        return "%s, in place of %s" % (new, old)
 
     def code(self, ctx):
         here = self.where(ctx.root)
@@ -586,11 +617,19 @@ class HopeMD(Recipe):
 
     @staticmethod
     def _stamp(folder):
-        """The first line of a copy's BUNDLED: which HOPE-MD commit it is, and its date."""
+        """Which code a folder holds, as install.sh writes it when it finishes: the first line of
+        a copy's BUNDLED (the HOPE-MD commit, its date and a hash of the copy), else a clone's
+        commit."""
         try:
             return open(os.path.join(folder, "BUNDLED"), encoding="utf-8").readline().strip()
         except OSError:
+            pass
+        try:
+            got = subprocess.run(["git", "-C", folder, "rev-parse", "HEAD"], capture_output=True,
+                                 text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
             return ""
+        return got.stdout.strip() if got.returncode == 0 else ""
 
     def installer(self, ctx):
         here = self.where(ctx.root)
@@ -602,31 +641,33 @@ class HopeMD(Recipe):
             base=_venv_home(env))
 
     def installed(self, ctx):
-        """Installed when the environment install.sh makes is there, on its base."""
-        env = os.path.join(ctx.root, "HOPE-MD", "env")
-        return os.access(os.path.join(env, "bin", "python3"), os.X_OK) and bool(_venv_home(env))
+        """Installed when install.sh wrote, as its last act, that it finished for this code. The
+        environment appears half way through it, so an install stopped after that, or one made
+        for an older copy, is not taken for a finished one."""
+        try:
+            with open(os.path.join(ctx.root, "HOPE-MD", "env", ".hopemd-installed"),
+                      encoding="utf-8") as fh:
+                said = fh.readline().strip()
+        except OSError:
+            return False
+        return bool(said) and said == self._stamp(self.where(ctx.root))
 
     def selfcheck(self, ctx, what, run):
         """HOPE-MD's own check (hopemd/selfcheck.py), from the install's environment as its page
-        is started: what it printed, one JSON object."""
+        is started: what it printed, one JSON object. Run as every step's commands are, so the
+        page hears from it while it fetches and imports, and a Stop stops it."""
         import shlex
-        line = ". ./activate.sh && python3 -m hopemd.selfcheck %s %s" % (what, shlex.quote(run))
-        ctx.say("$ " + line)
+        said = os.path.join(run, "selfcheck_%s.json" % what)
+        line = (". ./activate.sh && python3 -m hopemd.selfcheck %s %s | tee %s; true"
+                % (what, shlex.quote(run), shlex.quote(said)))
+        ctx.sh(["bash", "-c", line], "HOPE-MD's check: %s" % what, timeout=600,
+               cwd=self.where(ctx.root))
         try:
-            done = subprocess.run(["bash", "-c", line], cwd=self.where(ctx.root), env=ctx.env(),
-                                  stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                                  errors="replace", timeout=600)
-        except subprocess.TimeoutExpired:
-            raise Failed("HOPE-MD's check (%s) took more than ten minutes" % what)
-        for text in (done.stderr or "").strip().splitlines()[-6:]:
-            ctx.say("  " + text[:500])
-        try:
-            got = json.loads((done.stdout or "").strip().splitlines()[-1])
-        except (IndexError, ValueError):
-            raise Failed("HOPE-MD's check (%s) printed nothing it could read: %s"
-                         % (what, (done.stderr or done.stdout or "nothing").strip()[-400:]))
-        ctx.say("  " + json.dumps(got)[:500])
-        return got
+            with open(said, encoding="utf-8") as fh:
+                return json.loads(fh.read().strip().splitlines()[-1])
+        except (OSError, IndexError, ValueError):
+            raise Failed("HOPE-MD's check (%s) printed nothing it could read; the log above says "
+                         "why" % what)
 
     def check(self, ctx):
         """Prepare Trp-cage (PDB 1L2Y) on the CPU queue, as the page's Prepare does, and look at
@@ -659,8 +700,14 @@ class HopeMD(Recipe):
             raise
         got = self.selfcheck(ctx, "read", run)
         log = os.path.join(run, "logs", "prepare.%s.out" % job)
+        # the node, from the job's own first line: "[hopemd] <date> host=c261 job=..."
+        try:
+            with open(log, encoding="utf-8", errors="replace") as fh:
+                node = re.search(r"\bhost=(\S+)", fh.read(4000))
+        except OSError:
+            node = None
         ctx.state["check"].update(state=state, took=round(time.time() - began),
-                                  atoms=got.get("atoms", 0))
+                                  atoms=got.get("atoms", 0), node=node.group(1) if node else "")
         if not got.get("ok"):
             raise Failed("the check preparation (job %s, %s) did not finish: %s. Its log is %s; "
                          "the last lines say: %s" % (job, state or "gone from the queue",
@@ -672,6 +719,13 @@ class HopeMD(Recipe):
 
     def check_done(self, ctx):
         return bool((ctx.state.get("check") or {}).get("ok"))
+
+
+def _stamp_short(stamp):
+    """A copy's stamp as a row says it: "cd4fed6 of 2026-10-30" for "HOPE-MD cd4fed6 (2026-10-30),
+    content ..., as HOPE Labs' public edition carries it"."""
+    found = re.match(r"HOPE-MD (\S+) \(([^)]*)\)", stamp or "")
+    return "%s of %s" % found.groups() if found else (stamp or "an older one")
 
 
 def _clone_url(source):

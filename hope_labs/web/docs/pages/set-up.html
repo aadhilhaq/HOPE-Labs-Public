@@ -8,9 +8,10 @@ installs the tools you tick. A tool counts as installed once a real job has run 
   <li><b>A login node that reaches the internet.</b> Every download happens there. The compute
     nodes need no internet at all: the tools are built to work without it.</li>
   <li><b>A folder with room</b>, in scratch or in a group folder if others will use it too.
-    <!-- Measured on Grace: a first-time set-up came to 211 MB and 8,919 files. -->
+    <!-- Measured on Grace: a first-time set-up came to 211 MB and 8,919 files; HOPE-MD, from the
+    copy the public edition carries, 3.8 GB and 59,953 inodes; its conda packages are hard links. -->
     HOPE Labs itself takes about 210 MB and 9,000 files; Boltz-2 about 16 GB and 95,000 files;
-    HOPE-MD about 4 GB and 90,000 files, nearly all of them the environment its Prepare runs in.
+    HOPE-MD about 4 GB and 60,000 files, nearly all of them the environment its Prepare runs in.
     RFD4-Proteina and BioEmu each come as one image
     file, so they need room (Set up asks for 20 GB and 14 GB) and only a few hundred files.
     Most clusters cap the number of files as well as the space, and Set up checks both before it
@@ -74,7 +75,8 @@ modules by name, and on any other cluster its row says so.</p>
 <p>HOPE-MD comes with this edition, in the <code>HOPE-MD</code> folder of the checkout,
 and Set up copies it in rather than fetching it from anywhere: its install downloads only the
 packages of the environment it runs in, from conda-forge and PyPI. An update of HOPE Labs brings a
-newer copy, and <b>Install</b> puts it in and keeps the environment.</p>
+newer copy: its row says so, and <b>Update</b> puts it in, keeps the environment and checks it
+again.</p>
 <p>The install runs on the login node in a process of its own. Closing the page, the launcher or
 the laptop does not stop it; sign in again later and the page shows how far it got. If it stops
 part way, after a failure, a press of <b>Stop</b> or a login node restarting, <b>Install</b>

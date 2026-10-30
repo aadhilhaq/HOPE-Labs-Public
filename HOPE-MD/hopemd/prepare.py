@@ -2,6 +2,19 @@
 
 Order, and what each step needs on the node:
 
+1. clean      stdlib      drop waters / buffers / ions / other chains / altlocs per the policy; the waters kept
+                          wait outside the structure until the split; modified amino acids to their parent (one
+                          whose charge is not its parent's stops the stage, as a structure with no chain does)
+2. model      pdbfixer    nonstandard residues to standard, missing atoms, and the gaps inside a chain up to N (12 at
+                          most; never a chain's ends) built from a fixed seed, relaxed with their stems on springs
+                          (openmm) and every join checked, as the preparation the lab's other tools share does
+3. trim       stdlib      AlphaFold: cut terminal residues below the pLDDT threshold (a model's B column only)
+4. protonate  pdb2pqr     propka at the pH (or PDBFixer's rules, or nothing); Clean's hetero groups leave here;
+                          each gap left open is ended with TER and its two ends capped, ACE and NME (cap_breaks)
+5. minimize   openmm      restrained minimization in vacuum (or GBn2): clashes out, nothing else moves
+6. split      stdlib      receptor chains and partner chains to input/receptor.pdb, input/ligand.pdb, the
+                          ions carried past protonation to input/ions.pdb, the waters Clean kept to input/waters.pdb
+
 Every step writes what it did into prep_report.json; the page shows that as the checks strip.
 A step whose tool is missing is skipped and says so; the report is honest about it.
 

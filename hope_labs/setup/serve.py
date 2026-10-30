@@ -92,6 +92,8 @@ def tool_rows():
             # repository that cannot be read without signing in cannot be: the row says so
             # instead of a tick.
             row["recipe"].update(recipesmod.fetchable(recipe, S.root))
+            # what an Update would bring to an installed tool: a newer copy this HOPE Labs carries
+            row["recipe"]["update"] = recipe.update_due(S.root)
             row["status"] = engine.status(S.root, recipe)
         else:
             row["status"] = {"state": engine.PRESENT if os.path.exists(where) else engine.ABSENT}
@@ -207,7 +209,8 @@ def api_gpu_check(body):
 
 def api_install(body):
     """Start the ticked tools' installs, each a process of its own that outlives this page."""
-    asked = [str(k) for k in body.get("tools") or []]
+    # the ticked tools, or the one an Update button names
+    asked = [str(k) for k in body.get("tools") or ([body["tool"]] if body.get("tool") else [])]
     if not asked:
         raise engine.Failed("tick at least one tool")
     unknown = [k for k in asked if k not in RECIPES]
