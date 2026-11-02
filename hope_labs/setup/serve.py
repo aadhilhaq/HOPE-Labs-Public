@@ -273,7 +273,10 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "hope-setup-page"
 
     def log_message(self, fmt, *args):
-        sys.stderr.write("%s %s\n" % (time.strftime("%H:%M:%S"), fmt % args))
+        # Nothing for each request. A launcher before 0.9.11 read a tool's output only until it
+        # said it was ready, and after 2 MB unread SSH passes nothing more on: a line for each
+        # request stalled the page hours into a session, on the next line it wrote.
+        pass
 
     def _send(self, code, kind, payload, extra=None):
         self.send_response(code)

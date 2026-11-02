@@ -8,7 +8,7 @@ a person approves Duo once instead of once a tool.
 import os
 import sys
 
-__version__ = "0.9.10"
+__version__ = "0.9.11"
 
 #: What this build's server offers the page: the routes and the shapes they answer with. The page
 #: files say which of these they need, and the two numbers are how a launcher decides whether it
@@ -40,7 +40,10 @@ __version__ = "0.9.10"
 #: (/api/browse), and a structure given from this computer written into the person's scratch
 #: (/api/files/put). The page offers the browser only when the state says 7, and falls back to
 #: the path box it always had, so PAGE_NEEDS stays at 2.
-PAGE_API = 7
+#: 8: every tool runs under one session on the login node, and the state says whether the
+#: connection is still there ("connected"). The page shows that only when the state carries it,
+#: so PAGE_NEEDS stays at 2.
+PAGE_API = 8
 PAGE_NEEDS = 2
 APP = "HOPE Labs (public edition)"
 

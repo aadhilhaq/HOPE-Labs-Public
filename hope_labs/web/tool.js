@@ -78,13 +78,24 @@ function stillCredits() {
   bar.insertBefore(more, bar.querySelector(".creditlinks"));
 }
 
+/* A login node allows ten sessions at once on one connection, and refuses the next with "Connect
+   failed". A launcher before 0.9.11 held one for every tool it had started, so with enough open
+   it said that, which read as a connection that had gone. Said here in words, for those
+   launchers; a current one runs every tool on one session and says it in words itself. */
+const SESSIONS_FULL = "The login node would not open another session on this connection: it allows "
+  + "ten at once, and this launcher holds one for every tool it has started. Stop the tools you are "
+  + "not using on the Tools page, or download the current launcher, which runs them all on one.";
+function plainError(text) {
+  return /Connect failed/.test(text || "") ? SESSIONS_FULL : text;
+}
+
 async function api(path, body) {
   const url = path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN);
   const init = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
   const answer = await fetch(url, init);
   let data = {};
   try { data = await answer.json(); } catch (e) { data = { error: "the launcher sent something unreadable" }; }
-  if (!answer.ok) throw new Error(data.error || "the launcher answered " + answer.status);
+  if (!answer.ok) throw new Error(plainError(data.error) || "the launcher answered " + answer.status);
   return data;
 }
 

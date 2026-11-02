@@ -220,6 +220,13 @@
     <button class="btn sm" id="oldlauncher-hide" type="button">Dismiss</button>
   </div>
 
+  <!-- The connection to the cluster has ended. The launcher says so in the state, and this line
+       says what to do; a launcher that does not say (before 0.9.11) never shows it. -->
+  <div class="oldlauncher" id="lostconn" role="alert" hidden>
+    <span class="oldicon" aria-hidden="true">!</span>
+    <span class="oldtext" id="lostconn-text"></span>
+  </div>
+
   <!-- ============================ the catalog ============================ -->
   <section id="view-tools" style="display:flex;flex-direction:column;min-height:0;flex:1">
     <header class="top">

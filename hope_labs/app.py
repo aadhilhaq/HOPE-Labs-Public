@@ -9,6 +9,7 @@ the same wherever it is used.
 import os
 import queue
 import threading
+import time
 import webbrowser
 
 import tkinter as tk
@@ -209,6 +210,7 @@ class App:
         self.hub = None
         self.httpd = None
         self.url = ""
+        self.watching = None          # set to stop watching the connection (tunnel.watch)
         cfg = load()
 
         root.title(APP)
@@ -380,6 +382,8 @@ class App:
                 elif kind == "failed":
                     self.go.configure(state="normal")
                     messagebox.showerror(APP, payload)
+                elif kind == "lost":
+                    self.connection_lost(*payload)
         except queue.Empty:
             pass
         self.root.after(120, self.pump)
@@ -448,6 +452,11 @@ class App:
             return
         save({"site": self.site.get(), "host": host, "user": user,
               "jump": self.jump.get(), "key": self.key.get()})
+        # Signing in again, after a connection that ended or over one still up, starts clean: the
+        # old page server would hold the port the page is remembered at, and its tools the login
+        # node.
+        if self.t is not None or self.hub is not None or self.httpd is not None:
+            self.close()
         self.go.configure(state="disabled")
         self.q.put(("status", "connecting"))
         threading.Thread(target=self.work, args=(host, user), daemon=True).start()
@@ -506,6 +515,8 @@ class App:
             self.say(ACK)
             self.q.put(("status", "signed in"))
             self.q.put(("ready", ""))
+            t = self.t
+            self.watching = tunnel.watch(t, lambda why: self.q.put(("lost", (t, node, why))))
         except Exception as exc:                                # noqa: BLE001
             self.say("")
             self.say("Could not connect: %s" % exc)
@@ -518,7 +529,21 @@ class App:
         if self.url:
             webbrowser.open(self.url)
 
+    def connection_lost(self, t, node, why):
+        """Say that the connection has ended, once, and offer to sign in again."""
+        if t is not self.t:
+            return                      # one already signed out of, or replaced
+        self.say("")
+        self.say("The connection to %s ended at %s: %s. The tools' pages stopped with it; anything "
+                 "already queued carries on. Press Sign in to carry on."
+                 % (node, time.strftime("%H:%M"), why))
+        self.q.put(("status", "connection ended"))
+        self.go.configure(state="normal")
+
     def close(self):
+        if self.watching is not None:
+            self.watching.set()         # signing out is not the connection being lost
+            self.watching = None
         if self.hub:
             self.hub.stop_all()
             self.hub = None

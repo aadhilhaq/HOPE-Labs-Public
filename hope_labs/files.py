@@ -84,7 +84,8 @@ def inside(hub, path):
 
 def _sftp(hub):
     import paramiko
-    return paramiko.SFTPClient.from_transport(hub.t)
+    from . import tunnel
+    return tunnel.opening(lambda: paramiko.SFTPClient.from_transport(hub.t))
 
 
 def may_read(hub, path):

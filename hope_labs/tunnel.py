@@ -26,10 +26,10 @@ the only way to be sure a credential file cannot leak is not to have one.
 
 from __future__ import annotations
 import os
-import select
 import socket
 import socketserver
 import threading
+import time
 
 try:
     import paramiko
@@ -325,8 +325,26 @@ def _patience(t, timeout):
     t.auth_timeout = AUTH_PATIENCE
 
 
+#: Seconds between the keepalives sent on an idle connection. A router or a VPN forgets a quiet
+#: connection after a few minutes, and the next thing sent finds nobody at the other end.
+KEEPALIVE = 30
+
+
 def connect(host, user, ask, port=22, timeout=40, try_keys=True,
             jump=None, key=None, log=None):
+    """An authenticated SSH transport, or a TunnelError explaining why not: see _connect. Once
+    signed in it sends a keepalive whenever it has been quiet for KEEPALIVE seconds."""
+    t = _connect(host, user, ask, port=port, timeout=timeout, try_keys=try_keys,
+                 jump=jump, key=key, log=log)
+    try:
+        t.set_keepalive(KEEPALIVE)
+    except Exception:                                          # noqa: BLE001
+        pass
+    return t
+
+
+def _connect(host, user, ask, port=22, timeout=40, try_keys=True,
+             jump=None, key=None, log=None):
     """An authenticated SSH transport, or a TunnelError explaining why not.
 
     ``ask(title, instructions, prompts)`` is called for every challenge the
@@ -525,19 +543,120 @@ def connect(host, user, ask, port=22, timeout=40, try_keys=True,
 
 # --- running the monitor over there ----------------------------------------
 
+#: What a person is told when the login node will not open another session on the connection.
+#: sshd allows ten at once on one connection (MaxSessions) and refuses the next with "Connect
+#: failed", which read as a connection that had gone.
+SESSIONS_FULL = ("The login node would not open another session on this connection: it allows ten "
+                 "at once. Wait a moment and try again; if it goes on happening, stop the tools you "
+                 "are not using on the Tools page.")
+
+#: The pauses between tries when a session is refused: a moment of many requests at once clears
+#: in a second or two, and a connection really full is said so after about eight.
+SESSION_WAITS = (0.5, 1.0, 2.0, 4.0)
+
+
+class SessionsFull(TunnelError):
+    """The login node refused another session on this connection."""
+
+
+def refused(exc):
+    """Whether `exc` is the login node refusing a session (paramiko's ChannelException, code 2,
+    "Connect failed"), rather than the connection itself failing."""
+    return (paramiko is not None and isinstance(exc, paramiko.ChannelException)
+            and getattr(exc, "code", None) == 2)
+
+
+def opening(fn, waits=SESSION_WAITS):
+    """``fn()``, which opens a session, tried again while the login node refuses it, and a
+    SessionsFull saying so when it goes on refusing. Anything else it raises is raised as it is."""
+    for wait in tuple(waits) + (None,):
+        try:
+            return fn()
+        except Exception as exc:                               # noqa: BLE001
+            if not refused(exc):
+                raise
+            if wait is None:
+                raise SessionsFull(SESSIONS_FULL) from exc
+            time.sleep(wait)
+
+
+def open_session(t, timeout=60):
+    """A session on `t`, waited for while the login node has none to give for a moment."""
+    return opening(lambda: t.open_session(timeout=timeout))
+
+
+def watch(t, lost, every=30, patience=45, misses=2):
+    """Notice that the connection `t` has gone, and say so once, by calling ``lost(why)``.
+
+    The connection is asked something every `every` seconds that the cluster's sshd has to
+    answer. A connection whose far end has vanished without closing it - a laptop asleep, a
+    network changed under it - answers nothing, and paramiko would go on sending into it for as
+    long as TCP keeps trying, a quarter of an hour or more. So `misses` questions in a row left
+    unanswered for `patience` seconds each close it here. Returns an Event: set it to stop
+    watching, as signing out does.
+    """
+    done = threading.Event()
+
+    def asked():
+        answered = threading.Event()
+
+        def ask():
+            try:
+                t.global_request("keepalive@openssh.com", wait=True)
+            except Exception:                                  # noqa: BLE001
+                pass
+            answered.set()
+        threading.Thread(target=ask, name="hope-labs-probe", daemon=True).start()
+        return answered.wait(patience)
+
+    def loop():
+        missed = 0
+        while not done.is_set():
+            if not t.is_active():
+                break
+            missed = 0 if asked() else missed + 1
+            if done.is_set():
+                return
+            if missed >= misses:
+                try:
+                    t.close()
+                except Exception:                              # noqa: BLE001
+                    pass
+                lost("the cluster stopped answering")
+                return
+            if not t.is_active():
+                break
+            done.wait(every)
+        if not done.is_set():
+            lost("the connection was closed")
+
+    threading.Thread(target=loop, name="hope-labs-watch", daemon=True).start()
+    return done
+
+
 def run(t, command, timeout=60):
-    """Run a command and wait for it, as ``(exit status, stdout, stderr)``."""
-    ch = t.open_session(timeout=timeout)
+    """Run a command and wait for it, as ``(exit status, stdout, stderr)``.
+
+    The wait sleeps between looks. It used to look as fast as it could, which kept a core of the
+    laptop busy for every command and slowed the connection's own thread, which every tool's page
+    goes through.
+    """
+    ch = open_session(t, timeout=timeout)
     ch.settimeout(timeout)
     ch.exec_command(command)
     out, err = b"", b""
     while True:
+        got = False
         if ch.recv_ready():
             out += ch.recv(65536)
+            got = True
         if ch.recv_stderr_ready():
             err += ch.recv_stderr(65536)
+            got = True
         if ch.exit_status_ready() and not ch.recv_ready() and not ch.recv_stderr_ready():
             break
+        if not got:
+            time.sleep(0.01)
     status = ch.recv_exit_status()
     ch.close()
     return status, out.decode(errors="replace"), err.decode(errors="replace")
@@ -572,6 +691,18 @@ def hostname(t):
 # --- forwarding a local port through the connection ------------------------
 
 class _Handler(socketserver.BaseRequestHandler):
+    """One browser connection, carried over a channel of the shared connection.
+
+    A thread each way, each waiting on its own side. It used to wait on both with select(),
+    which asks paramiko for the channel's file number, and for that paramiko keeps a pipe beside
+    the channel that its own thread writes to whenever data arrives. A browser that gives up on
+    a request - it does all the time, whenever a page loads something else instead - closed the
+    channel, and that pipe, while the rest of the answer was still arriving; paramiko's thread
+    then wrote into a pipe no longer there, took the error for its connection failing ("Broken
+    pipe", "Bad file descriptor") and ended it. Every tool's page stopped at once, and HOPE Labs
+    looked signed out. Nothing here asks for a file number, so paramiko makes no pipe.
+    """
+
     def handle(self):
         try:
             ch = self.server.transport.open_channel(
@@ -581,26 +712,46 @@ class _Handler(socketserver.BaseRequestHandler):
             return                      # the far end is gone; the browser retries
         if ch is None:
             return
+        browser = self.request
+
+        def down():
+            # The tool's answer, to the browser, until the tool or the browser is done.
+            try:
+                while True:
+                    data = ch.recv(65536)
+                    if not data:
+                        break
+                    browser.sendall(data)
+            except Exception:                                   # noqa: BLE001
+                pass                    # a closed browser tab is not an error
+            finally:
+                try:
+                    browser.shutdown(socket.SHUT_WR)
+                except OSError:
+                    pass
+
+        answer = threading.Thread(target=down, name="hope-labs-forward", daemon=True)
+        answer.start()
         try:
             while True:
-                r, _, _ = select.select([self.request, ch], [], [], 1.0)
-                if self.request in r:
-                    d = self.request.recv(16384)
-                    if not d:
-                        break
-                    ch.sendall(d)
-                if ch in r:
-                    d = ch.recv(16384)
-                    if not d:
-                        break
-                    self.request.sendall(d)
-        except OSError:
-            pass                        # a closed browser tab is not an error
+                data = browser.recv(65536)
+                if not data:
+                    break
+                ch.sendall(data)
+        except Exception:                                       # noqa: BLE001
+            pass
         finally:
             try:
-                ch.close()
-            except Exception:
+                ch.shutdown_write()     # the browser has said all it will: the tool may finish
+            except Exception:                                   # noqa: BLE001
                 pass
+        # The rest of the answer is waited for, and a tool that keeps a connection the browser has
+        # left open for no reason is let go of after a minute: closing the channel ends the wait.
+        answer.join(60)
+        try:
+            ch.close()
+        except Exception:                                       # noqa: BLE001
+            pass
 
 
 class _Forwarder(socketserver.ThreadingTCPServer):

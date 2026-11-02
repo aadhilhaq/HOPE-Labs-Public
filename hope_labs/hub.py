@@ -28,6 +28,7 @@ from . import EDITION, PAGE_API, PAGE_NEEDS, __version__
 from . import canvas
 from . import files as filesmod
 from . import settings
+from . import supervisor
 from . import tools as catalog
 from . import tunnel
 
@@ -80,28 +81,32 @@ def known_only(doc, field, built):
 
 
 class Running:
-    """A tool that is up: its channel on the shared connection and the local port reaching it."""
+    """A tool that is up: its process on the login node and the local port reaching it."""
 
-    def __init__(self, tool, channel, forwarder, local_port, remote_port, token):
+    def __init__(self, tool, proc, forwarder, local_port, remote_port, token):
         self.tool = tool
-        self.channel = channel
+        self.proc = proc
         self.forwarder = forwarder
         self.local_port = local_port
         self.remote_port = remote_port
         self.token = token
         self.started = time.time()
-        self.log = ""
 
     @property
     def url(self):
         return "http://127.0.0.1:%d%s%s" % (self.local_port, self.tool.page,
                                             ("?t=" + self.token) if self.token else "")
 
+    @property
+    def log(self):
+        """What the tool has printed: its first part whole, and its latest."""
+        return self.proc.text()
+
     def alive(self):
-        return not (self.channel.exit_status_ready() and not self.channel.recv_ready())
+        return self.proc.alive()
 
     def stop(self):
-        for close in (getattr(self.channel, "close", None),
+        for close in (getattr(self.proc, "stop", None),
                       getattr(self.forwarder, "shutdown", None),
                       getattr(self.forwarder, "server_close", None)):
             try:
@@ -143,6 +148,12 @@ class Hub:
         self._installed = (0.0, {})
         self.use_labs(labs or dict(installs or {}).get("flow") or FLOW_INSTALL, check=False)
         self.running = {}                 # key -> Running
+        #: The one session every tool runs under (supervisor.Supervisor), opened with the first
+        #: tool and again whenever it has ended; why the login node could not run it, once it
+        #: could not, after which each tool has a session of its own.
+        self._sup = None
+        self._sup_lock = threading.Lock()
+        self.no_supervisor = ""
         self.token = secrets.token_urlsafe(12)
         self.lock = threading.Lock()
         self.starting = {}                # key -> the lock held while that tool starts
@@ -281,6 +292,34 @@ class Hub:
             return int(got[-1])
         return 8800 + secrets.randbelow(600)
 
+    def shared_session(self):
+        """The session the tools run under, started when first wanted; None on a login node that
+        cannot run it, which is said once in the window."""
+        with self._sup_lock:
+            if self._sup is not None and not self._sup.dead:
+                return self._sup
+            if self.no_supervisor:
+                return None
+            if self._sup is not None:
+                self.say("the session the tools ran under ended (%s); starting another"
+                         % self._sup.why)
+            try:
+                self._sup = supervisor.Supervisor(self.t, say=self.say).open()
+            except supervisor.Unavailable as why:
+                self._sup, self.no_supervisor = None, str(why) or "it would not start"
+                self.say("each tool will hold a session of its own on this cluster, so open few at "
+                         "once: the session they would share could not start (%s)"
+                         % self.no_supervisor)
+                return None
+            return self._sup
+
+    def process(self, line, name=""):
+        """Start `line` on the login node: under the shared session, or in one of its own."""
+        sup = self.shared_session()
+        if sup is not None:
+            return sup.start(line, name)
+        return supervisor.ChannelProc(self.t, line, name)
+
     def launch(self, key, runs=""):
         """Start a tool and forward a port to it. Returns what the page needs to show it."""
         tool = catalog.find(key)
@@ -320,33 +359,28 @@ class Hub:
             # own unless told otherwise; this tells them. Harmless to the tools that ignore it.
             line = "export HOPELABS_INSTALL=%s; %s" % (shlex.quote(self.labs), line)
         self.say("%s: starting on the login node" % tool.name)
-        channel = self.t.open_session()
-        channel.get_pty()                 # so the tool dies with this connection
-        channel.exec_command(line)
-        channel.settimeout(1.0)
+        # It dies with the connection, as it always did: the shared session ends every tool it
+        # holds when its input closes, and a session of its own has a terminal that hangs up.
+        proc = self.process(line, tool.name)
         buf, deadline = "", time.time() + START_TIMEOUT
         while time.time() < deadline:
-            if channel.exit_status_ready() and not channel.recv_ready():
-                raise RuntimeError(self.why(tool, buf))
-            try:
-                chunk = channel.recv(65536).decode("utf8", "replace")
-            except Exception:                                   # noqa: BLE001
-                chunk = ""
-            if chunk:
-                buf += chunk
+            ended = not proc.alive()
+            buf = proc.text()
             got = tool.ready(buf, asked)
-            if got:
+            if got and not ended:
                 remote_port, token = got
                 forwarder = tunnel.forward(self.t, tunnel.free_port(), remote_port)
                 local = forwarder.server_address[1]
-                up = Running(tool, channel, forwarder, local, remote_port, token)
-                up.log = buf
+                up = Running(tool, proc, forwarder, local, remote_port, token)
                 with self.lock:
                     self.running[key] = up
                 self.say("%s: ready on 127.0.0.1:%d" % (tool.name, local))
                 return self.state_of(key)
+            if ended:
+                raise RuntimeError(self.why(tool, buf) or proc.why or
+                                   "%s stopped before it was ready, saying nothing" % tool.name)
             time.sleep(0.2)
-        channel.close()
+        proc.stop()
         raise RuntimeError(self.why(tool, buf) or
                            "%s did not report a URL within %ds. What it said:\n%s"
                            % (tool.name, START_TIMEOUT, tail(buf)))
@@ -714,6 +748,17 @@ class Hub:
     def stop_all(self):
         for key in list(self.running):
             self.stop(key)
+        with self._sup_lock:
+            sup, self._sup = self._sup, None
+        if sup is not None:
+            sup.close()
+
+    def connected(self):
+        """Whether the connection to the cluster is still there."""
+        try:
+            return bool(self.t.is_active())
+        except Exception:                                       # noqa: BLE001
+            return False
 
     # ---- telling the author something went wrong ------------------------
     def report(self, kind, said, contact="", context=None, preview=False):
@@ -767,7 +812,10 @@ class Hub:
         return info
 
     def state(self):
-        there = self.installed() if self.labs_found else {}
+        # A connection that has gone answers nothing, so nothing is asked of it: the page is told,
+        # and says to sign in again, rather than showing the error of whatever it asked first.
+        connected = self.connected()
+        there = self.installed() if self.labs_found and connected else {}
         tools = []
         for tool in catalog.TOOLS:
             info = self.state_of(tool.key)
@@ -778,7 +826,8 @@ class Hub:
         # launcher that answers a route from one built before it, and not ask the older one.
         return {"user": self.user, "host": self.host, "address": self.address,
                 "tools": tools, "categories": catalog.categories(),
-                "labs": self.labs_state(), "setup": self.state_of("setup"), "api": PAGE_API}
+                "labs": self.labs_state(), "setup": self.state_of("setup"), "api": PAGE_API,
+                "connected": connected}
 
     # ---- runs, across every tool ----------------------------------------
     def runs(self, refresh=False, limit_each=12):
@@ -846,7 +895,7 @@ def bootstrap_script():
 
 def stream(t, command, said, timeout=3600):
     """Run a command, handing each line it prints to `said` as it comes. Returns its status."""
-    ch = t.open_session(timeout=60)
+    ch = tunnel.open_session(t, timeout=60)
     ch.settimeout(1.0)
     ch.exec_command(command)
     buf, deadline = "", time.time() + timeout
@@ -1448,7 +1497,7 @@ def page_from_cluster(transport, install, provides, say=None):
     say = say or (lambda *a: None)
     try:
         import paramiko
-        sftp = paramiko.SFTPClient.from_transport(transport)
+        sftp = tunnel.opening(lambda: paramiko.SFTPClient.from_transport(transport))
     except Exception as why:                                    # noqa: BLE001
         return "", "the page on the cluster could not be reached (%s); using this launcher's own" % why
     try:

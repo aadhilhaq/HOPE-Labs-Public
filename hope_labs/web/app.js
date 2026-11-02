@@ -51,13 +51,24 @@ document.addEventListener("click", (e) => {
   explain(q.getAttribute("data-title") || "", q.getAttribute("data-explain") || "");
 });
 
+/* A login node allows ten sessions at once on one connection, and refuses the next with "Connect
+   failed". A launcher before 0.9.11 held one for every tool it had started, so with enough open
+   it said that, which read as a connection that had gone. Said here in words, for those
+   launchers; a current one runs every tool on one session and says it in words itself. */
+const SESSIONS_FULL = "The login node would not open another session on this connection: it allows "
+  + "ten at once, and this launcher holds one for every tool it has started. Stop the tools you are "
+  + "not using on the Tools page, or download the current launcher, which runs them all on one.";
+function plainError(text) {
+  return /Connect failed/.test(text || "") ? SESSIONS_FULL : text;
+}
+
 async function api(path, body) {
   const url = path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(TOKEN);
   const init = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
   const answer = await fetch(url, init);
   let data = {};
   try { data = await answer.json(); } catch (e) { data = { error: "the launcher sent something unreadable (" + answer.status + ")" }; }
-  if (!answer.ok) throw new Error(data.error || "the launcher answered " + answer.status);
+  if (!answer.ok) throw new Error(plainError(data.error) || "the launcher answered " + answer.status);
   return data;
 }
 
@@ -674,8 +685,8 @@ async function loadRuns(refresh) {
    current one is. PAGE_API_NEWEST is the newest server this page uses (PAGE_API in
    hope_labs/__init__.py, which the state reports as "api"), and PAGE_API_LACKS is what a launcher
    below it is without, in one line. Raising PAGE_API means changing these two lines. */
-const PAGE_API_NEWEST = 7;
-const PAGE_API_LACKS = "the structure browser, which reaches this computer, your scratch and every tool's results from one dialog";
+const PAGE_API_NEWEST = 8;
+const PAGE_API_LACKS = "one session for every tool, so with many tools open it can run out of room, and a tool can stop answering hours into a session";
 /* Where the current launcher is: the releases page of the repository. */
 const LAUNCHER_DOWNLOAD = "https://github.com/aadhilhaq/HOPE-Labs-Public/releases/latest";
 const NOTICE_SEEN = "hlOlderLauncher";
@@ -705,6 +716,19 @@ if ($("oldlauncher-hide")) $("oldlauncher-hide").onclick = () => {
   catch (e) { /* no storage: it stays away until the page is opened again */ }
   $("oldlauncher").hidden = true;
 };
+
+/* The connection has ended: a laptop that slept, a network that changed, the cluster gone quiet.
+   The launcher says so in the state ("connected", from 0.9.11), and the tools' pages have stopped
+   with it. One line across the top says so and what to do; it goes once the state says it is back. */
+function paintLost() {
+  const box = $("lostconn");
+  if (!box) return;
+  box.hidden = STATE.connected !== false;
+  if (box.hidden) return;
+  $("lostconn-text").textContent = "The connection to " + (STATE.address || STATE.host || "the cluster")
+    + " has ended, and the tools' pages stopped with it. Press Sign in in the HOPE Labs window to "
+    + "carry on; anything already queued carries on by itself.";
+}
 
 /* ------------------------------------------------------------------ the bar along the bottom */
 /* The launcher writes the bar, and rolls its credits across the window when they do not fit. The
@@ -766,6 +790,7 @@ async function refresh() {
   paintTools();
   paintRail();
   paintLauncherNotice();
+  paintLost();
   if ($("runfiles")) $("runfiles").hidden = (got.api || 0) < 5;
   if ($("newcluster") && $("nc-next").hidden) paintNewCluster();
 }
