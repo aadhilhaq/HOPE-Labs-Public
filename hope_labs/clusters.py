@@ -16,6 +16,9 @@ OTHER = "Other (SLURM)"
 SITES = {
     "Grace (TAMU)": {
         "host": "grace.hprc.tamu.edu",
+        # The address is the cluster's own and does not change, so it is shown and not taken from
+        # the box: a remembered address went on being used after the cluster was changed.
+        "fixed": True,
         "auth": "password",
         "hint": "Your NetID.",
         "label": "NetID",
@@ -29,6 +32,7 @@ SITES = {
         # certificate and nothing else, downloaded from the ACES portal and good for 49 hours.
         "host": "login.aces.hprc.tamu.edu",
         "jump": "aces-jump.hprc.tamu.edu:8822",
+        "fixed": True,
         "key": "~/.ssh/id_aces_tamu",
         "jump_label": "Gateway (ACES)",
         "key_label": "Key with certificate (ACES)",
@@ -76,8 +80,118 @@ def defaults_for(site_name, user=""):
         "optional": bool(site.get("optional")),
         "jump_label": site.get("jump_label", "Gateway"),
         "key_label": site.get("key_label", "SSH key"),
+        "fixed": bool(site.get("fixed")),
         "feedback": FEEDBACK_TO,
     }
+
+
+#: The boxes remembered for each cluster.
+BOXES = ("user", "host", "jump", "key")
+
+
+def remembered(cfg):
+    """{cluster: the boxes last used for it}, from a settings file.
+
+    Each cluster keeps its own, because the account is not the same on two clusters (a NetID on
+    Grace, an ACCESS account on ACES) and one shared set of boxes carried Grace's address and
+    NetID over to ACES. A file written before this kept one set, for the cluster it names, so
+    that set is taken as that cluster's.
+    """
+    cfg = cfg or {}
+    kept = cfg.get("sites") if isinstance(cfg.get("sites"), dict) else {}
+    out = {name: {k: str(v.get(k) or "") for k in BOXES}
+           for name, v in kept.items() if isinstance(v, dict)}
+    site = cfg.get("site")
+    if site in SITES and site not in out and any(cfg.get(k) for k in BOXES):
+        out[site] = {k: str(cfg.get(k) or "") for k in BOXES}
+    return out
+
+
+def form_for(site_name, kept=None):
+    """What the sign-in boxes hold for this cluster: {user, host, jump, key, fixed}.
+
+    A cluster with a fixed address (Grace, ACES) always gets its own address and gateway,
+    whatever was remembered; its account and key are what was used there last. Other gets back
+    everything that was typed for it.
+    """
+    d = defaults_for(site_name)
+    kept = kept or {}
+    if d["fixed"]:
+        host, jump = d["host"], d["jump"]
+    else:
+        host, jump = kept.get("host") or d["host"], kept.get("jump") or d["jump"]
+    return {"user": kept.get("user") or "", "host": host, "jump": jump,
+            "key": kept.get("key") or d["key"], "fixed": d["fixed"]}
+
+
+# ---- the ACES certificate ----------------------------------------------------------------
+# ACES signs in with an OpenSSH certificate from its portal that lasts 49 hours, and a lapsed one
+# fails exactly like a wrong key. So the window says how long the one on this computer has left
+# before anyone presses Sign in. Read here rather than by running ssh-keygen -L, which is not on
+# every computer this launcher runs on.
+
+def _field(blob, at):
+    import struct
+    n = struct.unpack(">I", blob[at:at + 4])[0]
+    if at + 4 + n > len(blob):
+        raise ValueError("the certificate ends early")
+    return blob[at + 4:at + 4 + n], at + 4 + n
+
+
+#: The public-key fields each certificate type carries before its serial number.
+_KEY_FIELDS = (("sk-ecdsa-sha2-nistp256@openssh.com", 3), ("sk-ssh-ed25519@openssh.com", 2),
+               ("ssh-ed25519", 1), ("ecdsa-sha2-", 2), ("ssh-rsa", 2), ("ssh-dss", 4))
+
+#: valid_before of a certificate that never lapses.
+FOREVER = 2 ** 64 - 1
+
+
+def cert_window(key_path):
+    """(valid from, valid until) of the certificate beside this key, as Unix times, or None
+    when there is none or it cannot be read."""
+    import base64
+    import binascii
+    import struct
+    path = os.path.expanduser(key_path or "")
+    try:
+        with open(path + "-cert.pub") as fh:
+            blob = base64.b64decode(fh.read().split()[1])
+        kind, at = _field(blob, 0)
+        base = kind.decode("ascii", "replace").replace("-cert-v01@openssh.com", "")
+        fields = next((n for k, n in _KEY_FIELDS if base == k or base.startswith(k)), None)
+        if fields is None:
+            return None
+        _nonce, at = _field(blob, at)
+        for _ in range(fields):
+            _part, at = _field(blob, at)
+        at += 8 + 4                                   # serial, certificate type
+        _key_id, at = _field(blob, at)
+        _principals, at = _field(blob, at)
+        return struct.unpack(">QQ", blob[at:at + 16])
+    except (OSError, IndexError, ValueError, binascii.Error, struct.error):
+        return None
+
+
+def cert_says(key_path, now=None):
+    """One line for the window about the certificate beside this key, or "" with none."""
+    import time
+    got = cert_window(key_path)
+    if not got:
+        return ""
+    after, before = got
+    if before == FOREVER:
+        return "The certificate does not lapse."
+    now = time.time() if now is None else now
+    if now < after:
+        return ("The certificate is not valid until %s: check this computer's clock."
+                % time.strftime("%a %d %b %H:%M", time.localtime(after)))
+    when = time.strftime("%a %d %b %H:%M", time.localtime(before))
+    left = before - now
+    if left <= 0:
+        return ("The certificate lapsed on %s. Make a new one at portal-aces.hprc.tamu.edu "
+                "(Utilities > sshca) and download both files into .ssh again." % when)
+    span = ("%d hours" % (left // 3600)) if left >= 2 * 3600 else ("%d minutes" % (left // 60))
+    return "The certificate is valid until %s, %s from now." % (when, span)
 
 
 def clean_user(text):

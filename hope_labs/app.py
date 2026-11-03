@@ -19,7 +19,7 @@ from . import APP, TAGLINE, __version__, credit, ACK
 from . import clusters, hub as hubmod, tunnel
 # The settings file is read by the hub and the canvas as well as by this window, so where it is
 # and how it is written live in one module rather than here.
-from .settings import SCHEMA, labs_for, load, save
+from .settings import labs_for, load, save
 
 BANNER = dict(deep="#0b2b33", deeper="#061a20", teal="#5fb3c4", warm="#c2603a",
               paper="#f4f8f8", muted="#b7d6dc", faint="#8fb6bd")
@@ -224,7 +224,12 @@ class App:
         form = ttk.LabelFrame(root, text="Sign in once, for every tool")
         form.pack(fill="x", **pad)
 
-        self.site = tk.StringVar(value=cfg.get("site", clusters.sites()[0]))
+        site = cfg.get("site") if cfg.get("site") in clusters.SITES else clusters.sites()[0]
+        self.site = tk.StringVar(value=site)
+        # Each cluster's own boxes, so changing the cluster brings back what was used there
+        # rather than carrying one cluster's address and account over to the other.
+        self._sites = clusters.remembered(cfg)
+        self._shown = site
         ttk.Label(form, text="Cluster").grid(row=0, column=0, sticky="e", padx=6, pady=4)
         box = ttk.Combobox(form, textvariable=self.site, values=clusters.sites(), state="readonly")
         box.grid(row=0, column=1, sticky="ew", padx=6, pady=4)
@@ -246,10 +251,8 @@ class App:
         # narrow the column, and a fixed wrap then runs the note off the window's edge
         form.bind("<Configure>", lambda e: self.note.configure(
             wraplength=max(200, e.width - self.note.winfo_x() - 18)), add="+")
-        self._touched = set()
-        for name in ("host", "jump", "key"):
-            getattr(self, name).trace_add("write", self._mark(name))
-        self._apply_site(first=True, cfg=cfg)
+        self.key.trace_add("write", lambda *_a: self._show_note())
+        self._apply_site(first=True)
         form.columnconfigure(1, weight=1)
 
         bar = ttk.Frame(root)
@@ -288,31 +291,26 @@ class App:
         self.pump()
 
     # ---- the form -------------------------------------------------------
-    def _mark(self, name):
-        def cb(*_a):
-            if not getattr(self, "_filling", False):
-                self._touched.add(name)
-        return cb
+    def _boxes(self):
+        return {"user": self.user.get().strip(), "host": self.host.get().strip(),
+                "jump": self.jump.get().strip(), "key": self.key.get().strip()}
 
-    def _set(self, name, value):
-        if name in self._touched:
-            return
-        self._filling = True
-        try:
-            getattr(self, name).set(value)
-        finally:
-            self._filling = False
+    def _apply_site(self, first=False):
+        """Fill the boxes for the cluster now chosen, keeping what the last one held for it.
 
-    def _apply_site(self, first=False, cfg=None):
-        d = clusters.defaults_for(self.site.get(), self.user.get().strip())
-        cfg = cfg or {}
-        if first and cfg.get("schema") == SCHEMA:
-            for name in ("host", "jump", "key"):
-                if cfg.get(name):
-                    self._touched.add(name)
-        self._set("host", d["host"])
-        self._set("jump", d["jump"])
-        self._set("key", d["key"])
+        Grace and ACES have addresses that do not change, so theirs are filled in and cannot be
+        typed over; their account and key are what was used there last. Other keeps everything
+        typed for it. This replaces a rule that left any box with a saved value alone, which went
+        on showing Grace's address and NetID after ACES was chosen.
+        """
+        site = self.site.get()
+        if not first and self._shown in clusters.SITES:
+            self._sites[self._shown] = self._boxes()
+        self._shown = site
+        d = clusters.defaults_for(site)
+        got = clusters.form_for(site, self._sites.get(site))
+        for name in ("user", "host", "jump", "key"):
+            getattr(self, name).set(got[name])
         self.user_label.configure(text=d["label"])
         self.user_hint.set(d.get("placeholder", ""))
         # The gateway and key rows are ACES's, filled in, and Other's, empty and optional; a
@@ -325,9 +323,23 @@ class App:
                     widget.grid()
                 else:
                     widget.grid_remove()
+        # The cluster's own address and gateway are shown, not offered for editing.
+        for name in ("host", "jump"):
+            self._rows[name][1].configure(state="readonly" if got["fixed"] else "normal")
+        self._show_note()
+
+    def _show_note(self):
+        """The cluster's note, and for a certificate login how long the certificate has left."""
+        d = clusters.defaults_for(self.site.get())
         # the example in the account box already says what goes there
-        self.note.configure(text=d["note"] if d.get("placeholder") else
-                            ("%s  %s" % (d["note"], d["hint"])).strip())
+        text = d["note"] if d.get("placeholder") else ("%s  %s" % (d["note"], d["hint"])).strip()
+        if d.get("auth") == "certificate":
+            found, _looked = tunnel.find_cert_key(given=self.key.get().strip())
+            said = clusters.cert_says(found) if found else ""
+            text = ("%s\n%s" % (said, text)) if said else (
+                "No certificate was found beside %s. " % (self.key.get().strip() or "the key")
+                + text)
+        self.note.configure(text=text)
 
     def _row(self, parent, r, key, label, value):
         name = ttk.Label(parent, text=label)
@@ -450,8 +462,11 @@ class App:
         if not host or not user:
             messagebox.showwarning(APP, "The cluster and your account are both needed.")
             return
+        # This cluster's boxes under its own name, and the flat ones beside them for the hub and
+        # for a launcher older than the per-cluster boxes, which read only those.
+        self._sites[self.site.get()] = self._boxes()
         save({"site": self.site.get(), "host": host, "user": user,
-              "jump": self.jump.get(), "key": self.key.get()})
+              "jump": self.jump.get(), "key": self.key.get(), "sites": self._sites})
         # Signing in again, after a connection that ended or over one still up, starts clean: the
         # old page server would hold the port the page is remembered at, and its tools the login
         # node.

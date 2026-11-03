@@ -38,8 +38,9 @@ closing it signs you out.</p>
 <tr><th>Box</th><th>What goes in it</th></tr>
 <tr><td><b>Cluster</b></td><td><b>Grace (TAMU)</b>, <b>ACES (TAMU)</b>, or <b>Other (SLURM)</b> for any
 other cluster with Slurm. ACES signs in with a certificate rather than a password.</td></tr>
-<tr><td><b>Address</b></td><td>Filled in when you pick the cluster:
-<code>grace.hprc.tamu.edu</code>.</td></tr>
+<tr><td><b>Address</b></td><td>Filled in when you pick the cluster, and fixed for the two TAMU
+clusters: <code>grace.hprc.tamu.edu</code> for Grace, <code>login.aces.hprc.tamu.edu</code> for
+ACES. Only Other (SLURM) takes an address you type.</td></tr>
 <tr><td><b>NetID</b></td><td>Your NetID alone, such as <code>jdoe</code>. If you type your TAMU
 email address, the part before the @ is used, and the log says so.</td></tr>
 </table>
@@ -53,7 +54,25 @@ for as long as you are signed in, and every tool you open goes through it.</div>
 <p>If the page does not open, <b>Open the page</b> in the same window opens it again, and the log
 shows its address to paste into a browser. The address carries a token that only this session
 knows, so keep it to yourself; it changes every time you sign in.</p>
-<p>The boxes are remembered for next time, in a file called <code>.hope_labs_public.json</code> in your
+<h3 id="signing-in-to-aces">Signing in to ACES</h3>
+<p>ACES takes a certificate instead of a password, and the certificate lasts 49 hours:</p>
+<ol>
+<li>Sign in at <a href="https://portal-aces.hprc.tamu.edu">portal-aces.hprc.tamu.edu</a> and
+make a certificate under <b>Utilities &gt; sshca</b>.</li>
+<li>Download both files, <code>id_aces_tamu</code> and <code>id_aces_tamu-cert.pub</code>, into
+the <code>.ssh</code> folder in your home folder on your own computer
+(<code>C:\Users\&lt;you&gt;\.ssh</code> on Windows). HOPE Labs also finds them in
+<code>.ssh\aces</code>, Downloads or the desktop.</li>
+<li>Pick <b>ACES (TAMU)</b> and type your ACCESS account, such as <code>u.ab123456</code>, not
+your NetID. The address, the gateway (<code>aces-jump.hprc.tamu.edu:8822</code>) and the key are
+filled in.</li>
+</ol>
+<p>Under the boxes, the window says how long your certificate has left, or that it has lapsed.
+When it lapses, make a new one in the portal the same way and download both files again,
+replacing the old ones.</p>
+
+<p>The boxes are remembered for next time, each cluster's own (a NetID for Grace, an ACCESS
+account for ACES), in a file called <code>.hope_labs_public.json</code> in your
 home folder on your own computer. Your password is never kept. The same file can point HOPE Labs
 at <a href="own-installs.html#pointing-hope-labs-at-your-copies">tools installed somewhere
 else</a>.</p>
