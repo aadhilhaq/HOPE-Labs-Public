@@ -59,7 +59,9 @@ entry per design:</p>
 that follow needed no change to accept these designs: a complex can go to HOPE-MD.</p>
 
 <h2 id="no-score">Why the score is empty</h2>
-<p>Nothing in the run scored the designs, and the column is empty rather than zero to say so.</p>
+<p>The model scored none of the designs, and the column is empty rather than zero to say so. The
+MM-GBSA and binder strain below are measured afterwards, on the structures it wrote, and are not
+a score of the model's.</p>
 <p>The model can score designs as it makes them, but that means refolding each one with
 AlphaFold or OpenFold3, which are separate environments with their own weights. A design run
 composed with them would be a folding run as well, and would need both installed to produce
@@ -67,6 +69,29 @@ anything at all. So the run is composed without them, and ranking the designs is
 fold them and compare.</p>
 <p>The report says this in as many words rather than showing an empty column and letting it be
 read as a failure.</p>
+
+<h2 id="measures">MM-GBSA and binder strain</h2>
+<p>After the design job, a short job on CPU nodes gives every design two numbers, which the
+designs table and the report show beside the others:</p>
+<ul>
+<li><b>MM-GBSA (kcal/mol)</b>: the designed complex after a short minimization with the target
+held, scored once by MMPBSA.py with ff14SB and the GB-OBC(II) implicit solvent at 0.15&nbsp;M salt.
+More negative is a stronger interaction. It is for comparing the designs of one run with each
+other; it is not a binding free energy.</li>
+<li><b>Binder strain (kcal/mol)</b>: what the binder pays to hold its designed shape, its energy in
+the complex minus the same binder relaxed on its own from that shape. Lower is easier. It grows
+with size, so compare designs of similar length.</li>
+</ul>
+<p>Neither number changes the order of the table, and neither is part of any ranking. A design
+that could not be measured has an empty cell, and hovering it gives the reason; an empty cell is
+never a zero. Hovering a heading says what the column is.</p>
+<p>The job runs in HOPE-MD's environment once the design job has finished, and is canceled with it
+if the design job fails. Its numbers are in <code>scores.json</code> beside
+<code>designs.json</code>, and <code>scores/</code> keeps one folder a design with the topologies,
+the minimized complex and the energies they were read from; nothing else it worked with is kept,
+and <code>designs.json</code> is never written to. A run that has no numbers yet says so in one
+line over its designs, with <b>Add them&hellip;</b>: see
+<a href="runs.html#add-measures">Adding measures</a>.</p>
 
 <h2 id="report">The report</h2>
 <p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,

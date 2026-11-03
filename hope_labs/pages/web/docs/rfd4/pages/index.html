@@ -31,8 +31,11 @@ conditions holding the target and marking the hotspots.</li>
 <li>Generates the designs on the GPU, inside the tool's own image.</li>
 <li>Reads each design back, works out which chain is the binder, and writes
 <code>designs.json</code>, which is what the next card reads.</li>
+<li>Then, in a job of its own on CPU nodes, gives each design its MM-GBSA and binder strain
+(<a href="results.html#measures">what the two are</a>).</li>
 </ol>
-<div class="note"><b>Nothing scores these designs.</b> The run is composed without the refolding
-oracles, so no design comes back with a confidence, an interface score or a ranking. That is
+<div class="note"><b>The model scores none of these designs.</b> The run is composed without the
+refolding oracles, so no design comes back with a confidence or a ranking from the model. That is
 deliberate: scoring needs AlphaFold or OpenFold3 beside the model, and a design run that waited
-on them would be a folding run as well. Fold the designs afterwards to rank them.</div>
+on them would be a folding run as well. Fold the designs afterwards to rank them. The MM-GBSA and
+binder strain added after the run are for comparing designs, and rank nothing.</div>

@@ -47,6 +47,7 @@ from . import docs as pagedocs
 from . import runs as runsmod
 from . import runreport as reportmod
 from . import submit as submitmod
+from .. import designscores
 from .. import picker as pickermod
 from .. import reporting as rk
 from ..folding import browse as browsemod
@@ -62,6 +63,10 @@ VENDOR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))
 #: the job wrote for itself.
 SERVED = (".pdb", ".cif", ".json", ".out", ".csv", ".fa", ".fasta", ".sbatch", ".yaml", ".txt",
           ".log")
+
+#: The HOPE Labs checkout this page runs from, which a scoring job puts on its PYTHONPATH so the
+#: job measures with the same code the page reads the results with.
+LABS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 #: The most a request body may be. The cap on an uploaded structure is submitmod's; this is the
 #: guard in front of it, so a body far larger is dropped before it is read into memory.
@@ -176,6 +181,11 @@ def api_hello():
         # run for want of one. Every design tool these pages serve is aimed at a site; the
         # question is asked of the card rather than answered with a list of tool names here.
         "needs_site": cards.aims_at_site(submitmod.card_of(S.tool)),
+        # The two measures every design is given after its run: how the table heads them, what
+        # their headings say on hover, and whether this tool's designs can be given them at all
+        # (RFdiffusion's are backbones, so its page offers no Add measures).
+        "measures": {"labels": dict(designscores.LABELS), "help": dict(designscores.HELP),
+                     "scored": S.tool in designscores.SCORED},
     }
 
 
@@ -202,6 +212,119 @@ def api_report(query):
                if key.startswith("opt.") and value}
     return reportmod.document(S.tool, inside_roots(query.get("rundir", query.get("path", [""]))[0]),
                               options, install=S.install)
+
+
+def _measure_entry(run, record, states, live):
+    """One run as the Add measures dialog lists it: what it has, lacks and cannot have of the one
+    measure the design pages offer, and whatever stops anything being added to it now.
+
+    Read from squeue's answer for every run at once rather than run by run, and without sacct: a
+    design job squeue has forgotten is over, which is all the dialog has to know about it.
+    """
+    folder = runsmod.design_dir(run)
+    job = str(record.get("job_id") or "")
+    now = (states.get(job) or ("",))[0] if job else ""
+    busy = "its design job is still %s" % now.lower() if now.startswith(designscores.LIVE) else ""
+    st = designscores.state(folder, record.get("tool") or None, live=live, busy=busy)
+    key = designscores.MEASURE["key"]
+    has = st["designs"] and not st["lacks"] and not st["cannot"] and \
+        st["blocked"] not in ("it has no designs yet", "it wrote no designs")
+    return {"path": run, "name": record.get("name") or os.path.basename(run),
+            "tool": st["tool"], "created": str(record.get("submitted") or "")[:10],
+            "finished": st["finished"], "designs": st["designs"], "scored": st["scored"],
+            "lacking": st["lacks"], "has": [key] if has else [],
+            "lacks": [key] if st["lacks"] else [],
+            "cannot": {key: st["cannot"]} if st["cannot"] else {},
+            "blocked": st["blocked"], "jobs": st["jobs"]}
+
+
+def api_measures(query):
+    """The Add measures dialog: this person's runs on this page, each with what it lacks.
+
+    A run the dialog was opened on (run=, from the line over its table) is listed whoever it
+    belongs to, so the line and the dialog agree about it; the list is otherwise the person's own,
+    since a job added to a run is a job charged to whoever adds it.
+    """
+    found = runsmod.find_runs(S.roots, user=me())
+    pinned = ""
+    asked = (query.get("run", [""])[0] or "").strip()
+    if asked:
+        full = inside_roots(asked)
+        if os.path.isfile(os.path.join(full, "submission.json")):
+            same = [r for r in found if os.path.realpath(r) == os.path.realpath(full)]
+            if not same:
+                found.insert(0, full)
+            pinned = same[0] if same else full
+    found = found[:200]
+    records = {run: runsmod.read_json(os.path.join(run, "submission.json"), {}) or {}
+               for run in found}
+    scoring = [j["jobid"] for run in found
+               for j in designscores.recorded_jobs(runsmod.design_dir(run))]
+    states = runsmod.job_states([r.get("job_id") for r in records.values()] + scoring)
+    live = {j: v[0] for j, v in states.items() if str(v[0]).startswith(designscores.LIVE)}
+    return {"measures": [dict(designscores.MEASURE)],
+            "runs": [_measure_entry(run, records[run], states, live) for run in found],
+            "pinned": pinned, "scanning": False,
+            "can_submit": bool(S.dry_run or shutil.which("sbatch")),
+            "has_scheduler": bool(shutil.which("sbatch")), "dry_run": S.dry_run}
+
+
+def api_add_measures(body):
+    """Queue the scoring job on each run asked for: {runs: [folder, ...], measures: [key]}.
+
+    Each run is answered on its own, with the job queued on it or the reason it was refused, so a
+    run that cannot take the measure does not stop the others getting theirs. A run with a job on
+    it already - its own design job, or a scoring job - is refused: the second job would measure
+    designs the first is still writing, or measure the same designs twice.
+    """
+    runs, want = body.get("runs") or [], body.get("measures") or []
+    if not isinstance(runs, list) or not isinstance(want, list):
+        raise submitmod.Refused("runs and measures are lists")
+    key = designscores.MEASURE["key"]
+    bad = [str(k) for k in want if k != key]
+    if bad or not want:
+        raise submitmod.Refused("not a measure this page knows: %s"
+                                % (", ".join(bad) or "none was asked for"))
+    out = []
+    with S.queueing:
+        for path in runs:
+            try:
+                run = inside_roots(str(path or ""))
+            except submitmod.Refused as refusal:
+                out.append({"run": path, "error": str(refusal)})
+                continue
+            record = runsmod.read_json(os.path.join(run, "submission.json"), None)
+            if not isinstance(record, dict):
+                out.append({"run": run, "error": "no such run"})
+                continue
+            folder = runsmod.design_dir(run)
+            jobs = [str(record.get("job_id") or "")] + [
+                j["jobid"] for j in designscores.recorded_jobs(folder)]
+            states = runsmod.job_states([j for j in jobs if j])
+            live = {j: v[0] for j, v in states.items()
+                    if str(v[0]).startswith(designscores.LIVE)}
+            entry = _measure_entry(run, record, states, live)
+            if entry["blocked"]:
+                out.append({"run": run, "error": entry["blocked"]})
+            elif entry["cannot"]:
+                out.append({"run": run, "error": entry["cannot"][key]})
+            elif not entry["lacking"]:
+                out.append({"run": run, "error": "it has MM-GBSA and binder strain already"})
+            elif not os.access(folder, os.W_OK):
+                out.append({"run": run, "error": "its folder is not one you can write in, so it "
+                                                 "is its owner's to add to"})
+            else:
+                try:
+                    got = designscores.queue(folder, drivers.INSTALLS["hopemd"], LABS,
+                                             designs=entry["lacking"], dry=S.dry_run,
+                                             name=entry["name"])
+                except designscores.Refused as why:
+                    out.append({"run": run, "error": str(why)})
+                    continue
+                out.append({"run": run, "jobs": [{"jobid": got["jobid"], "adds": got["adds"],
+                                                  "walltime": got["walltime"],
+                                                  "dry": bool(got.get("dry"))}]})
+    return {"runs": out, "has_scheduler": bool(shutil.which("sbatch")), "dry_run": S.dry_run}
 
 
 def api_submit(body):
@@ -348,6 +471,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(api_run(query))
             if url.path == "/api/report":
                 return self._json(api_report(query))
+            if url.path == "/api/measures":
+                return self._json(api_measures(query))
             if url.path == "/api/download":
                 return self._download(query)
             if url.path == "/api/structure":
@@ -401,6 +526,8 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/cancel":
                 done, says = runsmod.cancel(inside_roots(body.get("path", "")))
                 return self._json({"ok": done, "message": says})
+            if url.path == "/api/measures":
+                return self._json(api_add_measures(body))
             if url.path == "/api/resubmit":
                 done, says = runsmod.resubmit(inside_roots(body.get("path", "")))
                 return self._json({"ok": done, "message": says})

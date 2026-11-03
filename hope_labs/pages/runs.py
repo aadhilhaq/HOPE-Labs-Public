@@ -27,6 +27,7 @@ import time
 from hope_flow import drivers
 
 from . import SERVES
+from .. import designscores
 
 #: Slurm states that mean the job is over, whatever it achieved. A run in one of these will not
 #: change again on its own, so the page stops polling it and offers Queue again instead of Cancel.
@@ -53,6 +54,11 @@ PROGRESS = {
 #: keys for every tool by construction (hope_flow/adapters.py documents the shape), so one table
 #: serves them all.
 SHOWN = ("name", "score", "residues", "binder", "sequence")
+
+#: The two measures each design is given after the run (hope_labs/designscores.py), drawn before
+#: the sequence. Not in SHOWN, because they come from scores.json rather than designs.json, and a
+#: run that has not been measured has a line over its table rather than two empty columns.
+SCORE_COLUMNS = ("mmgbsa", "binder_strain")
 
 
 #: Where each tool's runs go when nobody says otherwise. Taken from the flow's own table rather
@@ -235,11 +241,33 @@ def summarise(run, states=None):
     }
 
 
+def busy_with(info):
+    """Why a run cannot be given a scoring job now because of its own design job, or ""."""
+    state = str(info.get("state") or "")
+    if info.get("job_id") and state.startswith(designscores.LIVE):
+        return "its design job is still %s" % state.lower()
+    return ""
+
+
+def measures_of(info, live=None):
+    """designscores.state() for a run as summarise() read it. `live` is what squeue said of the
+    scoring jobs, passed in by a caller reading many runs at once."""
+    return designscores.state(info["results"], info.get("tool") or None, live=live,
+                              busy=busy_with(info))
+
+
 def detail(run, log_lines=240, rows=30):
     """One run in full: its summary, the designs it has written, the files, and the log."""
     info = summarise(run)
     where = info["results"]
     designs = read_json(os.path.join(where, "designs.json"), {}) or {}
+    # The two measures and what stops them being added now: the line over the table and the
+    # empty cells' reasons are both read from this, so they cannot say different things.
+    info["measures"] = measures_of(info)
+    scores = designscores.read_scores(where)
+    busy = ("being measured by %s" % ", ".join("job %s" % j["jobid"]
+                                               for j in info["measures"]["jobs"])
+            if info["measures"]["jobs"] else "")
     table = []
     for one in (designs.get("designs") or [])[:rows]:
         sequence = str(one.get("sequence") or "")
@@ -266,6 +294,10 @@ def detail(run, log_lines=240, rows=30):
         if one.get("fold_rmsd") is not None or one.get("plddt") is not None:
             row.update(fold_rmsd=one.get("fold_rmsd"), plddt=one.get("plddt"),
                        folds=bool(one.get("folds")), fold_note=one.get("fold_note") or "")
+        # MM-GBSA and binder strain, where they were measured, and the reason where they were
+        # not. Neither is part of the order the rows are in.
+        row.update(designscores.cell(one, scores.get(str(one.get("name") or "")),
+                                     info["tool"], busy))
         table.append(row)
     shown = list(SHOWN)
     # A column nobody has filled is not drawn. RFD4-Proteina places a binder and scores nothing,
@@ -279,6 +311,13 @@ def detail(run, log_lines=240, rows=30):
     if any("fold_rmsd" in r for r in table):
         at = 2 if "score" in shown else 1
         shown[at:at] = ["fold_rmsd", "plddt"]
+    # Drawn where a design has either number, and on RFdiffusion's runs, whose designs have none
+    # to have: there the two cells say why, where the values would be. A run nothing has measured
+    # yet has the line over its table instead, by the same rule as the score column above.
+    if info["tool"] in designscores.BACKBONE or any(
+            r.get(c) is not None for r in table for c in SCORE_COLUMNS):
+        at = shown.index("sequence") if "sequence" in shown else len(shown)
+        shown[at:at] = list(SCORE_COLUMNS)
     info["table"] = {"columns": shown, "rows": table,
                      "total": len(designs.get("designs") or []),
                      "site": designs.get("site") or []}
@@ -335,7 +374,12 @@ def resubmit(run):
             handle.write("\n")
     except OSError:
         pass            # the job is queued either way, and the state is read from Slurm, not here
-    return True, "queued again as job %s" % job_id
+    # The designs it writes are new ones, so they are scored behind it as a first run's are; the
+    # scores of the designs it replaces stop being current the moment their files change.
+    scored = drivers._queue_scores(design_dir(run), info["tool"], job_id,
+                                   record.get("asked") or {}, lambda *what: None)
+    return True, ("queued again as job %s" % job_id
+                  + (", and job %s after it to score the designs" % scored if scored else ""))
 
 
 def main(argv=None):

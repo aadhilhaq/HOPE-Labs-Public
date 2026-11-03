@@ -754,3 +754,88 @@ dialog#helpdlg{width:min(calc(620px * var(--ui-scale)),calc(100vw - 32px))}
 #helpbody .helpnotes{margin:var(--sp-1) 0 0;font-size:var(--fs-sm)}
 #helpbody .helpnotes dt{font-weight:600;margin-top:var(--sp-1)}
 #helpbody .helpnotes dd{margin:0 0 0 var(--sp-4);color:var(--dim)}
+
+/* ---------------------------------------------------------------- add measures
+   MM-GBSA and binder strain for runs finished without them: the line over a run's designs, the
+   two columns they fill, and the dialog that adds them to any number of runs. The approved layout
+   of the docking and peptide-design pages' dialog, in this sheet's tokens: nothing in it is under
+   13px, nothing is in capitals, and every rule is held to its own ids and classes so the shared
+   table and button rules stay theirs. */
+.amline{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-3);
+  padding:var(--sp-2) var(--sp-3);border-radius:var(--radius-sm);font-size:var(--fs-sm);
+  line-height:1.5;border-left:4px solid var(--rust);background:var(--rust-soft)}
+.amline.busy{border-left-color:var(--teal);background:var(--teal-soft)}
+.amline b{font-weight:600}
+.amopen{margin-top:var(--sp-3);width:100%}
+/* An empty cell keeps its reason as its tooltip; the column's own reason, where a whole tool has
+   none to give (RFdiffusion's backbones), is said once across the column. */
+table.t td.nomeasure{color:var(--dim);white-space:normal;font-size:var(--fs-xs);
+  vertical-align:middle;text-align:center;font-style:italic;max-width:calc(200px * var(--ui-scale))}
+table.t td.measure{text-align:right;font-family:var(--mono)}
+table.t th.helped{cursor:help;text-decoration:underline dotted;text-underline-offset:3px}
+dialog#am{width:min(calc(1040px * var(--ui-scale)),calc(100vw - 32px))}
+dialog#am[open]{display:flex;flex-direction:column}
+#am .mbody{flex:1 1 auto;min-height:0}
+#am .amlead{margin:var(--sp-3) var(--sp-4) 0;padding:var(--sp-2) var(--sp-3);
+  border-radius:var(--radius-sm);background:var(--teal-soft);border-left:4px solid var(--teal);
+  font-size:var(--fs-md)}
+#am .amlead b{font-weight:600}
+#am .amlead .sub{display:block;color:var(--dim);margin-top:2px;font-size:var(--fs-sm)}
+#am .amlead.ready{border-left-color:var(--good);background:var(--good-soft)}
+#am .amlead.warn{border-left-color:var(--rust);background:var(--rust-soft)}
+#am .amcols{display:grid;grid-template-columns:minmax(calc(240px * var(--ui-scale)),5fr)
+  minmax(calc(320px * var(--ui-scale)),8fr);gap:var(--sp-4)}
+@media (max-width:820px){#am .amcols{grid-template-columns:minmax(0,1fr)}}
+#am .amgroup{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+#am .amghead{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);
+  flex-wrap:wrap;padding-bottom:var(--sp-1);border-bottom:1px solid var(--line)}
+#am .amghead h3{font-size:var(--fs-sm);margin:0;color:var(--dim);font-weight:600}
+#am label.amall{display:inline-flex;align-items:center;gap:var(--sp-2);font-weight:600;
+  font-size:var(--fs-sm);cursor:pointer;user-select:none}
+#am input[type=checkbox]{width:calc(18px * var(--ui-scale));height:calc(18px * var(--ui-scale));
+  margin:0;accent-color:var(--teal);flex:0 0 auto;cursor:pointer}
+#am input[type=checkbox]:disabled{cursor:not-allowed}
+#am :focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+#am label.ammeasure{display:grid;grid-template-columns:auto 1fr auto;gap:var(--sp-1) var(--sp-2);
+  align-items:start;padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);
+  border-radius:var(--radius-sm);cursor:pointer;font-size:var(--fs-md)}
+#am label.ammeasure:hover{background:var(--wait)}
+#am label.ammeasure.on{border-color:var(--teal);background:var(--teal-soft)}
+#am label.ammeasure.off{opacity:.62;cursor:default}
+#am label.ammeasure input{margin-top:3px}
+#am .ammname{font-weight:600}
+#am .amwhat{grid-column:2 / 4;color:var(--dim);font-size:var(--fs-sm)}
+#am .amcount{font-size:var(--fs-xs);white-space:nowrap;padding:1px var(--sp-2);border-radius:999px;
+  background:var(--wait);color:var(--dim);font-variant-numeric:tabular-nums}
+#am .amcount.need{background:var(--rust-soft);color:var(--rust)}
+#am .amcount.done{background:var(--good-soft);color:var(--good)}
+#am .amtools{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
+#am .modes button[aria-pressed=true]{background:var(--teal);color:var(--on-accent);font-weight:600}
+#am .amfind{flex:1 1 calc(160px * var(--ui-scale));min-width:calc(140px * var(--ui-scale));width:auto}
+#am .amtablebox{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:auto;
+  max-height:calc(330px * var(--ui-scale))}
+#am table.amruns td{white-space:normal;vertical-align:top}
+#am table.amruns th{position:sticky;top:0;background:var(--card);z-index:1}
+#am table.amruns th.amtick{width:calc(34px * var(--ui-scale))}
+#am table.amruns tbody tr{cursor:pointer}
+#am table.amruns tbody tr:hover td{background:var(--wait)}
+#am table.amruns tbody tr.sel td{background:var(--teal-soft)}
+#am table.amruns tbody tr.blocked{cursor:default;color:var(--dim)}
+#am table.amruns .num{text-align:right;white-space:nowrap}
+#am .amrun{font-family:var(--mono);font-size:var(--fs-xs);overflow-wrap:anywhere}
+#am .amwhen{white-space:nowrap}
+#am .amchip{display:inline-block;font-size:var(--fs-xs);line-height:1.45;padding:0 var(--sp-2);
+  border-radius:999px;margin:1px var(--sp-1) 1px 0;white-space:nowrap;color:var(--rust);
+  background:var(--rust-soft)}
+/* What a run adds, or why it cannot: room for a reason on a line or two rather than a word a line. */
+#am table.amruns td:last-child{min-width:calc(230px * var(--ui-scale))}
+#am .amchip.has{color:var(--good);background:var(--good-soft)}
+#am .amchip.said{background:var(--wait);color:var(--dim);white-space:normal;border-radius:var(--radius-sm)}
+#am .amtally{font-variant-numeric:tabular-nums}
+#am .ambtns{display:flex;gap:var(--sp-2)}
+#am .amqueued ul{margin:var(--sp-2) 0 0;padding-left:var(--sp-4)}
+#am .amqueued li{margin:var(--sp-1) 0}
+#am .amsr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){#am label.ammeasure,#am table.amruns td{
+  transition:background-color .12s,border-color .12s}}

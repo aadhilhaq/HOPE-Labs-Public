@@ -19,6 +19,22 @@ than all at once at the end.</p>
 <p><b>Queue again</b> submits the same job script afresh. There is no checkpoint to carry on
 from, so this is a restart rather than a resume; the previous run's folder is left alone.</p>
 
+<h2 id="add-measures">Adding measures</h2>
+<p>A run queued from this page is given its MM-GBSA and binder strain by a job of its own,
+queued behind the design job (<a href="results.html#measures">what the two are</a>). A run
+that finished before that, or whose job did not finish, says so in one line over its designs:
+<i>These designs have no MM-GBSA or binder strain.</i> <b>Add them&hellip;</b> opens the Add
+measures dialog on that run, and <b>Add measures&hellip;</b> under the runs list opens it on
+all of yours.</p>
+<p>The dialog lists your runs with what each lacks. <b>Select all</b> takes every run listed,
+<b>Missing something</b> and <b>Every run</b> choose which are listed, the box finds a run by
+name, and shift-click takes every run between two. A run with a job already on it, its own design
+job or a scoring job, is listed but cannot be chosen until that job ends. Each run chosen gets one
+job on CPU nodes, charged to your usual account and booked for about a quarter of an hour of one
+core a design.</p>
+<p>Nothing already measured is measured again: a design keeps its numbers until its structure
+changes, and <b>Queue again</b> queues a scoring job behind the new design job.</p>
+
 <h2 id="cleaning-up">Cleaning up</h2>
 <p>A finished run tidies itself, so what is left is the structures, the spec, the plan, the log
 and the record. <b>Clean up</b> does the same thing on demand, for a run that finished before

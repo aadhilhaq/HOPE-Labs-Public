@@ -817,7 +817,45 @@ def _design_job(node, flow, carried, card, body, say, hf_home='"$OUT/cache/hf"')
         out=where, hf_home=hf_home, tmpcap=TMPDIR_CAP,
         account=("#SBATCH --account=%s\n" % s["account"]) if s.get("account") else "",
         body=body(where))
-    return where, [_queue(where, script, say)]
+    job = _queue(where, script, say)
+    _queue_scores(where, card, job, s, say)
+    return where, [job]
+
+
+def _queue_scores(where, card, after, s, say):
+    """The CPU job that gives every design its MM-GBSA and binder strain, behind the design job.
+
+    Its own job rather than a step of the GPU one: an A100 should not sit idle for the hours the
+    minimizations take, and the CPU nodes are where they start soonest. It waits with afterok, so a
+    design job that fails takes it with it. Its id is kept in the run (hope_labs/designscores.py,
+    remember) and not handed back with the design job's, because the card after this one waits on
+    the jobs it is handed back, and nothing downstream reads these numbers: a flow would wait an
+    hour for a column nobody in it uses, and fail on a measurement that went wrong.
+
+    A tool whose designs are a backbone only (RFdiffusion) is not scored, and neither failing to
+    write the job nor sbatch refusing it stops the run: the designs are the result, and the Add
+    measures dialog on the tool's page adds the numbers to a run that has none.
+    """
+    try:
+        from hope_labs import designscores
+    except ImportError:
+        return None
+    if card not in designscores.SCORED:
+        return None
+    labs = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        got = designscores.queue(where, INSTALLS["hopemd"], labs, after=after,
+                                 account=s.get("account") or "", dry=DRY_RUN or not after)
+    except designscores.Refused as why:
+        say("   | the designs will not be given MM-GBSA and binder strain: %s. Add measures on "
+            "the page adds them once the run is done" % why)
+        return None
+    if got.get("jobid"):
+        say("   | queued job %s after it: MM-GBSA and binder strain for each design, on CPU nodes"
+            % got["jobid"])
+    else:
+        say("   | dry run: wrote %s and queued nothing" % got["script"])
+    return got.get("jobid") or None
 
 
 def _rfdiffusion(node, flow, carried, flow_dir, record, say=print):

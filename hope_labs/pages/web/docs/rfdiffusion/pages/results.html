@@ -63,6 +63,16 @@ output carries the same designs as sequences, for whatever takes sequences.</p>
 <p>By hand: the structure named in each record is a complete complex and can be opened, folded
 again, or handed to anything that reads a PDB.</p>
 
+<h2 id="measures">MM-GBSA and binder strain</h2>
+<p>Not measured for RFdiffusion's designs, and the table says <i>backbone only: no side chains to
+measure</i> where the two numbers would be. RFdiffusion writes each binder as a backbone, a chain
+of glycines with four atoms a residue, and keeps the ProteinMPNN sequence beside it, so there are
+no side chains to score.</p>
+<p>Building the side chains onto the backbone first was tried on one run's designs, and the binder
+strain came out several times what the tools that write every atom give: the number measured the
+building rather than the design. RFdiffusion3, RFD4-Proteina and BoltzGen write every atom, and
+their pages measure both.</p>
+
 <h2 id="report">The report</h2>
 <p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,
 in a new tab, ready to save as a PDF. It is the run as you would describe it to somebody else:

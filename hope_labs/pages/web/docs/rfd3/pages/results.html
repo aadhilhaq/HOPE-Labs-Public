@@ -38,6 +38,33 @@ backbone. They differ substantially. Neither is obviously right, so both are kep
 ProteinMPNN one is what is handed on, because it is the one the authors' own pipeline orders
 from and it comes with a score to rank by.</p>
 
+<h2 id="measures">MM-GBSA and binder strain</h2>
+<p>After the design job, a short job on CPU nodes gives every design two numbers, which the
+designs table and the report show beside the others:</p>
+<ul>
+<li><b>MM-GBSA (kcal/mol)</b>: the designed complex after a short minimization with the target
+held, scored once by MMPBSA.py with ff14SB and the GB-OBC(II) implicit solvent at 0.15&nbsp;M salt.
+More negative is a stronger interaction. It is for comparing the designs of one run with each
+other; it is not a binding free energy.</li>
+<li><b>Binder strain (kcal/mol)</b>: what the binder pays to hold its designed shape, its energy in
+the complex minus the same binder relaxed on its own from that shape. Lower is easier. It grows
+with size, so compare designs of similar length.</li>
+</ul>
+<p>Neither number changes the order of the table, and neither is part of any ranking. A design
+that could not be measured has an empty cell, and hovering it gives the reason; an empty cell is
+never a zero. Hovering a heading says what the column is.</p>
+<p>The job runs in HOPE-MD's environment once the design job has finished, and is canceled with it
+if the design job fails. Its numbers are in <code>scores.json</code> beside
+<code>designs.json</code>, and <code>scores/</code> keeps one folder a design with the topologies,
+the minimized complex and the energies they were read from; nothing else it worked with is kept,
+and <code>designs.json</code> is never written to. A run that has no numbers yet says so in one
+line over its designs, with <b>Add them&hellip;</b>: see
+<a href="runs.html#add-measures">Adding measures</a>.</p>
+<div class="note"><b>The sequence measured is the model's own.</b> RFdiffusion3's structures
+carry the sequence the model drew as it diffused, and ProteinMPNN's, which the table shows, is not
+threaded onto them. The two numbers describe the structure as it was written, and hovering a value
+says so.</div>
+
 <h2 id="report">The report</h2>
 <p><b>Report (PDF)</b>, on a run you have chosen, opens that run written up as a page of its own,
 in a new tab, ready to save as a PDF. It is the run as you would describe it to somebody else:

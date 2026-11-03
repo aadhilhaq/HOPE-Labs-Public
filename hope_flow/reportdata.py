@@ -63,6 +63,7 @@ REPORTS = {
     "rfdiffusion": ("hope_labs.pages.runreport", "rfdiffusion"),
     "rfd3": ("hope_labs.pages.runreport", "rfd3"),
     "boltzgen": ("hope_labs.pages.runreport", "boltzgen"),
+    "rfd4": ("hope_labs.pages.runreport", "rfd4"),
     "boltz2": ("hope_labs.folding.runreport", "boltz2"),
     "colabfold": ("hope_labs.folding.runreport", "colabfold"),
 }
@@ -71,7 +72,14 @@ WANTED = {
     "rfdiffusion": ("designs.json",),
     "rfd3": ("designs.json",),
     "boltzgen": ("designs.json",),
+    # Read as the other design cards' are. It was missing, so an RFD4-Proteina card's table was
+    # whatever sorted first in its folder rather than its designs.
+    "rfd4": ("designs.json",),
 }
+
+SHOWN = {}
+
+JOINED = {}
 
 #: How a card's state reads in a sentence.
 SAID = {st.DONE: "finished", st.FAILED: "failed", st.STOPPED: "stopped",
@@ -567,7 +575,34 @@ class Report:
             return None
         if len(got) < 2:
             return None
-        return self._rows_table(row, name, got[0], got[1:1 + self.opt["top"]], len(got) - 1)
+        head, body = self._joined(row, got[0], got[1:])
+        return self._rows_table(row, name, head, body[:self.opt["top"]], len(body))
+
+    def _joined(self, row, head, body):
+        """The table with the columns JOINED brings from the file beside it, where it has them."""
+        import csv
+        spec = JOINED.get(row["card"])
+        if not spec or spec[1] not in head:
+            return head, body
+        name, key, columns = spec
+        try:
+            with open(os.path.join(row["rundir"], name), newline="", errors="replace") as handle:
+                other = list(csv.reader(handle, delimiter="\t"))
+        except OSError:
+            return head, body
+        if len(other) < 2 or key not in other[0]:
+            return head, body
+        bring = [other[0].index(c) for c in columns if c in other[0] and c not in head]
+        if not bring:
+            return head, body
+        theirs = {line[other[0].index(key)]: line for line in other[1:]
+                  if other[0].index(key) < len(line)}
+        mine = head.index(key)
+        out = []
+        for line in body:
+            match = theirs.get(line[mine] if mine < len(line) else None) or []
+            out.append(list(line) + [match[i] if i < len(match) else "" for i in bring])
+        return list(head) + [other[0][i] for i in bring], out
 
     def _designs_table(self, row, path):
         got = rk.read_json(path, {}) or {}
@@ -578,15 +613,45 @@ class Report:
         body = [[d.get("name") or "", d.get("score"),
                  len(str(d.get("sequence") or "")) or "",
                  ",".join(d.get("binder_chains") or [])] for d in designs]
-        return self._rows_table(row, os.path.basename(path), head, body,
-                                len(got.get("designs") or []))
+        # MM-GBSA and binder strain, where the run's scoring job has measured them: beside the
+        # designs, never part of their order. A design without one keeps its reason as the cell's
+        # tooltip, and the note under the table says it again for the printed page.
+        from hope_labs import designscores
+        scores = designscores.read_scores(os.path.dirname(path))
+        tool = str(got.get("tool") or row["card"])
+        cells = [designscores.cell(d, scores.get(str(d.get("name") or "")), tool)
+                 for d in designs]
+        helps, unmeasured = {}, {}
+        if any(c["mmgbsa"] is not None or c["binder_strain"] is not None for c in cells):
+            for key in ("mmgbsa", "binder_strain"):
+                head.append(designscores.LABELS[key])
+                helps[designscores.LABELS[key]] = designscores.HELP[key]
+            for line, c, d in zip(body, cells, designs):
+                for key in ("mmgbsa", "binder_strain"):
+                    line.append(rk.num(c[key], 1) if c[key] is not None else {
+                        "html": '<span title="%s">–</span>' % rk.e(c["score_why"])})
+                if c["mmgbsa"] is None or c["binder_strain"] is None:
+                    unmeasured.setdefault(c["score_why"] or designscores.NOT_YET,
+                                          []).append(str(d.get("name") or ""))
+        table = self._rows_table(row, os.path.basename(path), head, body,
+                                 len(got.get("designs") or []), helps=helps)
+        if helps:
+            table["note"] += (" <i>MM-GBSA</i> and <i>binder strain</i> are for comparing these "
+                              "designs with each other, from <code>%s</code>; neither is a "
+                              "binding free energy, and neither orders the table."
+                              % designscores.SUMMARY)
+            for reason, names in sorted(unmeasured.items()):
+                table["note"] += " Not measured on %s: %s." % (
+                    rk.and_list([rk.e(n) for n in names]), rk.e(reason))
+        return table
 
     COLUMNS_SHOWN = 8
 
-    def _rows_table(self, row, name, head, body, total):
-        # Kept from the left, which is the order the tool itself put them in: a tool's own
-        # identifying and ranking columns come first, and its working comes last.
-        kept = list(range(len(head)))[:self.COLUMNS_SHOWN]
+    def _rows_table(self, row, name, head, body, total, helps=None):
+        # The card's named columns first (SHOWN), then from the left, which is the order the tool
+        # itself put them in: its identifying and ranking columns come first, its working last.
+        named = [head.index(c) for c in SHOWN.get(row["card"], ()) if c in head]
+        kept = (named + [i for i in range(len(head)) if i not in named])[:self.COLUMNS_SHOWN]
         out = []
         for line in body:
             out.append({"c%d" % i: (line[i] if i < len(line) and line[i] != "" else None)
@@ -596,12 +661,15 @@ class Report:
         left = len(head) - len(kept)
         note = "From <code>%s</code> in the run folder above." % rk.e(name)
         if left:
-            note += (" %s of its %s columns are shown, from the left, so the table fits the "
+            note += (" %s of its %s columns are shown, %s, so the table fits the "
                      "page; the other %s %s in that file."
                      % (rk.cap(rk.words(len(kept))), len(head),
+                        "the ranking and its scores first" if named else "from the left",
                         rk.many(left, "column"), "is" if left == 1 else "are"))
         return {"kind": "table", "id": "t_%s" % row["id"],
-                "columns": [{"key": "c%d" % i, "label": str(head[i])} for i in kept],
+                "columns": [dict({"key": "c%d" % i, "label": str(head[i])},
+                                 **({"help": helps[head[i]]} if head[i] in (helps or {}) else {}))
+                            for i in kept],
                 "rows": out, "empty": "–",
                 "caption": self.card_table_caption(
                     row, name, [head[i] for i in kept],

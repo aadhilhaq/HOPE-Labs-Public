@@ -268,6 +268,10 @@
     </div>
     <div class="legend"><span><span class="dot q"></span>queued</span><span><span class="dot run"></span>running</span><span><span class="dot fin"></span>finished</span><span><span class="dot stop"></span>stopped</span></div>
     <div id="runlist"><p class="empty">Reading the run folders&hellip;</p></div>
+    <!-- Every run's missing measures from one dialog. Under the list it opens on, and not shown on
+         a page whose tool writes backbones only, where there is nothing it could add. -->
+    <button class="btn sm amopen" id="addmeasures" type="button" hidden
+            title="MM-GBSA and binder strain for runs finished without them">Add measures&hellip;</button>
   </section>
   <section class="rmain" id="rundetail">
     <p class="empty">Pick a run on the left.</p>
@@ -317,6 +321,54 @@
   <div class="mfoot">
     <span class="why">The last of what the job printed.</span>
     <button class="btn sm" id="logclose" type="button">Close</button>
+  </div>
+</dialog>
+
+<!-- Add measures: the one measure the design pages can add, on the left, and the runs, on the
+     right, with one line over both saying what to do next. Ticking is state and painting is drawn
+     from it, so a box can never say one thing while the plan says another. The same dialog as the
+     docking and peptide-design pages', in this page's own furniture. -->
+<dialog id="am" class="hlmodal" aria-labelledby="amtitle">
+  <div class="mhead"><h2 id="amtitle">Add measures</h2>
+    <button class="mx" id="amx" type="button" aria-label="Close" title="Close">&times;</button></div>
+  <div class="amlead" id="amlead" role="status" aria-live="polite"></div>
+  <div class="mbody" id="ambody">
+    <div class="amcols" id="amcols">
+      <div class="amgroup" role="group" aria-labelledby="amm-title">
+        <div class="amghead"><h3 id="amm-title">Measures</h3></div>
+        <div id="amm"></div>
+      </div>
+      <div class="amgroup" role="group" aria-labelledby="amr-title">
+        <div class="amghead"><h3 id="amr-title">Runs</h3>
+          <label class="amall"><input type="checkbox" id="amr-all">
+            <span id="amr-all-label">Select all</span></label></div>
+        <div class="amtools">
+          <span class="modes" role="group" aria-label="Which runs to list">
+            <button type="button" id="amf-missing" class="on" aria-pressed="true">Missing something</button>
+            <button type="button" id="amf-all" aria-pressed="false">Every run</button>
+          </span>
+          <input class="inp amfind" id="amfind" type="search" placeholder="Find a run"
+                 aria-label="Find a run" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="amtablebox">
+          <table class="t amruns" id="amruns">
+            <thead><tr><th class="amtick"><span class="amsr">Choose</span></th><th>Run</th>
+              <th>Finished</th><th class="num">Designs</th><th>Adds</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="why amtally" id="amtally"></div>
+      </div>
+    </div>
+    <!-- What was queued, run by run, once Add has been pressed. -->
+    <div class="amqueued" id="amqueued" hidden></div>
+  </div>
+  <div class="mfoot">
+    <span class="why" id="amnote">Nothing already measured is changed. Shift-click to choose a range of runs.</span>
+    <span class="ambtns">
+      <button class="btn sm" id="amcancel" type="button">Cancel</button>
+      <button class="btn sm pri" id="amgo" type="button" disabled>Add</button>
+    </span>
   </div>
 </dialog>
 

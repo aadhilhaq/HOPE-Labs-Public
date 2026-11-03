@@ -1713,18 +1713,53 @@ function tile(key, value, sub) {
   return box;
 }
 
+/* The two measures each design is given after its run (hope_labs/designscores.py), headed and
+   explained in the words every table of them uses. The server sends them with the run, so the
+   page, its report and a flow's report cannot describe one number three ways. */
+const MEASURE_COLS = ["mmgbsa", "binder_strain"];
+const MEASURE_HEAD = { mmgbsa: "MM-GBSA (kcal/mol)", binder_strain: "Binder strain (kcal/mol)" };
+
 function table(spec) {
   const box = el("div", "tblbox");
   const t = el("table", "t");
   const head = el("tr");
-  spec.columns.forEach((c) => head.appendChild(el("th", null,
-    c === "reached" ? "reaches the site" : c === "fold_rmsd" ? "folds back (Å)"
-      : c === "plddt" ? "pLDDT" : c)));
+  const helps = spec.help || {};
+  spec.columns.forEach((c) => {
+    const th = el("th", null,
+      c === "reached" ? "reaches the site" : c === "fold_rmsd" ? "folds back (Å)"
+        : c === "plddt" ? "pLDDT" : MEASURE_HEAD[c] || c);
+    if (helps[c]) { th.title = helps[c]; th.className = "helped"; }
+    head.appendChild(th);
+  });
   t.appendChild(el("thead")).appendChild(head);
   const body = el("tbody");
-  spec.rows.forEach((row) => {
+  /* A tool whose designs have nothing to measure says so once, across both columns and every
+     row, where the values would be: thirty copies of one sentence say no more than one. */
+  const same = spec.rows.length && spec.rows.every((r) => r.mmgbsa == null && r.binder_strain == null
+    && r.score_why && r.score_why === spec.rows[0].score_why) && spec.measures_why === spec.rows[0].score_why;
+  spec.rows.forEach((row, n) => {
     const tr = el("tr");
     spec.columns.forEach((c) => {
+      /* MM-GBSA and binder strain: a number to one decimal, or an empty cell whose tooltip says
+         why it is empty. Never 0 for a value nobody measured, which would read as a design that
+         cost nothing. */
+      if (MEASURE_COLS.includes(c)) {
+        if (same) {
+          if (c === MEASURE_COLS[0] && n === 0) {
+            const cell = el("td", "nomeasure", row.score_why);
+            cell.colSpan = 2;
+            cell.rowSpan = spec.rows.length;
+            tr.appendChild(cell);
+          }
+          return;
+        }
+        const value = row[c];
+        const cell = el("td", "measure", value == null ? "" : Number(value).toFixed(1).replace("-", "\u2212"));
+        if (value == null && row.score_why) cell.title = row.score_why;
+        else if (value != null && row.score_note) cell.title = row.score_note;
+        tr.appendChild(cell);
+        return;
+      }
       /* What this design reached of what the run was aimed at, drawn as a tick per marked
          residue: the numbers 6 and 7 side by side in a column of numbers are read as a score,
          and the ticks say at a glance which design landed on the pocket. */
@@ -1857,6 +1892,7 @@ async function openRun(path, quiet) {
   actions.appendChild(report);
   (run.files || []).forEach((name) => {
     if (/designs\.json$/.test(name)) actions.appendChild(download(run, name, "designs.json"));
+    else if (/(^|\/)scores\.json$/.test(name)) actions.appendChild(download(run, name, "scores.json"));
     else if (/plan\.json$/.test(name)) actions.appendChild(download(run, name, "The plan"));
     else if (/job\.sbatch$/.test(name)) actions.appendChild(download(run, name, "Job script"));
   });
@@ -1912,7 +1948,11 @@ async function openRun(path, quiet) {
       + (run.table.rows.length < run.table.total ? ", " + run.table.rows.length + " shown" : "")
       + (scored ? ", best first" : "")));
     box.appendChild(head);
-    box.appendChild(table(run.table));
+    const line = measuresLine(run);
+    if (line) box.appendChild(line);
+    box.appendChild(table(Object.assign({}, run.table, {
+      help: HELLO && HELLO.measures ? HELLO.measures.help : {},
+      measures_why: (run.measures || {}).cannot || "" })));
     /* Said plainly rather than left to be assumed from the order. RFD4-Proteina designs the
        sequence with the backbone and nothing has scored the result, so the table is in the order
        the tool wrote them: read as a ranking, the first row would look like the best design. */
@@ -1935,8 +1975,374 @@ async function openRun(path, quiet) {
     }
     main.appendChild(box);
   }
-
+  /* A job adding the measures to this run: looked at again every half minute until its columns
+     arrive, as the line over the table says. */
+  clearTimeout(measuresTimer);
+  if (((run.measures || {}).jobs || []).length && OPEN === run.path)
+    measuresTimer = setTimeout(() => { if (OPEN === run.path && !$("screen-runs").hidden) openRun(run.path, true); }, 30000);
 }
+
+/* ------------------------------------------------------------------ add measures
+   What a finished run still lacks, added to any number of runs from one dialog: here one measure,
+   MM-GBSA and binder strain together, for the tools whose designs have every atom. The line over a
+   run's table opens it on that run; the button under the runs list opens it on all of them. There
+   is no other control for it, so nothing is offered twice.
+
+   State, then paint. AM holds what is ticked and which runs are chosen, and every paint draws the
+   whole dialog from it, so a box, a count and the plan can never say different things. What each
+   run has, lacks and cannot have is the server's (designscores.state), the same reading the line
+   over the table is drawn from. */
+let measuresTimer = 0;
+const AM = { m: new Set(), r: new Set(), filter: "missing", find: "", last: null, queued: null,
+  measures: [], runs: [], loaded: false, can: false, sched: true, dry: false, pin: "", want: null,
+  error: "", sig: "" };
+const AM_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/* The line over a run's designs: what it lacks, with the button that opens the dialog on it, or,
+   while a job is adding them, which job. Nothing at all where nothing can be added. */
+function measuresLine(run) {
+  const st = run.measures || {};
+  const jobs = st.jobs || [];
+  if (jobs.length) {
+    const line = el("div", "amline busy");
+    const says = el("span");
+    says.appendChild(el("b", null, "Adding MM-GBSA and binder strain"));
+    says.appendChild(document.createTextNode(" (" + jobs.map((j) => "job " + j.jobid).join(", ")
+      + "). The table fills in when it finishes; this page looks again every half minute."));
+    line.appendChild(says);
+    return line;
+  }
+  if (st.blocked || st.cannot || !st.lacks) return null;
+  const all = st.lacks >= st.designs;
+  const line = el("div", "amline");
+  const says = el("span");
+  says.appendChild(el("b", null, all ? "These designs have no MM-GBSA or binder strain."
+    : st.lacks + " of these designs " + (st.lacks === 1 ? "has" : "have") + " no MM-GBSA or binder strain."));
+  says.appendChild(document.createTextNode(" One short job on CPU nodes adds both."));
+  line.appendChild(says);
+  const add = el("button", "btn sm", "Add them\u2026");
+  add.type = "button";
+  add.id = "amhere";
+  add.onclick = () => amOpen({ run: run.path, measures: ["scores"] });
+  line.appendChild(add);
+  return line;
+}
+
+function amName(k) {
+  const m = AM.measures.find((x) => x.key === k);
+  return m ? m.name : k;
+}
+function amWords(keys) {
+  const names = keys.map((k) => amName(k));
+  return names.length < 2 ? names.join("")
+    : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+}
+function amDay(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  if (!m) return "";
+  const y = +m[1];
+  return (+m[3]) + " " + AM_MON[+m[2] - 1] + (y !== new Date().getFullYear() ? " " + y : "");
+}
+function amLacks(run, k) { return !run.blocked && (run.lacks || []).indexOf(k) >= 0; }
+/* What is ticked, always in the dialog's order rather than the order it was ticked in. */
+function amTicked() { return AM.measures.map((m) => m.key).filter((k) => AM.m.has(k)); }
+function amAdds(run) { return amTicked().filter((k) => amLacks(run, k)); }
+function amSelectable(run) { return !run.blocked && amAdds(run).length > 0; }
+function amShown() {
+  const f = AM.find.trim().toLowerCase();
+  return AM.runs.filter((r) => (AM.filter === "all" || !AM.m.size || amAdds(r).length)
+    && ((r.name || "") + " " + (r.path || "")).toLowerCase().includes(f));
+}
+/* A box over a set: ticked when all of it is, a dash when some is. */
+function amTri(box, on, of) {
+  box.checked = of > 0 && on === of;
+  box.indeterminate = on > 0 && on < of;
+  box.disabled = of === 0;
+}
+function amBlocked(run) {
+  const ids = (run.jobs || []).map((x) => "job " + x.jobid);
+  return run.blocked + (ids.length ? " (" + ids.join(", ") + ")" : "");
+}
+
+function amPaintMeasures() {
+  const box = $("amm");
+  box.innerHTML = "";
+  AM.measures.forEach((m) => {
+    const need = AM.runs.filter((r) => amLacks(r, m.key)).length;
+    const row = el("label", "ammeasure" + (AM.m.has(m.key) ? " on" : "") + (need ? "" : " off"));
+    const tick = el("input");
+    tick.type = "checkbox";
+    tick.dataset.am = "m:" + m.key;
+    tick.checked = AM.m.has(m.key);
+    tick.disabled = !need;
+    tick.setAttribute("aria-describedby", "amw-" + m.key);
+    tick.addEventListener("change", (e) => {
+      if (e.target.checked) AM.m.add(m.key); else AM.m.delete(m.key);
+      AM.runs.forEach((r) => { if (!amSelectable(r)) AM.r.delete(r.path); });
+      amPaint();
+    });
+    row.appendChild(tick);
+    row.appendChild(el("span", "ammname", m.name));
+    row.appendChild(el("span", "amcount " + (need ? "need" : "done"),
+      need ? "missing in " + need : (AM.runs.length ? "every run has it" : "no runs")));
+    const what = el("span", "amwhat", m.what);
+    what.id = "amw-" + m.key;
+    row.appendChild(what);
+    box.appendChild(row);
+  });
+}
+
+function amPaintRuns() {
+  const body = $("amruns").querySelector("tbody");
+  body.innerHTML = "";
+  const rows = amShown();
+  rows.forEach((run, i) => {
+    const tr = el("tr");
+    const queued = AM.queued && AM.queued.has(run.path);
+    const ok = amSelectable(run) && !AM.queued;
+    tr.className = (AM.r.has(run.path) ? "sel" : "") + (ok ? "" : " blocked");
+    const tick = el("input");
+    tick.type = "checkbox";
+    tick.dataset.am = "r:" + run.path;
+    tick.checked = AM.r.has(run.path);
+    tick.disabled = !ok;
+    tick.setAttribute("aria-label", "Choose " + run.name);
+    const first = el("td");
+    first.appendChild(tick);
+    tr.appendChild(first);
+    const name = el("td", "amrun", run.name);
+    name.title = run.path;
+    tr.appendChild(name);
+    tr.appendChild(el("td", "amwhen", run.finished ? amDay(run.finished)
+      : run.created ? "started " + amDay(run.created) : "\u2014"));
+    tr.appendChild(el("td", "num", run.designs ? String(run.designs) : "\u2014"));
+    const what = el("td");
+    const chip = (cls, text) => what.appendChild(el("span", "amchip" + (cls ? " " + cls : ""), text));
+    if (queued) chip("said", "queued");
+    else if (run.blocked) chip("said", amBlocked(run));
+    else if (!AM.m.size) chip("said", "tick a measure");
+    else if (!amAdds(run).length) {
+      const k = amTicked().find((x) => (run.cannot || {})[x]);
+      if (k) chip("said", "no " + amName(k) + ": " + run.cannot[k]);
+      else chip("has", "has what you ticked");
+    } else {
+      amAdds(run).forEach((k) => chip("", amName(k)
+        + (run.lacking && run.lacking < run.designs ? ", " + run.lacking + " of " + run.designs : "")));
+    }
+    tr.appendChild(what);
+    /* Shift and a click, on the box or anywhere on the row, takes every run between this one and
+       the last one clicked, the way it would in a file list. */
+    const toggle = (shift) => {
+      if (!ok) return;
+      if (shift && AM.last !== null) {
+        const ab = [AM.last, i].sort((x, y) => x - y);
+        const want = !AM.r.has(run.path);
+        rows.slice(ab[0], ab[1] + 1).filter(amSelectable)
+          .forEach((r) => (want ? AM.r.add(r.path) : AM.r.delete(r.path)));
+      } else if (AM.r.has(run.path)) AM.r.delete(run.path);
+      else AM.r.add(run.path);
+      AM.last = i;
+      amPaint();
+    };
+    tr.addEventListener("click", (e) => { if (e.target.tagName !== "INPUT") toggle(e.shiftKey); });
+    tick.addEventListener("click", (e) => { e.preventDefault(); toggle(e.shiftKey); });
+    body.appendChild(tr);
+  });
+  const can = rows.filter(amSelectable);
+  amTri($("amr-all"), can.filter((r) => AM.r.has(r.path)).length, AM.queued ? 0 : can.length);
+  $("amr-all-label").textContent = can.length ? "Select all " + can.length + " listed" : "Select all";
+  const all = AM.runs.filter(amSelectable).length;
+  const hidden = AM.runs.length - rows.length;
+  $("amtally").textContent = AM.r.size + " of " + all + " run" + (all === 1 ? "" : "s") + " chosen"
+    + (hidden ? " \u00b7 " + hidden + " not listed" : "");
+}
+
+function amPlan() {
+  const runs = AM.runs.filter((r) => AM.r.has(r.path) && amAdds(r).length);
+  return { runs: runs, designs: runs.reduce((n, r) => n + (r.lacking || 0), 0) };
+}
+
+/* The one line that says what to do next. */
+function amLead(cls, head, sub) {
+  const lead = $("amlead");
+  lead.className = "amlead" + (cls ? " " + cls : "");
+  lead.innerHTML = "";
+  lead.appendChild(el("b", null, head));
+  lead.appendChild(el("span", "sub", sub));
+}
+function amPaintLead() {
+  const p = amPlan();
+  const go = $("amgo");
+  if (AM.queued) return;
+  const n = AM.runs.filter(amSelectable).length;
+  if (AM.error) amLead("warn", "The runs could not be read.", AM.error);
+  else if (!AM.loaded) amLead("", "Reading your runs\u2026", "Each one says which measures it has.");
+  else if (!AM.runs.length) amLead("", "No runs to add to yet.",
+    "The runs list has not found one of yours on this page.");
+  else if (!AM.can) amLead("warn", "This page cannot send jobs.",
+    "There is no scheduler here to queue the job on. Open the page on a cluster's login node.");
+  else if (!AM.runs.some((r) => AM.measures.some((m) => amLacks(r, m.key))))
+    amLead("", "Nothing to add.", "Every run listed has MM-GBSA and binder strain, has a job adding "
+      + "them, or cannot have them; Every run shows which.");
+  else if (!AM.m.size) amLead("", "Tick what to add.", "The measure says how many of your runs lack it.");
+  else if (!n) amLead("", "Nothing to add.", "None of these runs lacks " + amWords(amTicked()) + ".");
+  else if (!p.runs.length) amLead("", "Now choose the runs.",
+    n + " of them lack " + amWords(amTicked()) + ". Select all takes every one listed.");
+  else {
+    amLead("ready", amWords(amTicked()) + " for " + p.runs.length + " run" + (p.runs.length > 1 ? "s" : "")
+      + " (" + p.designs + " design" + (p.designs === 1 ? "" : "s") + ").",
+      (p.runs.length > 1 ? p.runs.length + " jobs" : "One job") + " on CPU nodes, one a run, charged to "
+      + "your usual account. About a quarter of an hour of one core a design"
+      + (AM.dry ? "; this page is a dry run, so each job is written and not queued." : "."));
+  }
+  go.disabled = !p.runs.length || !AM.can;
+  go.textContent = p.runs.length ? "Add to " + p.runs.length + " run" + (p.runs.length > 1 ? "s" : "") : "Add";
+}
+
+/* Every paint keeps the keyboard where it was: the boxes are drawn again, and a box that is
+   replaced takes the focus with it. */
+function amPaint() {
+  const a = document.activeElement;
+  const key = a && $("am").contains(a) ? (a.dataset.am || a.id) : "";
+  const box = document.querySelector("#am .amtablebox");
+  const top = box ? box.scrollTop : 0;
+  amPaintMeasures();
+  amPaintRuns();
+  amPaintLead();
+  if (box) box.scrollTop = top;
+  if (key) {
+    const found = $("am").querySelector('[data-am="' + CSS.escape(key) + '"]') || $(key);
+    if (found && !found.disabled) found.focus();
+  }
+}
+function amFilter(f, quiet) {
+  AM.filter = f;
+  $("amf-missing").setAttribute("aria-pressed", String(f === "missing"));
+  $("amf-all").setAttribute("aria-pressed", String(f === "all"));
+  $("amf-missing").classList.toggle("on", f === "missing");
+  $("amf-all").classList.toggle("on", f === "all");
+  if (!quiet) amPaint();
+}
+
+async function amLoad() {
+  let d;
+  try { d = await api("/api/measures" + (AM.pin ? "?run=" + encodeURIComponent(AM.pin) : "")); }
+  catch (failure) { d = { error: failure.message }; }
+  if (!$("am").open || AM.queued) return;
+  AM.error = d.error || "";
+  if (!d.error) {
+    AM.measures = d.measures || [];
+    AM.runs = d.runs || [];
+    AM.loaded = true;
+    AM.can = !!d.can_submit;
+    AM.dry = !!d.dry_run;
+    const offered = new Set(AM.measures.map((m) => m.key));
+    /* The run it was opened on, under the name the list gives it. */
+    if (d.pinned && AM.r.size) AM.r = new Set([d.pinned]);
+    AM.m = new Set((AM.want || [...offered]).filter((k) => offered.has(k)
+      && AM.runs.some((r) => amLacks(r, k))));
+    [...AM.r].forEach((p) => {
+      const r = AM.runs.find((x) => x.path === p);
+      if (!r || !amSelectable(r)) AM.r.delete(p);
+    });
+  }
+  amPaint();
+  const go = $("amgo");
+  const box = $("amm").querySelector("input:not([disabled])");
+  (!go.disabled ? go : (box || $("amfind"))).focus();
+}
+
+/* Opened with {run, measures} by the line over a run's table, and with nothing by the button
+   under the runs list. */
+function amOpen(opts) {
+  opts = opts || {};
+  AM.queued = null; AM.last = null; AM.find = ""; AM.loaded = false; AM.error = "";
+  /* Nothing from the last time it was open is shown while it reads. */
+  AM.runs = []; AM.measures = [];
+  AM.pin = opts.run || "";
+  AM.r = new Set(opts.run ? [opts.run] : []);
+  AM.want = opts.measures || null;
+  $("amfind").value = "";
+  amFilter("missing", true);
+  $("amcols").hidden = false;
+  $("amqueued").hidden = true;
+  $("amqueued").innerHTML = "";
+  $("amcancel").hidden = false;
+  $("amnote").textContent = "Nothing already measured is changed. Shift-click to choose a range of runs.";
+  if (!$("am").open) $("am").showModal();
+  amPaint();
+  amLoad();
+}
+function amClose() { if ($("am").open) $("am").close(); }
+
+async function amGo() {
+  if (AM.queued) { amClose(); return; }
+  const p = amPlan();
+  if (!p.runs.length || !AM.can) return;
+  const go = $("amgo");
+  go.disabled = true;
+  go.textContent = "Adding\u2026";
+  let r;
+  try { r = await api("/api/measures", { runs: p.runs.map((x) => x.path), measures: amTicked() }); }
+  catch (failure) { r = { error: failure.message }; }
+  if (r.error) {
+    amLead("warn", "Nothing was added.", r.error);
+    go.disabled = false;
+    go.textContent = "Add to " + p.runs.length + " run" + (p.runs.length > 1 ? "s" : "");
+    return;
+  }
+  /* The answers come back in the order the runs were sent. */
+  AM.queued = new Set();
+  let jobs = 0, refused = 0, written = 0;
+  const list = el("ul");
+  p.runs.forEach((run, i) => {
+    const x = (r.runs || [])[i] || { error: "no answer came back for it" };
+    const li = el("li");
+    li.appendChild(el("span", "amrun", run.name));
+    if (x.error) {
+      refused++;
+      li.appendChild(document.createTextNode(": not added, " + x.error));
+    } else {
+      AM.queued.add(run.path);
+      li.appendChild(document.createTextNode(": " + (x.jobs || []).map((jb) => {
+        if (jb.dry) { written++; return "written and not queued (dry run)"; }
+        jobs++;
+        return "job " + jb.jobid + ", " + amWords(jb.adds || []) + ", up to " + jb.walltime;
+      }).join("; ")));
+    }
+    list.appendChild(li);
+  });
+  const n = AM.queued.size;
+  amLead(refused && !n ? "warn" : "ready",
+    (written ? "Wrote " + written + " job" + (written === 1 ? "" : "s")
+      : "Queued " + jobs + " job" + (jobs === 1 ? "" : "s")) + " for " + n + " run" + (n === 1 ? "" : "s")
+      + "." + (refused ? " " + refused + " could not be added." : ""),
+    "Each run's table fills in when its job ends, and you can close this now.");
+  $("amcols").hidden = true;
+  $("amqueued").innerHTML = "";
+  $("amqueued").appendChild(list);
+  $("amqueued").hidden = false;
+  $("amnote").textContent = "Nothing already measured was changed.";
+  $("amcancel").hidden = true;
+  go.textContent = "Done";
+  go.disabled = false;
+  go.focus();
+  /* The run on screen, if it was one of them: its line now says what is being added. */
+  if (OPEN && AM.queued.has(OPEN)) openRun(OPEN, true);
+}
+
+$("amr-all").addEventListener("change", (e) => {
+  amShown().filter(amSelectable).forEach((r) => (e.target.checked ? AM.r.add(r.path) : AM.r.delete(r.path)));
+  amPaint();
+});
+$("amf-missing").onclick = () => amFilter("missing");
+$("amf-all").onclick = () => amFilter("all");
+$("amfind").addEventListener("input", (e) => { AM.find = e.target.value; amPaint(); });
+$("amgo").onclick = amGo;
+$("amcancel").onclick = amClose;
+$("amx").onclick = amClose;
+$("addmeasures").onclick = () => amOpen({});
+window.amOpen = amOpen;
 
 /* ------------------------------------------------------------------ start */
 (async function start() {
@@ -1959,6 +2365,7 @@ async function openRun(path, quiet) {
     /* The conditions are RFD4-Proteina's own: no other tool here is told what to hold and what to
        reveal, so the card is only built where it means something. */
     if (HELLO.tool === "rfd4") buildSwitches();
+    $("addmeasures").hidden = !(HELLO.measures && HELLO.measures.scored);
     wireLength();
     lengthFromBoxes();
     paintSite();

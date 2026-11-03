@@ -26,6 +26,8 @@ residues, and the hotspots the binder has to reach.</li>
 <li>Diffuses the designs, all of them in one pass on the GPU.</li>
 <li>Gives each binder a sequence with ProteinMPNN, and keeps the model's own sequence beside it.</li>
 <li>Writes <code>designs.json</code>, which is what the next card reads.</li>
+<li>Then, in a job of its own on CPU nodes, gives each design its MM-GBSA and binder strain
+(<a href="results.html#measures">what the two are</a>).</li>
 </ol>
 <div class="note">Two designs against MDM2, sequences included, took eleven minutes on one A100.
 The model's own demo, twenty-four designs across three harder problems, took twenty-four.</div>

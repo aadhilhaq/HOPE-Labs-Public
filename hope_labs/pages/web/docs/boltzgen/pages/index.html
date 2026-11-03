@@ -8,7 +8,8 @@ binders, folds them again and ranks them.</p>
 protein receptor: a target can be a protein, a peptide, a nucleic acid or a small molecule, and
 the kind of binder you want is chosen as a protocol rather than as a set of settings. Having
 generated candidates it re-folds each one with the target, scores the complex and ranks what
-survives, all inside the same run.</p>
+survives, all inside the same run. A short job on CPU nodes then gives each design its MM-GBSA and
+binder strain (<a href="results.html#measures">what the two are</a>), which rank nothing.</p>
 <p>This page takes the target, the hotspots, the protocol and the binder length, converts the
 hotspots into the form BoltzGen wants and shows you the conversion, writes the run folder and
 queues the job. Nothing is installed and no module is loaded: BoltzGen and its environment are at

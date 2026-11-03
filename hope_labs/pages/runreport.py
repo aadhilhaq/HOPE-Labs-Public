@@ -32,7 +32,9 @@ import os
 import re
 import sys
 
+from .. import designscores
 from .. import reporting as rk
+from .. import strain as strainmod
 from . import docs as pagedocs
 from . import runs as runsmod
 
@@ -220,6 +222,8 @@ class Report:
             for one in self.designs:
                 self.metrics[one.get("name")] = rk.read_json(
                     self._beside(os.path.join("rfd3", "%s.json" % one.get("name"))), {}) or {}
+        # MM-GBSA and binder strain, where a scoring job has measured them (designscores.py).
+        self.scores = designscores.read_scores(self.job)
         self.csv_name, self.csv, self.all_csv = "", [], []
         if tool == "boltzgen":
             self._boltzgen_tables()
@@ -563,8 +567,34 @@ class Report:
         return ("ProteinMPNN's score for the designed chain, lower is better; it says how well "
                 "the sequence suits the backbone and nothing about affinity")
 
+    def measures(self):
+        """{design name: designscores.cell()} for the designs shown, and whether any carries a
+        number. The two columns are drawn where one does, and on RFdiffusion's runs, whose designs
+        have none to carry and say why."""
+        cells = {str(d.get("name") or ""): designscores.cell(
+            d, self.scores.get(str(d.get("name") or "")), self.tool) for d in self.shown}
+        valued = any(c["mmgbsa"] is not None or c["binder_strain"] is not None
+                     for c in cells.values())
+        return cells, valued
+
+    def _measure_cells(self, design, cells, show):
+        """The two cells of one design: its numbers, or an empty cell carrying its reason as a
+        tooltip. Never 0 for a value nobody measured."""
+        if not show:
+            return {}
+        got = cells.get(str(design.get("name") or "")) or {}
+        out = {}
+        for key, col in (("mmgbsa", "mmgbsa"), ("binder_strain", "strain")):
+            value = got.get(key)
+            out[col] = value if value is not None else {
+                "html": '<span title="%s">–</span>' % rk.e(got.get("score_why") or
+                                                           designscores.NOT_YET)}
+        return out
+
     def ranking_table(self):
         columns = self._shared_columns()
+        cells, valued = self.measures()
+        show = valued or self.tool in designscores.BACKBONE
         rows = []
         for design in self.shown:
             row = {"name": design.get("name") or "",
@@ -573,10 +603,15 @@ class Report:
                    "binder": ",".join(design.get("binder_chains") or []),
                    "target": ",".join(design.get("target_chains") or [])}
             row.update(self._tool_columns(design))
+            row.update(self._measure_cells(design, cells, show))
             if design is self.shown[0]:
                 row["_class"] = "rk-mark"
             rows.append(row)
         columns += self._tool_column_specs()
+        columns += [{"key": "mmgbsa", "label": designscores.LABELS["mmgbsa"], "num": True,
+                     "digits": 1, "help": designscores.HELP["mmgbsa"]},
+                    {"key": "strain", "label": designscores.LABELS["binder_strain"], "num": True,
+                     "digits": 1, "help": designscores.HELP["binder_strain"]}]
         columns = [c for c in columns
                    if any(r.get(c["key"]) not in (None, "") for r in rows)]
         return {"kind": "table", "id": "ranking", "columns": columns, "rows": rows,
@@ -584,14 +619,46 @@ class Report:
                 "note": self.ranking_note()}
 
     def ranking_note(self):
+        notes = []
         if self.tool == "rfd3":
-            return ("<i>Chain breaks</i>, <i>Max CA step</i> and <i>Clashes</i> are the model's "
-                    "own geometry figures and are not a confidence: a sound backbone may still "
-                    "not bind.")
+            notes.append("<i>Chain breaks</i>, <i>Max CA step</i> and <i>Clashes</i> are the "
+                         "model's own geometry figures and are not a confidence: a sound backbone "
+                         "may still not bind.")
         if self.tool == "rfdiffusion" and self.have_plddt():
-            return ("<i>Binder pLDDT</i> is RFdiffusion's own, at the last diffusion step and "
-                    "over the designed residues only.")
-        return ""
+            notes.append("<i>Binder pLDDT</i> is RFdiffusion's own, at the last diffusion step "
+                         "and over the designed residues only.")
+        notes.append(self.measures_note())
+        return " ".join(n for n in notes if n)
+
+    def measures_note(self):
+        """What the two measures are, which designs lack them and why, or that none has them.
+
+        Said under the table because a printed page has no tooltips: the reason an empty cell
+        gives on hover is here as well, grouped by reason.
+        """
+        cells, valued = self.measures()
+        if self.tool in designscores.BACKBONE:
+            return ("No <i>MM-GBSA</i> or <i>binder strain</i>: %s. RFdiffusion writes each binder "
+                    "as a backbone and keeps its ProteinMPNN sequence beside it."
+                    % designscores.BACKBONE_ONLY)
+        if not valued:
+            return ("No design here has been given MM-GBSA or binder strain yet; <b>Add "
+                    "measures</b> on the Runs screen adds both.")
+        out = ["<i>MM-GBSA</i> and <i>Binder strain</i> are single-structure measures for "
+               "comparing these designs with each other; neither is a binding free energy, and "
+               "neither changes the order of the table."]
+        if any(c.get("score_note") for c in cells.values()):
+            out.append("Both are of the structures as %s wrote them, whose binders carry the "
+                       "model's own sequence rather than ProteinMPNN's."
+                       % TOOL_NAME.get(self.tool, self.tool))
+        why = {}
+        for name, c in cells.items():
+            if c["mmgbsa"] is None or c["binder_strain"] is None:
+                why.setdefault(c.get("score_why") or designscores.NOT_YET, []).append(name)
+        for reason, names in sorted(why.items()):
+            out.append("Not measured on %s: %s." % (rk.and_list([rk.e(n) for n in names]),
+                                                    rk.e(reason)))
+        return " ".join(out)
 
     def _tool_columns(self, design):
         if self.tool == "rfdiffusion":
@@ -1736,12 +1803,59 @@ class Report:
                       else self._rfd3_methods(version, cite) if self.tool == "rfd3"
                       else self._rfd4_methods(version, cite) if self.tool == "rfd4"
                       else self._boltzgen_methods(version, cite))
+        # The measures added after the run, before the closing line every tool's methods end with
+        # (the computing resources), and only where a design carries one.
+        scored = self._measures_methods(cite)
+        if scored:
+            paragraphs = paragraphs[:-1] + [scored] + paragraphs[-1:]
         references = [{"n": n, "text": refs[key]} for n, key in enumerate(order, 1)]
         html = "".join("<p>%s</p>" % p for p in paragraphs if p and p.strip())
         return html, references
 
+    def _measures_methods(self, cite):
+        """The paragraph saying how MM-GBSA and binder strain were measured, or "" where no design
+        shown carries either."""
+        cells, valued = self.measures()
+        if not valued:
+            return ""
+        entry = next((self.scores.get(n) for n, c in cells.items()
+                      if c["mmgbsa"] is not None), None) or {}
+        steps = re.search(r"(\d+) steps of minimization", str(entry.get("method") or ""))
+        return (
+            "After the run, each design was scored as it was written: its protein chains, heavy "
+            "atoms only and the target's first, were completed by PDBFixer%s where a residue "
+            "lacked atoms, built with ff14SB%s and mbondi2 radii in tleap (AmberTools%s), and "
+            "minimized with sander for %s steps in the GB-OBC(II) implicit solvent%s with the "
+            "target's heavy atoms restrained at %s kcal/mol/Å². MMPBSA.py%s scored that single "
+            "frame (igb %d, %s M salt) for the MM-GBSA. The binder strain is the binder's energy "
+            "alone in that frame minus the same binder relaxed alone from it by %s steps of "
+            "conjugate gradient in sander, in the same solvent with its surface term.%s Both are "
+            "for comparing the designs of this run with each other; neither is a binding free "
+            "energy, and neither changed the order of the designs."
+            % (cite("pdbfixer"), cite("ff14sb"), cite("amber"),
+               rk.e(steps.group(1) if steps else designscores.MIN_STEPS), cite("obc"),
+               rk.num(designscores.RESTRAINT, 1), cite("mmpbsa"), designscores.IGB,
+               rk.num(designscores.SALT, 2), "{:,}".format(strainmod.STEPS),
+               " The structures carry %s's own sequence, so that is the sequence scored, not "
+               "ProteinMPNN's." % TOOL_NAME.get(self.tool, self.tool)
+               if any(c.get("score_note") for c in cells.values()) else ""))
+
     def _references(self):
         common = {
+            "amber": "Case, D. A. et al. AmberTools. J. Chem. Inf. Model. 63, 6183-6191 (2023). "
+                     "doi:10.1021/acs.jcim.3c01153 (tleap and sander)",
+            "mmpbsa": "Miller, B. R. et al. MMPBSA.py: an efficient program for end-state free "
+                      "energy calculations. J. Chem. Theory Comput. 8, 3314-3321 (2012). "
+                      "doi:10.1021/ct300418h",
+            "pdbfixer": "Eastman, P. et al. OpenMM 7: rapid development of high performance "
+                        "algorithms for molecular dynamics. PLoS Comput. Biol. 13, e1005659 "
+                        "(2017). doi:10.1371/journal.pcbi.1005659 (PDBFixer is part of OpenMM)",
+            "ff14sb": "Maier, J. A. et al. ff14SB: improving the accuracy of protein side chain "
+                      "and backbone parameters from ff99SB. J. Chem. Theory Comput. 11, "
+                      "3696-3713 (2015). doi:10.1021/acs.jctc.5b00255",
+            "obc": "Onufriev, A., Bashford, D. and Case, D. A. Exploring protein native states "
+                   "and large-scale conformational changes with a modified generalized Born "
+                   "model. Proteins 55, 383-394 (2004). doi:10.1002/prot.20033",
             "mpnn": "Dauparas, J. et al. Robust deep learning based protein sequence design "
                     "using ProteinMPNN. Science 378, 49-56 (2022). doi:10.1126/science.add2187",
             "hprc": "Texas A&M High Performance Research Computing, which provided the "
@@ -1920,12 +2034,12 @@ class Report:
                 "complex for composition; secondary structure is assigned by P-SEA from the "
                 "C-alpha trace%s." % cite("psea"))
         out.append(
-            "No confidence or interface score was computed: RFdiffusion3's design run reports "
+            "The design run computed no confidence or interface score: RFdiffusion3 reports "
             "geometry only, and the designs were not refolded. The seed is recorded as "
             "<code>null</code> in this run, so the sampling cannot be reproduced exactly from "
             "its own record."
             if (self.metrics.get(best) or {}).get("seed") in (None, "") else
-            "No confidence or interface score was computed: RFdiffusion3's design run reports "
+            "The design run computed no confidence or interface score: RFdiffusion3 reports "
             "geometry only, and the designs were not refolded.")
         tail = "Computing resources were provided by Texas A&amp;M High Performance Research " \
                "Computing%s." % cite("hprc")
@@ -1972,10 +2086,10 @@ class Report:
             out.append(
                 "No hotspots were given, so the binder was free to grow anywhere on the target.")
         out.append(
-            "%s were generated%s%s%s. Scoring was not composed into the run, so no design was "
-            "refolded and none carries a confidence or interface score; the sequence quoted for "
-            "each is the model's own, designed with the backbone rather than by a separate "
-            "sequence-design step."
+            "%s were generated%s%s%s. Scoring was not composed into the run, so the run itself "
+            "refolded no design and gave none a confidence or interface score; the sequence "
+            "quoted for each is the model's own, designed with the backbone rather than by a "
+            "separate sequence-design step."
             % (rk.cap(rk.count(len(self.designs), "design")),
                " in batches of %s" % rk.whole(self.plan.get("batch_size"))
                if rk.whole(self.plan.get("batch_size")) else "",
