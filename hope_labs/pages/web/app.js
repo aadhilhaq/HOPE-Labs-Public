@@ -1259,21 +1259,29 @@ function paintSwitches() {
 /* ------------------------------------------------------------------ the binder's length
    Two sliders over one track, each with its own label: there is no two-handle range in HTML, and
    two that a screen reader can read separately beats one widget built out of divs. The boxes stay
-   for an exact figure and each moves its own handle. */
+   for an exact figure and each moves its own handle.
+
+   The track covers what the tools are actually given, 4 to 500 residues, which is the window the
+   flow cards accept. It began at 20, and none of these tools has such a floor: a binder of ten
+   could be typed into the boxes but not dragged to, and the label under the track then read
+   "20 to 20 residues" over boxes that said 10 and 15. */
+const LEN_LEAST = 4;
+const LEN_MOST = 500;
+
 function lengthFromBoxes() {
   const lo = Number($("binder_min").value);
   const hi = Number($("binder_max").value);
-  if (Number.isFinite(lo)) $("len_lo").value = String(Math.min(Math.max(lo, 20), 200));
-  if (Number.isFinite(hi)) $("len_hi").value = String(Math.min(Math.max(hi, 20), 200));
+  if (Number.isFinite(lo)) $("len_lo").value = String(Math.min(Math.max(lo, LEN_LEAST), LEN_MOST));
+  if (Number.isFinite(hi)) $("len_hi").value = String(Math.min(Math.max(hi, LEN_LEAST), LEN_MOST));
   paintLength();
 }
 
 function paintLength() {
   const lo = Number($("len_lo").value);
   const hi = Number($("len_hi").value);
-  const span = 200 - 20;
-  const left = ((Math.min(lo, hi) - 20) / span) * 100;
-  const right = ((Math.max(lo, hi) - 20) / span) * 100;
+  const span = LEN_MOST - LEN_LEAST;
+  const left = ((Math.min(lo, hi) - LEN_LEAST) / span) * 100;
+  const right = ((Math.max(lo, hi) - LEN_LEAST) / span) * 100;
   $("lenfill").style.left = left + "%";
   $("lenfill").style.width = Math.max(0, right - left) + "%";
   $("lennow").textContent = Math.min(lo, hi) + " to " + Math.max(lo, hi) + " residues";
